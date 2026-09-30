@@ -15,19 +15,19 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition adapters_map_Map_IF_new_lemma (π : thread_id) : Prop :=
-  ∀ `(I_rt : !RT) `(F_rt : !RT) `(I_st : !syn_type) `(F_st : !syn_type) `(DropGlue_I_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (I_rt) )) `(DropGlue_I_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt)))) `(DropGlue_F_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) `(DropGlue_F_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) , 
+  ∀ `(I_rt : !RT) `(F_rt : !RT) `(I_st : !syn_type) `(F_st : !syn_type) `(DropGlue_I_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (I_rt) )) `(DropGlue_I_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt))))) `(DropGlue_F_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) `(DropGlue_F_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt))))) , 
   syn_type_is_layoutable (I_st) →
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((adapters_map_Map_sls (I_st) (F_st)) : syn_type)) →
   ⊢ typed_function π (adapters_map_Map_IF_new_def I_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_map_Map_IF_new I_rt F_rt I_st F_st DropGlue_I_spec_attrs DropGlue_F_spec_attrs -[] -[I_ty; F_ty]) (λ π, ((typaram_wf I_rt I_st I_ty)
   ∗ (typaram_wf F_rt F_st F_ty))
-  ∗ (⌜((trait_incl_of_adapters_map_Map_IF_new (I_rt) (F_rt) (I_st) (F_st) (DropGlue_I_spec_attrs) (DropGlue_I_spec) (DropGlue_F_spec_attrs) (DropGlue_F_spec))-[] -[I_ty; F_ty])%Z⌝))).
+  ∗ (((trait_incl_of_adapters_map_Map_IF_new (I_rt) (F_rt) (I_st) (F_st) (DropGlue_I_spec_attrs) (DropGlue_I_realization) (DropGlue_F_spec_attrs) (DropGlue_F_realization))-[] -[I_ty; F_ty]) π))).
 End proof.
 
 Ltac adapters_map_Map_IF_new_prelude :=
   unfold adapters_map_Map_IF_new_lemma;
   set (FN_NAME := FUNCTION_NAME "adapters_map_Map_IF_new");
-  intros I_rt F_rt I_st F_st DropGlue_I_spec_attrs DropGlue_I_spec DropGlue_F_spec_attrs DropGlue_F_spec;
+  intros I_rt F_rt I_st F_st DropGlue_I_spec_attrs DropGlue_I_realization DropGlue_F_spec_attrs DropGlue_F_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

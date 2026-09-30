@@ -19,21 +19,23 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Vec_TA_is_empty_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(Allocator_A_spec : !(spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) (Vec_TA_len_T_A_loc : loc) , 
+  ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt))))) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(Allocator_A_realization : !(trait_spec_realization (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt))))) (Vec_TA_len_T_A_loc : loc) (Vec_TA_len_T_A_loc_linking : spec_with 1 [T_rt; A_rt] (thread_id → iProp Σ)) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (((Vec_sls (T_st) (A_st)) : syn_type)) →
   Vec_TA_len_T_A_loc ◁ᵥ{π, MetaNone} Vec_TA_len_T_A_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Vec_TA_len (RRGS:=RRGS) ((T_rt)) ((A_rt)) (T_st) (A_st) DropGlue_T_spec_attrs DropGlue_A_spec_attrs Allocator_A_spec_attrs -[late_lft_0] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
-  ∗ (typaram_wf A_rt A_st A_ty)))%I) -∗
+  ∗ (typaram_wf A_rt A_st A_ty))
+  ∗ (from_assumption_hint (Vec_TA_len_T_A_loc_linking -[late_lft_0] -[T_ty; A_ty] π)))%I) -∗
   typed_function π (Vec_TA_is_empty_def Vec_TA_len_T_A_loc  T_st  A_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Vec_TA_is_empty T_rt A_rt T_st A_st DropGlue_T_spec_attrs DropGlue_A_spec_attrs Allocator_A_spec_attrs -[ulft_1] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty))
-  ∗ (⌜((trait_incl_of_Vec_TA_is_empty (T_rt) (A_rt) (T_st) (A_st) (DropGlue_T_spec_attrs) (DropGlue_T_spec) (DropGlue_A_spec_attrs) (DropGlue_A_spec) (Allocator_A_spec_attrs) (Allocator_A_spec))-[ulft_1] -[T_ty; A_ty])%Z⌝))).
+  ∗ (((trait_incl_of_Vec_TA_is_empty (T_rt) (A_rt) (T_st) (A_st) (DropGlue_T_spec_attrs) (DropGlue_T_realization) (DropGlue_A_spec_attrs) (DropGlue_A_realization) (Allocator_A_spec_attrs) (Allocator_A_realization))-[ulft_1] -[T_ty; A_ty]) π)
+  ∗ (□ (∀ (late_lft_0 : lft), Vec_TA_len_T_A_loc_linking -[late_lft_0] -[T_ty; A_ty] π)))).
 End proof.
 
 Ltac Vec_TA_is_empty_prelude :=
   unfold Vec_TA_is_empty_lemma;
   set (FN_NAME := FUNCTION_NAME "Vec_TA_is_empty");
-  intros T_rt A_rt T_st A_st DropGlue_T_spec_attrs DropGlue_T_spec DropGlue_A_spec_attrs DropGlue_A_spec Allocator_A_spec_attrs Allocator_A_spec;
+  intros T_rt A_rt T_st A_st DropGlue_T_spec_attrs DropGlue_T_realization DropGlue_A_spec_attrs DropGlue_A_realization Allocator_A_spec_attrs Allocator_A_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

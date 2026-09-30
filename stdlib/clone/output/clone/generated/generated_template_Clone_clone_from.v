@@ -8,18 +8,19 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Clone_clone_from_lemma (π : thread_id) : Prop :=
-  ∀ `(Self_rt : !RT) `(Self_st : !syn_type) `(DropGlue_Self_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) `(DropGlue_Self_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) `(Clone_Self_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) `(Clone_Self_spec : !(spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt)))) (Clone_Self_clone_loc : loc) (DropGlue_Self_drop_glue_loc : loc) , 
+  ∀ `(Self_rt : !RT) `(Self_st : !syn_type) `(DropGlue_Self_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) `(DropGlue_Self_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt))))) `(Clone_Self_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) `(Clone_Self_realization : !(trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt))))) (Clone_Self_clone_loc : loc) (DropGlue_Self_drop_glue_loc : loc) , 
   syn_type_is_layoutable (Self_st) →
-  Clone_Self_clone_loc ◁ᵥ{π, MetaNone} Clone_Self_clone_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), fn_spec_add_late_pre ((Clone_clone_spec (RRGS:=RRGS) (Clone_Self_spec-[] -[]))  -[late_lft_0] -[]) (λ π, ((typaram_wf Self_rt Self_st Self_ty)))%I) -∗
-  DropGlue_Self_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_Self_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_Self_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  Clone_Self_clone_loc ◁ᵥ{π, MetaNone} Clone_Self_clone_loc @ function_ptr [RefSynType] (<tag_type> spec_collapse_params _ _ (λ (Clone_Self_lfts_inst : prod_vec lft Clone_Self_realization.(trait_ctx_lfts)) (Clone_Self_tys_inst : plist type Clone_Self_realization.(trait_ctx_tys)), spec! ( *[late_lft_0]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), fn_spec_add_late_pre ((Clone_clone_spec (RRGS:=RRGS) (Clone_Self_realization.(trait_ctx_spec) Clone_Self_lfts_inst Clone_Self_tys_inst -[] -[]))  -[late_lft_0] -[]) (λ π, ((typaram_wf Self_rt Self_st Self_ty))
+  ∗ (Clone_Self_realization.(trait_ctx_wf) Clone_Self_lfts_inst Clone_Self_tys_inst π))%I)) -∗
+  DropGlue_Self_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_Self_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec_collapse_params _ _ (λ (DropGlue_Self_lfts_inst : prod_vec lft DropGlue_Self_realization.(trait_ctx_lfts)) (DropGlue_Self_tys_inst : plist type DropGlue_Self_realization.(trait_ctx_tys)), spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_Self_realization.(trait_ctx_spec) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst -[] -[]))  -[] -[]) (λ π, (DropGlue_Self_realization.(trait_ctx_wf) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst π))%I)) -∗
   typed_function π (Clone_clone_from_def Clone_Self_clone_loc  DropGlue_Self_drop_glue_loc  Self_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty]) : ([Self_rt] : list RT), fn_spec_add_late_pre (Clone_clone_from_base_spec Self_rt Self_st DropGlue_Self_spec_attrs Clone_Self_spec_attrs -[ulft_1; ulft_2] -[Self_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty))
-  ∗ (⌜((trait_incl_of_Clone_clone_from (Self_rt) (Self_st) (DropGlue_Self_spec_attrs) (DropGlue_Self_spec) (Clone_Self_spec_attrs) (Clone_Self_spec))-[ulft_1; ulft_2] -[Self_ty])%Z⌝))).
+  ∗ (((trait_incl_of_Clone_clone_from (Self_rt) (Self_st) (DropGlue_Self_spec_attrs) (DropGlue_Self_realization) (Clone_Self_spec_attrs) (Clone_Self_realization))-[ulft_1; ulft_2] -[Self_ty]) π))).
 End proof.
 
 Ltac Clone_clone_from_prelude :=
   unfold Clone_clone_from_lemma;
   set (FN_NAME := FUNCTION_NAME "Clone_clone_from");
-  intros Self_rt Self_st DropGlue_Self_spec_attrs DropGlue_Self_spec Clone_Self_spec_attrs Clone_Self_spec;
+  intros Self_rt Self_st DropGlue_Self_spec_attrs DropGlue_Self_realization Clone_Self_spec_attrs Clone_Self_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -15,17 +15,17 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition adapters_skip_Skip_I_new_lemma (π : thread_id) : Prop :=
-  ∀ `(I_rt : !RT) `(I_st : !syn_type) `(DropGlue_I_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (I_rt) )) `(DropGlue_I_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt)))) , 
+  ∀ `(I_rt : !RT) `(I_st : !syn_type) `(DropGlue_I_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (I_rt) )) `(DropGlue_I_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt))))) , 
   syn_type_is_layoutable (I_st) →
   syn_type_is_layoutable (((adapters_skip_Skip_sls (I_st)) : syn_type)) →
   ⊢ typed_function π (adapters_skip_Skip_I_new_def I_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_skip_Skip_I_new I_rt I_st DropGlue_I_spec_attrs -[] -[I_ty]) (λ π, ((typaram_wf I_rt I_st I_ty))
-  ∗ (⌜((trait_incl_of_adapters_skip_Skip_I_new (I_rt) (I_st) (DropGlue_I_spec_attrs) (DropGlue_I_spec))-[] -[I_ty])%Z⌝))).
+  ∗ (((trait_incl_of_adapters_skip_Skip_I_new (I_rt) (I_st) (DropGlue_I_spec_attrs) (DropGlue_I_realization))-[] -[I_ty]) π))).
 End proof.
 
 Ltac adapters_skip_Skip_I_new_prelude :=
   unfold adapters_skip_Skip_I_new_lemma;
   set (FN_NAME := FUNCTION_NAME "adapters_skip_Skip_I_new");
-  intros I_rt I_st DropGlue_I_spec_attrs DropGlue_I_spec;
+  intros I_rt I_st DropGlue_I_spec_attrs DropGlue_I_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

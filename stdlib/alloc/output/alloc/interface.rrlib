@@ -196,6 +196,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "REFAasAllocator",
+      "realization": "REFAasAllocator_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -220,6 +221,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "REFAasAllocatorClone",
+      "realization": "REFAasAllocatorClone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -245,6 +247,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "GlobalasAllocator",
+      "realization": "GlobalasAllocator_realization",
       "trait_path": {
         "args": [],
         "path": [

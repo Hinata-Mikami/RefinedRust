@@ -36,7 +36,8 @@
         "core",
         "cell",
         "UnsafeCell"
-      ]
+      ],
+      "realization": "drop_glue_UnsafeCell_realization"
     }
   ],
   "module_dependencies": [

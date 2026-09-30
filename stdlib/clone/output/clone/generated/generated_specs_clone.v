@@ -402,6 +402,8 @@ Definition Clone_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec
            <TY> Self_ty : (spec_with 2 [] fn_spec);
     |}
 .
+Arguments Clone_base_spec : simpl never.
+
 
 End Clone.
 
@@ -427,15 +429,19 @@ Definition scope_bindable_Copy_spec `{Self_rt : !RT} : (ScopeBindable ((Copy_spe
 
 Definition Copy_base_spec (Self_rt: RT) (Self_st: syn_type) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (_ATTRS: ((Copy_spec_attrs ((Self_rt)) (Clone_Self_spec_attrs)))) : (spec_with _ _ (Copy_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_Copy_spec _ _ ((Self_rt))).
+Arguments Copy_base_spec : simpl never.
+
 
 End Copy.
 
 Section Clone_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_Clone_clone (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Clone_Self_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs Clone_Self_spec_attrs-[] -[Self_ty])))).
-  Definition trait_incl_of_Clone_clone_from (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Clone_Self_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs Clone_Self_spec_attrs-[] -[Self_ty])))).
+  Definition trait_incl_of_Clone_clone (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt))))) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Clone_Self_realization: (trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), (λ π, ((∃ (DropGlue_Self_lfts_inst : prod_vec lft DropGlue_Self_realization.(trait_ctx_lfts)) (DropGlue_Self_tys_inst : plist type DropGlue_Self_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_Self_realization.(trait_ctx_spec) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))⌝ ∗ DropGlue_Self_realization.(trait_ctx_wf) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst π)
+      ∗ (∃ (Clone_Self_lfts_inst : prod_vec lft Clone_Self_realization.(trait_ctx_lfts)) (Clone_Self_tys_inst : plist type Clone_Self_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl Clone_spec_incl (Clone_Self_realization.(trait_ctx_spec) Clone_Self_lfts_inst Clone_Self_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs Clone_Self_spec_attrs-[] -[Self_ty]))⌝ ∗ Clone_Self_realization.(trait_ctx_wf) Clone_Self_lfts_inst Clone_Self_tys_inst π))%I).
+  Definition trait_incl_of_Clone_clone_from (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt))))) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Clone_Self_realization: (trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+    spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty]) : ([Self_rt] : list RT), (λ π, ((∃ (DropGlue_Self_lfts_inst : prod_vec lft DropGlue_Self_realization.(trait_ctx_lfts)) (DropGlue_Self_tys_inst : plist type DropGlue_Self_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_Self_realization.(trait_ctx_spec) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))⌝ ∗ DropGlue_Self_realization.(trait_ctx_wf) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst π)
+      ∗ (∃ (Clone_Self_lfts_inst : prod_vec lft Clone_Self_realization.(trait_ctx_lfts)) (Clone_Self_tys_inst : plist type Clone_Self_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl Clone_spec_incl (Clone_Self_realization.(trait_ctx_spec) Clone_Self_lfts_inst Clone_Self_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs Clone_Self_spec_attrs-[] -[Self_ty]))⌝ ∗ Clone_Self_realization.(trait_ctx_wf) Clone_Self_lfts_inst Clone_Self_tys_inst π))%I).
 End Clone_trait_req_incls.
 
 Section Copy_trait_req_incls.
@@ -445,128 +451,128 @@ End Copy_trait_req_incls.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_REFTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+Definition trait_incl_of_REFTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), (λ π, ((∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I).
 
 Definition type_of_REFTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Clone_base_spec ((place_rfnRT (T_rt))) (RefSynType) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((REFTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(shr_ref ulft_0 T_ty)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_constTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+Definition trait_incl_of_constTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (λ π, ((∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I).
 
 Definition type_of_constTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (loc) (PtrSynType) ((drop_glue_trivial_spec_attrs (loc))) ((constTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[alias_ptr_t]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_mutTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+Definition trait_incl_of_mutTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (λ π, ((∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I).
 
 Definition type_of_mutTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (loc) (PtrSynType) ((drop_glue_trivial_spec_attrs (loc))) ((mutTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[alias_ptr_t]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_boolasClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_boolasClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_boolasClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (bool) (BoolSynType) ((drop_glue_trivial_spec_attrs (bool))) (boolasClone_spec_attrs))
     -[] -[bool_t]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_charasClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_charasClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_charasClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) (CharSynType) ((drop_glue_trivial_spec_attrs (Z))) (charasClone_spec_attrs))
     -[] -[char_t]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_i128asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i128asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i128asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) (i128asClone_spec_attrs))
     -[] -[(int I128)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_i16asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i16asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i16asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) (i16asClone_spec_attrs))
     -[] -[(int I16)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_i32asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i32asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i32asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) (i32asClone_spec_attrs))
     -[] -[(int I32)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_i64asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i64asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i64asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) (i64asClone_spec_attrs))
     -[] -[(int I64)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_i8asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i8asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i8asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) (i8asClone_spec_attrs))
     -[] -[(int I8)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_isizeasClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_isizeasClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_isizeasClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) (isizeasClone_spec_attrs))
     -[] -[(int ISize)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_u128asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u128asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u128asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) (u128asClone_spec_attrs))
     -[] -[(int U128)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_u16asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u16asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u16asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) (u16asClone_spec_attrs))
     -[] -[(int U16)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_u32asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u32asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u32asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) (u32asClone_spec_attrs))
     -[] -[(int U32)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_u64asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u64asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u64asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) (u64asClone_spec_attrs))
     -[] -[(int U64)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_u8asClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u8asClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u8asClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) (u8asClone_spec_attrs))
     -[] -[(int U8)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_usizeasClone_clone  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_usizeasClone_clone  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_usizeasClone_clone  :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (Z) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) (usizeasClone_spec_attrs))
     -[] -[(int USize)]).(Clone_clone_spec)   a b))) <MERGE!>.
 
 
-Definition trait_incl_of_std_marker_PhantomDataTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+Definition trait_incl_of_std_marker_PhantomDataTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (λ π, ((∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I).
 
 Definition type_of_std_marker_PhantomDataTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec ((((core_marker_PhantomData_rt) ((T_rt))))) (((core_marker_PhantomData_sls (T_st)) : syn_type)) ((drop_glue_trivial_spec_attrs ((((core_marker_PhantomData_rt) ((T_rt))))))) ((std_marker_PhantomDataTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
@@ -587,6 +593,19 @@ Section REFTasClone_spec.
              <TY> (shr_ref ulft_0 T_ty) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments REFTasClone_spec : simpl never.
+
+  Program Definition REFTasClone_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (place_rfnRT (T_rt)))) :=
+  {|
+    trait_ctx_lfts := 1;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[ulft_0]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[ulft_0]) '( *[T_ty]) _ _, (REFTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[ulft_0] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition REFTasClone_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[ulft_0] -[T_ty]) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec (place_rfnRT (T_rt)) RefSynType (drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))) (REFTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(shr_ref ulft_0 T_ty)])))).
 End REFTasClone_spec.
@@ -603,6 +622,19 @@ Section constTasClone_spec.
              <TY> alias_ptr_t : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments constTasClone_spec : simpl never.
+
+  Program Definition constTasClone_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) loc)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[]) '( *[T_ty]) _ _, (constTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition constTasClone_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (constTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec loc PtrSynType (drop_glue_trivial_spec_attrs (loc)) (constTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[alias_ptr_t])))).
 End constTasClone_spec.
@@ -611,6 +643,19 @@ Section constTasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition constTasCopy_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Copy_spec (loc))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (loc)).
+  Arguments constTasCopy_spec : simpl never.
+
+  Program Definition constTasCopy_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) loc)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[]) '( *[T_ty]) _ _, (constTasCopy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition constTasCopy_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (constTasCopy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec loc PtrSynType (constTasClone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs)) (drop_glue_trivial_spec_attrs (loc)) (constTasCopy_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[alias_ptr_t])))).
   Lemma constTasCopy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp loc alias_ptr_t).
@@ -632,6 +677,19 @@ Section mutTasClone_spec.
              <TY> alias_ptr_t : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments mutTasClone_spec : simpl never.
+
+  Program Definition mutTasClone_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) loc)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[]) '( *[T_ty]) _ _, (mutTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition mutTasClone_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (mutTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec loc PtrSynType (drop_glue_trivial_spec_attrs (loc)) (mutTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[alias_ptr_t])))).
 End mutTasClone_spec.
@@ -640,6 +698,19 @@ Section mutTasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition mutTasCopy_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Copy_spec (loc))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (loc)).
+  Arguments mutTasCopy_spec : simpl never.
+
+  Program Definition mutTasCopy_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) loc)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[]) '( *[T_ty]) _ _, (mutTasCopy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition mutTasCopy_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (mutTasCopy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec loc PtrSynType (mutTasClone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs)) (drop_glue_trivial_spec_attrs (loc)) (mutTasCopy_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[alias_ptr_t])))).
   Lemma mutTasCopy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp loc alias_ptr_t).
@@ -661,6 +732,18 @@ Section boolasClone_spec.
              <TY> bool_t : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments boolasClone_spec : simpl never.
+
+  Program Definition boolasClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) bool)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, boolasClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition boolasClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), boolasClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec bool BoolSynType (drop_glue_trivial_spec_attrs (bool)) boolasClone_spec_attrs-[] -[bool_t])))).
 End boolasClone_spec.
@@ -669,6 +752,18 @@ Section boolasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition boolasCopy_spec  : (spec_with _ _ (Copy_spec (bool))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (bool)).
+  Arguments boolasCopy_spec : simpl never.
+
+  Program Definition boolasCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) bool)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, boolasCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition boolasCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), boolasCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec bool BoolSynType boolasClone_spec_attrs (drop_glue_trivial_spec_attrs (bool)) boolasCopy_spec_attrs-[] -[bool_t])))).
   Lemma boolasCopy_semantic_interp  : (Copy_semantic_interp bool bool_t).
@@ -690,6 +785,18 @@ Section charasClone_spec.
              <TY> char_t : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments charasClone_spec : simpl never.
+
+  Program Definition charasClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, charasClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition charasClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), charasClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z CharSynType (drop_glue_trivial_spec_attrs (Z)) charasClone_spec_attrs-[] -[char_t])))).
 End charasClone_spec.
@@ -698,6 +805,18 @@ Section charasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition charasCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments charasCopy_spec : simpl never.
+
+  Program Definition charasCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, charasCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition charasCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), charasCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z CharSynType charasClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) charasCopy_spec_attrs-[] -[char_t])))).
   Lemma charasCopy_semantic_interp  : (Copy_semantic_interp Z char_t).
@@ -719,6 +838,18 @@ Section i128asClone_spec.
              <TY> (int I128) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments i128asClone_spec : simpl never.
+
+  Program Definition i128asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i128asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i128asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType I128) (drop_glue_trivial_spec_attrs (Z)) i128asClone_spec_attrs-[] -[(int I128)])))).
 End i128asClone_spec.
@@ -727,6 +858,18 @@ Section i128asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition i128asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments i128asCopy_spec : simpl never.
+
+  Program Definition i128asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i128asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i128asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType I128) i128asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) i128asCopy_spec_attrs-[] -[(int I128)])))).
   Lemma i128asCopy_semantic_interp  : (Copy_semantic_interp Z (int I128)).
@@ -748,6 +891,18 @@ Section i16asClone_spec.
              <TY> (int I16) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments i16asClone_spec : simpl never.
+
+  Program Definition i16asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i16asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i16asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType I16) (drop_glue_trivial_spec_attrs (Z)) i16asClone_spec_attrs-[] -[(int I16)])))).
 End i16asClone_spec.
@@ -756,6 +911,18 @@ Section i16asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition i16asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments i16asCopy_spec : simpl never.
+
+  Program Definition i16asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i16asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i16asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType I16) i16asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) i16asCopy_spec_attrs-[] -[(int I16)])))).
   Lemma i16asCopy_semantic_interp  : (Copy_semantic_interp Z (int I16)).
@@ -777,6 +944,18 @@ Section i32asClone_spec.
              <TY> (int I32) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments i32asClone_spec : simpl never.
+
+  Program Definition i32asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i32asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i32asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType I32) (drop_glue_trivial_spec_attrs (Z)) i32asClone_spec_attrs-[] -[(int I32)])))).
 End i32asClone_spec.
@@ -785,6 +964,18 @@ Section i32asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition i32asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments i32asCopy_spec : simpl never.
+
+  Program Definition i32asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i32asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i32asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType I32) i32asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) i32asCopy_spec_attrs-[] -[(int I32)])))).
   Lemma i32asCopy_semantic_interp  : (Copy_semantic_interp Z (int I32)).
@@ -806,6 +997,18 @@ Section i64asClone_spec.
              <TY> (int I64) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments i64asClone_spec : simpl never.
+
+  Program Definition i64asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i64asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i64asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType I64) (drop_glue_trivial_spec_attrs (Z)) i64asClone_spec_attrs-[] -[(int I64)])))).
 End i64asClone_spec.
@@ -814,6 +1017,18 @@ Section i64asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition i64asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments i64asCopy_spec : simpl never.
+
+  Program Definition i64asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i64asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i64asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType I64) i64asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) i64asCopy_spec_attrs-[] -[(int I64)])))).
   Lemma i64asCopy_semantic_interp  : (Copy_semantic_interp Z (int I64)).
@@ -835,6 +1050,18 @@ Section i8asClone_spec.
              <TY> (int I8) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments i8asClone_spec : simpl never.
+
+  Program Definition i8asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i8asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i8asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType I8) (drop_glue_trivial_spec_attrs (Z)) i8asClone_spec_attrs-[] -[(int I8)])))).
 End i8asClone_spec.
@@ -843,6 +1070,18 @@ Section i8asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition i8asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments i8asCopy_spec : simpl never.
+
+  Program Definition i8asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, i8asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition i8asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType I8) i8asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) i8asCopy_spec_attrs-[] -[(int I8)])))).
   Lemma i8asCopy_semantic_interp  : (Copy_semantic_interp Z (int I8)).
@@ -864,6 +1103,18 @@ Section isizeasClone_spec.
              <TY> (int ISize) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments isizeasClone_spec : simpl never.
+
+  Program Definition isizeasClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, isizeasClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition isizeasClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType ISize) (drop_glue_trivial_spec_attrs (Z)) isizeasClone_spec_attrs-[] -[(int ISize)])))).
 End isizeasClone_spec.
@@ -872,6 +1123,18 @@ Section isizeasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition isizeasCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments isizeasCopy_spec : simpl never.
+
+  Program Definition isizeasCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, isizeasCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition isizeasCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType ISize) isizeasClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) isizeasCopy_spec_attrs-[] -[(int ISize)])))).
   Lemma isizeasCopy_semantic_interp  : (Copy_semantic_interp Z (int ISize)).
@@ -893,6 +1156,18 @@ Section u128asClone_spec.
              <TY> (int U128) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments u128asClone_spec : simpl never.
+
+  Program Definition u128asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u128asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u128asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType U128) (drop_glue_trivial_spec_attrs (Z)) u128asClone_spec_attrs-[] -[(int U128)])))).
 End u128asClone_spec.
@@ -901,6 +1176,18 @@ Section u128asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition u128asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments u128asCopy_spec : simpl never.
+
+  Program Definition u128asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u128asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u128asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType U128) u128asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) u128asCopy_spec_attrs-[] -[(int U128)])))).
   Lemma u128asCopy_semantic_interp  : (Copy_semantic_interp Z (int U128)).
@@ -922,6 +1209,18 @@ Section u16asClone_spec.
              <TY> (int U16) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments u16asClone_spec : simpl never.
+
+  Program Definition u16asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u16asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u16asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType U16) (drop_glue_trivial_spec_attrs (Z)) u16asClone_spec_attrs-[] -[(int U16)])))).
 End u16asClone_spec.
@@ -930,6 +1229,18 @@ Section u16asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition u16asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments u16asCopy_spec : simpl never.
+
+  Program Definition u16asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u16asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u16asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType U16) u16asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) u16asCopy_spec_attrs-[] -[(int U16)])))).
   Lemma u16asCopy_semantic_interp  : (Copy_semantic_interp Z (int U16)).
@@ -951,6 +1262,18 @@ Section u32asClone_spec.
              <TY> (int U32) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments u32asClone_spec : simpl never.
+
+  Program Definition u32asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u32asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u32asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType U32) (drop_glue_trivial_spec_attrs (Z)) u32asClone_spec_attrs-[] -[(int U32)])))).
 End u32asClone_spec.
@@ -959,6 +1282,18 @@ Section u32asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition u32asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments u32asCopy_spec : simpl never.
+
+  Program Definition u32asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u32asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u32asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType U32) u32asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) u32asCopy_spec_attrs-[] -[(int U32)])))).
   Lemma u32asCopy_semantic_interp  : (Copy_semantic_interp Z (int U32)).
@@ -980,6 +1315,18 @@ Section u64asClone_spec.
              <TY> (int U64) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments u64asClone_spec : simpl never.
+
+  Program Definition u64asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u64asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u64asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType U64) (drop_glue_trivial_spec_attrs (Z)) u64asClone_spec_attrs-[] -[(int U64)])))).
 End u64asClone_spec.
@@ -988,6 +1335,18 @@ Section u64asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition u64asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments u64asCopy_spec : simpl never.
+
+  Program Definition u64asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u64asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u64asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType U64) u64asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) u64asCopy_spec_attrs-[] -[(int U64)])))).
   Lemma u64asCopy_semantic_interp  : (Copy_semantic_interp Z (int U64)).
@@ -1009,6 +1368,18 @@ Section u8asClone_spec.
              <TY> (int U8) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments u8asClone_spec : simpl never.
+
+  Program Definition u8asClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u8asClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u8asClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType U8) (drop_glue_trivial_spec_attrs (Z)) u8asClone_spec_attrs-[] -[(int U8)])))).
 End u8asClone_spec.
@@ -1017,6 +1388,18 @@ Section u8asCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition u8asCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments u8asCopy_spec : simpl never.
+
+  Program Definition u8asCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, u8asCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition u8asCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType U8) u8asClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) u8asCopy_spec_attrs-[] -[(int U8)])))).
   Lemma u8asCopy_semantic_interp  : (Copy_semantic_interp Z (int U8)).
@@ -1038,6 +1421,18 @@ Section usizeasClone_spec.
              <TY> (int USize) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments usizeasClone_spec : simpl never.
+
+  Program Definition usizeasClone_realization  : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, usizeasClone_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition usizeasClone_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasClone_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Clone_base_spec Z (IntSynType USize) (drop_glue_trivial_spec_attrs (Z)) usizeasClone_spec_attrs-[] -[(int USize)])))).
 End usizeasClone_spec.
@@ -1046,6 +1441,18 @@ Section usizeasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition usizeasCopy_spec  : (spec_with _ _ (Copy_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Copy_spec _ _ (Z)).
+  Arguments usizeasCopy_spec : simpl never.
+
+  Program Definition usizeasCopy_realization  : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) Z)) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, usizeasCopy_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition usizeasCopy_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasCopy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Copy_base_spec Z (IntSynType USize) usizeasClone_spec_attrs (drop_glue_trivial_spec_attrs (Z)) usizeasCopy_spec_attrs-[] -[(int USize)])))).
   Lemma usizeasCopy_semantic_interp  : (Copy_semantic_interp Z (int USize)).
@@ -1067,6 +1474,19 @@ Section std_marker_PhantomDataTasClone_spec.
              <TY> (core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
+  Arguments std_marker_PhantomDataTasClone_spec : simpl never.
+
+  Program Definition std_marker_PhantomDataTasClone_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (((core_marker_PhantomData_rt) ((T_rt)))))) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[]) '( *[T_ty]) _ _, (std_marker_PhantomDataTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition std_marker_PhantomDataTasClone_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_marker_PhantomDataTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec (((core_marker_PhantomData_rt) ((T_rt)))) ((core_marker_PhantomData_sls (T_st)) : syn_type) (drop_glue_trivial_spec_attrs ((((core_marker_PhantomData_rt) ((T_rt)))))) (std_marker_PhantomDataTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty])])))).
 End std_marker_PhantomDataTasClone_spec.
@@ -1075,6 +1495,19 @@ Section std_marker_PhantomDataTasCopy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition std_marker_PhantomDataTasCopy_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Copy_spec ((((core_marker_PhantomData_rt) ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ ((((core_marker_PhantomData_rt) ((T_rt)))))).
+  Arguments std_marker_PhantomDataTasCopy_spec : simpl never.
+
+  Program Definition std_marker_PhantomDataTasCopy_realization (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : trait_spec_realization (spec_with 0 [] (Copy_spec (RRGS:=RRGS) (((core_marker_PhantomData_rt) ((T_rt)))))) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [T_rt];
+    trait_ctx_wf := λ '( *[]) '( *[T_ty]) π, (((typaram_wf T_rt T_st T_ty))
+  ∗ (∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[]) '( *[T_ty]) _ _, (std_marker_PhantomDataTasCopy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition std_marker_PhantomDataTasCopy_spec_subsumption  :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_marker_PhantomDataTasCopy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec (((core_marker_PhantomData_rt) ((T_rt)))) ((core_marker_PhantomData_sls (T_st)) : syn_type) (std_marker_PhantomDataTasClone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs)) (drop_glue_trivial_spec_attrs ((((core_marker_PhantomData_rt) ((T_rt)))))) (std_marker_PhantomDataTasCopy_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty])])))).
   Lemma std_marker_PhantomDataTasCopy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp (((core_marker_PhantomData_rt) ((T_rt)))) (core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty])).

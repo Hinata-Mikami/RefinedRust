@@ -108,8 +108,7 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_def (Opti
       CallS traits_iterator_Iterator_MI_next_loc ["vlft9"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__2"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Unwind)
      ]>%E $
      <[
@@ -123,8 +122,7 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_def (Opti
       CallS Option_T_map_MIastraits_iterator_Iterator_Item_MB_REFmutMF_loc ["vlft5"] [RSTTyVar "MB"; RSTTyVar "MF"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)) } ("__2"); move{ RefOp } ("__4")] (Some (Na1Ord, (use_op_alg' ((Option_els (MB_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb3")
      ]>%E $
      <[
@@ -737,8 +735,7 @@ Program Definition step_impltraits_iterator_Iteratorforstd_ops_RangeA_next_def (
       local_live{ NeverSynType } "__3";
       CallS panic_shim_loc [] [] [@{expr} ] None
       ( StuckS)
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Unwind)
+      ( Unwind)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -2300,8 +2297,7 @@ Program Definition u16asstep_Step_steps_between_def (panic_shim_loc: loc) : func
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -2388,8 +2384,7 @@ Program Definition u32asstep_Step_steps_between_def (panic_shim_loc: loc) : func
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -2476,8 +2471,7 @@ Program Definition u64asstep_Step_steps_between_def (panic_shim_loc: loc) : func
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -2564,8 +2558,7 @@ Program Definition u8asstep_Step_steps_between_def (panic_shim_loc: loc) : funct
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -2651,8 +2644,7 @@ Program Definition usizeasstep_Step_steps_between_def (panic_shim_loc: loc) : fu
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb2" :=

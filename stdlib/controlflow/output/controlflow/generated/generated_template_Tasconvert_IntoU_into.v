@@ -9,20 +9,21 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Tasconvert_IntoU_into_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(U_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(convert_From_U_T_spec_attrs : !(convert_From_spec_attrs (RRGS:=RRGS) (U_rt) (T_rt) )) `(convert_From_U_T_spec : !(spec_with 0 [] (convert_From_spec (RRGS:=RRGS) (U_rt) (T_rt)))) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_U_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (U_rt) )) `(DropGlue_U_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) (convert_From_U_T_from_loc : loc) , 
+  ∀ `(T_rt : !RT) `(U_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(convert_From_U_T_spec_attrs : !(convert_From_spec_attrs (RRGS:=RRGS) (U_rt) (T_rt) )) `(convert_From_U_T_realization : !(trait_spec_realization (spec_with 0 [] (convert_From_spec (RRGS:=RRGS) (U_rt) (T_rt))))) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) `(DropGlue_U_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (U_rt) )) `(DropGlue_U_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt))))) (convert_From_U_T_from_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (U_st) →
-  convert_From_U_T_from_loc ◁ᵥ{π, MetaNone} convert_From_U_T_from_loc @ function_ptr [T_st] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), fn_spec_add_late_pre ((convert_From_from_spec (RRGS:=RRGS) (convert_From_U_T_spec-[] -[]))  -[] -[]) (λ π, ((typaram_wf T_rt T_st T_ty)
-  ∗ (typaram_wf U_rt U_st U_ty)))%I) -∗
+  convert_From_U_T_from_loc ◁ᵥ{π, MetaNone} convert_From_U_T_from_loc @ function_ptr [T_st] (<tag_type> spec_collapse_params _ _ (λ (convert_From_U_T_lfts_inst : prod_vec lft convert_From_U_T_realization.(trait_ctx_lfts)) (convert_From_U_T_tys_inst : plist type convert_From_U_T_realization.(trait_ctx_tys)), spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), fn_spec_add_late_pre ((convert_From_from_spec (RRGS:=RRGS) (convert_From_U_T_realization.(trait_ctx_spec) convert_From_U_T_lfts_inst convert_From_U_T_tys_inst -[] -[]))  -[] -[]) (λ π, ((typaram_wf T_rt T_st T_ty)
+  ∗ (typaram_wf U_rt U_st U_ty))
+  ∗ (convert_From_U_T_realization.(trait_ctx_wf) convert_From_U_T_lfts_inst convert_From_U_T_tys_inst π))%I)) -∗
   typed_function π (Tasconvert_IntoU_into_def convert_From_U_T_from_loc  T_st  U_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), fn_spec_add_late_pre (type_of_Tasconvert_IntoU_into T_rt U_rt T_st U_st convert_From_U_T_spec_attrs DropGlue_T_spec_attrs DropGlue_U_spec_attrs -[] -[T_ty; U_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf U_rt U_st U_ty))
-  ∗ (⌜((trait_incl_of_Tasconvert_IntoU_into (T_rt) (U_rt) (T_st) (U_st) (convert_From_U_T_spec_attrs) (convert_From_U_T_spec) (DropGlue_T_spec_attrs) (DropGlue_T_spec) (DropGlue_U_spec_attrs) (DropGlue_U_spec))-[] -[T_ty; U_ty])%Z⌝))).
+  ∗ (((trait_incl_of_Tasconvert_IntoU_into (T_rt) (U_rt) (T_st) (U_st) (convert_From_U_T_spec_attrs) (convert_From_U_T_realization) (DropGlue_T_spec_attrs) (DropGlue_T_realization) (DropGlue_U_spec_attrs) (DropGlue_U_realization))-[] -[T_ty; U_ty]) π))).
 End proof.
 
 Ltac Tasconvert_IntoU_into_prelude :=
   unfold Tasconvert_IntoU_into_lemma;
   set (FN_NAME := FUNCTION_NAME "Tasconvert_IntoU_into");
-  intros T_rt U_rt T_st U_st convert_From_U_T_spec_attrs convert_From_U_T_spec DropGlue_T_spec_attrs DropGlue_T_spec DropGlue_U_spec_attrs DropGlue_U_spec;
+  intros T_rt U_rt T_st U_st convert_From_U_T_spec_attrs convert_From_U_T_realization DropGlue_T_spec_attrs DropGlue_T_realization DropGlue_U_spec_attrs DropGlue_U_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

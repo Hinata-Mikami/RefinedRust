@@ -54,8 +54,7 @@ Program Definition REFi128asAddREFai128_add_def (panic_shim_loc: loc) : function
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -96,8 +95,7 @@ Program Definition REFi128asAddi128_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -139,8 +137,7 @@ Program Definition REFi128asMulREFai128_mul_def (panic_shim_loc: loc) : function
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -181,8 +178,7 @@ Program Definition REFi128asMuli128_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -224,8 +220,7 @@ Program Definition REFi128asSubREFai128_sub_def (panic_shim_loc: loc) : function
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -266,8 +261,7 @@ Program Definition REFi128asSubi128_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -309,8 +303,7 @@ Program Definition REFi16asAddREFai16_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -351,8 +344,7 @@ Program Definition REFi16asAddi16_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -394,8 +386,7 @@ Program Definition REFi16asMulREFai16_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -436,8 +427,7 @@ Program Definition REFi16asMuli16_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -479,8 +469,7 @@ Program Definition REFi16asSubREFai16_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -521,8 +510,7 @@ Program Definition REFi16asSubi16_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -564,8 +552,7 @@ Program Definition REFi32asAddREFai32_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -606,8 +593,7 @@ Program Definition REFi32asAddi32_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -649,8 +635,7 @@ Program Definition REFi32asMulREFai32_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -691,8 +676,7 @@ Program Definition REFi32asMuli32_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -734,8 +718,7 @@ Program Definition REFi32asSubREFai32_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -776,8 +759,7 @@ Program Definition REFi32asSubi32_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -819,8 +801,7 @@ Program Definition REFi64asAddREFai64_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -861,8 +842,7 @@ Program Definition REFi64asAddi64_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -904,8 +884,7 @@ Program Definition REFi64asMulREFai64_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -946,8 +925,7 @@ Program Definition REFi64asMuli64_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -989,8 +967,7 @@ Program Definition REFi64asSubREFai64_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1031,8 +1008,7 @@ Program Definition REFi64asSubi64_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1074,8 +1050,7 @@ Program Definition REFi8asAddREFai8_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1116,8 +1091,7 @@ Program Definition REFi8asAddi8_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1159,8 +1133,7 @@ Program Definition REFi8asMulREFai8_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1201,8 +1174,7 @@ Program Definition REFi8asMuli8_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1244,8 +1216,7 @@ Program Definition REFi8asSubREFai8_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1286,8 +1257,7 @@ Program Definition REFi8asSubi8_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1329,8 +1299,7 @@ Program Definition REFisizeasAddREFaisize_add_def (panic_shim_loc: loc) : functi
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1371,8 +1340,7 @@ Program Definition REFisizeasAddisize_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1414,8 +1382,7 @@ Program Definition REFisizeasMulREFaisize_mul_def (panic_shim_loc: loc) : functi
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1456,8 +1423,7 @@ Program Definition REFisizeasMulisize_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1499,8 +1465,7 @@ Program Definition REFisizeasSubREFaisize_sub_def (panic_shim_loc: loc) : functi
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1541,8 +1506,7 @@ Program Definition REFisizeasSubisize_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1611,8 +1575,7 @@ Program Definition REFu128asAddREFau128_add_def (panic_shim_loc: loc) : function
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1653,8 +1616,7 @@ Program Definition REFu128asAddu128_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1696,8 +1658,7 @@ Program Definition REFu128asMulREFau128_mul_def (panic_shim_loc: loc) : function
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1738,8 +1699,7 @@ Program Definition REFu128asMulu128_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1781,8 +1741,7 @@ Program Definition REFu128asSubREFau128_sub_def (panic_shim_loc: loc) : function
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1823,8 +1782,7 @@ Program Definition REFu128asSubu128_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1866,8 +1824,7 @@ Program Definition REFu16asAddREFau16_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1908,8 +1865,7 @@ Program Definition REFu16asAddu16_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1951,8 +1907,7 @@ Program Definition REFu16asMulREFau16_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1993,8 +1948,7 @@ Program Definition REFu16asMulu16_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2036,8 +1990,7 @@ Program Definition REFu16asSubREFau16_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2078,8 +2031,7 @@ Program Definition REFu16asSubu16_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2121,8 +2073,7 @@ Program Definition REFu32asAddREFau32_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2163,8 +2114,7 @@ Program Definition REFu32asAddu32_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2206,8 +2156,7 @@ Program Definition REFu32asMulREFau32_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2248,8 +2197,7 @@ Program Definition REFu32asMulu32_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2291,8 +2239,7 @@ Program Definition REFu32asSubREFau32_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2333,8 +2280,7 @@ Program Definition REFu32asSubu32_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2376,8 +2322,7 @@ Program Definition REFu64asAddREFau64_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2418,8 +2363,7 @@ Program Definition REFu64asAddu64_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2461,8 +2405,7 @@ Program Definition REFu64asMulREFau64_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2503,8 +2446,7 @@ Program Definition REFu64asMulu64_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2546,8 +2488,7 @@ Program Definition REFu64asSubREFau64_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2588,8 +2529,7 @@ Program Definition REFu64asSubu64_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2631,8 +2571,7 @@ Program Definition REFu8asAddREFau8_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2673,8 +2612,7 @@ Program Definition REFu8asAddu8_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2716,8 +2654,7 @@ Program Definition REFu8asMulREFau8_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2758,8 +2695,7 @@ Program Definition REFu8asMulu8_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2801,8 +2737,7 @@ Program Definition REFu8asSubREFau8_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2843,8 +2778,7 @@ Program Definition REFu8asSubu8_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2886,8 +2820,7 @@ Program Definition REFusizeasAddREFausize_add_def (panic_shim_loc: loc) : functi
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2928,8 +2861,7 @@ Program Definition REFusizeasAddusize_add_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -2971,8 +2903,7 @@ Program Definition REFusizeasMulREFausize_mul_def (panic_shim_loc: loc) : functi
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3013,8 +2944,7 @@ Program Definition REFusizeasMulusize_mul_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3056,8 +2986,7 @@ Program Definition REFusizeasSubREFausize_sub_def (panic_shim_loc: loc) : functi
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3098,8 +3027,7 @@ Program Definition REFusizeasSubusize_sub_def (panic_shim_loc: loc) : function :
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3225,8 +3153,7 @@ Program Definition i128asAddREFai128_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3266,8 +3193,7 @@ Program Definition i128asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3393,8 +3319,7 @@ Program Definition i128asMulREFai128_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3434,8 +3359,7 @@ Program Definition i128asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3561,8 +3485,7 @@ Program Definition i128asSubREFai128_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3602,8 +3525,7 @@ Program Definition i128asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3729,8 +3651,7 @@ Program Definition i16asAddREFai16_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3770,8 +3691,7 @@ Program Definition i16asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3897,8 +3817,7 @@ Program Definition i16asMulREFai16_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -3938,8 +3857,7 @@ Program Definition i16asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4065,8 +3983,7 @@ Program Definition i16asSubREFai16_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4106,8 +4023,7 @@ Program Definition i16asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4233,8 +4149,7 @@ Program Definition i32asAddREFai32_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4274,8 +4189,7 @@ Program Definition i32asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4401,8 +4315,7 @@ Program Definition i32asMulREFai32_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4442,8 +4355,7 @@ Program Definition i32asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4569,8 +4481,7 @@ Program Definition i32asSubREFai32_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4610,8 +4521,7 @@ Program Definition i32asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4737,8 +4647,7 @@ Program Definition i64asAddREFai64_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4778,8 +4687,7 @@ Program Definition i64asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4905,8 +4813,7 @@ Program Definition i64asMulREFai64_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -4946,8 +4853,7 @@ Program Definition i64asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5073,8 +4979,7 @@ Program Definition i64asSubREFai64_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5114,8 +5019,7 @@ Program Definition i64asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5241,8 +5145,7 @@ Program Definition i8asAddREFai8_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5282,8 +5185,7 @@ Program Definition i8asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5409,8 +5311,7 @@ Program Definition i8asMulREFai8_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5450,8 +5351,7 @@ Program Definition i8asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5577,8 +5477,7 @@ Program Definition i8asSubREFai8_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5618,8 +5517,7 @@ Program Definition i8asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5745,8 +5643,7 @@ Program Definition isizeasAddREFaisize_add_def (panic_shim_loc: loc) : function 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5786,8 +5683,7 @@ Program Definition isizeasAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5913,8 +5809,7 @@ Program Definition isizeasMulREFaisize_mul_def (panic_shim_loc: loc) : function 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -5954,8 +5849,7 @@ Program Definition isizeasMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6081,8 +5975,7 @@ Program Definition isizeasSubREFaisize_sub_def (panic_shim_loc: loc) : function 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6122,8 +6015,7 @@ Program Definition isizeasSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6249,8 +6141,7 @@ Program Definition u128asAddREFau128_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6290,8 +6181,7 @@ Program Definition u128asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6417,8 +6307,7 @@ Program Definition u128asMulREFau128_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6458,8 +6347,7 @@ Program Definition u128asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6585,8 +6473,7 @@ Program Definition u128asSubREFau128_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6626,8 +6513,7 @@ Program Definition u128asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6753,8 +6639,7 @@ Program Definition u16asAddREFau16_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6794,8 +6679,7 @@ Program Definition u16asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6921,8 +6805,7 @@ Program Definition u16asMulREFau16_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -6962,8 +6845,7 @@ Program Definition u16asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7089,8 +6971,7 @@ Program Definition u16asSubREFau16_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7130,8 +7011,7 @@ Program Definition u16asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7257,8 +7137,7 @@ Program Definition u32asAddREFau32_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7298,8 +7177,7 @@ Program Definition u32asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7425,8 +7303,7 @@ Program Definition u32asMulREFau32_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7466,8 +7343,7 @@ Program Definition u32asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7593,8 +7469,7 @@ Program Definition u32asSubREFau32_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7634,8 +7509,7 @@ Program Definition u32asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7761,8 +7635,7 @@ Program Definition u64asAddREFau64_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7802,8 +7675,7 @@ Program Definition u64asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7929,8 +7801,7 @@ Program Definition u64asMulREFau64_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -7970,8 +7841,7 @@ Program Definition u64asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8097,8 +7967,7 @@ Program Definition u64asSubREFau64_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8138,8 +8007,7 @@ Program Definition u64asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8265,8 +8133,7 @@ Program Definition u8asAddREFau8_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8306,8 +8173,7 @@ Program Definition u8asAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8433,8 +8299,7 @@ Program Definition u8asMulREFau8_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8474,8 +8339,7 @@ Program Definition u8asMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8601,8 +8465,7 @@ Program Definition u8asSubREFau8_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8642,8 +8505,7 @@ Program Definition u8asSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8769,8 +8631,7 @@ Program Definition usizeasAddREFausize_add_def (panic_shim_loc: loc) : function 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8810,8 +8671,7 @@ Program Definition usizeasAdd_add_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8937,8 +8797,7 @@ Program Definition usizeasMulREFausize_mul_def (panic_shim_loc: loc) : function 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -8978,8 +8837,7 @@ Program Definition usizeasMul_mul_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -9105,8 +8963,7 @@ Program Definition usizeasSubREFausize_sub_def (panic_shim_loc: loc) : function 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -9146,8 +9003,7 @@ Program Definition usizeasSub_sub_def (panic_shim_loc: loc) : function :=
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb1" :=

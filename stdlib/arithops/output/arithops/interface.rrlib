@@ -180,6 +180,7 @@
         }
       },
       "name": "REFTasDeref",
+      "realization": "REFTasDeref_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -210,6 +211,7 @@
         }
       },
       "name": "REFi128asAddREFai128",
+      "realization": "REFi128asAddREFai128_realization",
       "trait_path": {
         "args": [
           {
@@ -250,6 +252,7 @@
         }
       },
       "name": "REFi128asAddi128",
+      "realization": "REFi128asAddi128_realization",
       "trait_path": {
         "args": [
           {
@@ -284,6 +287,7 @@
         }
       },
       "name": "REFi128asMulREFai128",
+      "realization": "REFi128asMulREFai128_realization",
       "trait_path": {
         "args": [
           {
@@ -324,6 +328,7 @@
         }
       },
       "name": "REFi128asMuli128",
+      "realization": "REFi128asMuli128_realization",
       "trait_path": {
         "args": [
           {
@@ -358,6 +363,7 @@
         }
       },
       "name": "REFi128asSubREFai128",
+      "realization": "REFi128asSubREFai128_realization",
       "trait_path": {
         "args": [
           {
@@ -398,6 +404,7 @@
         }
       },
       "name": "REFi128asSubi128",
+      "realization": "REFi128asSubi128_realization",
       "trait_path": {
         "args": [
           {
@@ -432,6 +439,7 @@
         }
       },
       "name": "REFi16asAddREFai16",
+      "realization": "REFi16asAddREFai16_realization",
       "trait_path": {
         "args": [
           {
@@ -472,6 +480,7 @@
         }
       },
       "name": "REFi16asAddi16",
+      "realization": "REFi16asAddi16_realization",
       "trait_path": {
         "args": [
           {
@@ -506,6 +515,7 @@
         }
       },
       "name": "REFi16asMulREFai16",
+      "realization": "REFi16asMulREFai16_realization",
       "trait_path": {
         "args": [
           {
@@ -546,6 +556,7 @@
         }
       },
       "name": "REFi16asMuli16",
+      "realization": "REFi16asMuli16_realization",
       "trait_path": {
         "args": [
           {
@@ -580,6 +591,7 @@
         }
       },
       "name": "REFi16asSubREFai16",
+      "realization": "REFi16asSubREFai16_realization",
       "trait_path": {
         "args": [
           {
@@ -620,6 +632,7 @@
         }
       },
       "name": "REFi16asSubi16",
+      "realization": "REFi16asSubi16_realization",
       "trait_path": {
         "args": [
           {
@@ -654,6 +667,7 @@
         }
       },
       "name": "REFi32asAddREFai32",
+      "realization": "REFi32asAddREFai32_realization",
       "trait_path": {
         "args": [
           {
@@ -694,6 +708,7 @@
         }
       },
       "name": "REFi32asAddi32",
+      "realization": "REFi32asAddi32_realization",
       "trait_path": {
         "args": [
           {
@@ -728,6 +743,7 @@
         }
       },
       "name": "REFi32asMulREFai32",
+      "realization": "REFi32asMulREFai32_realization",
       "trait_path": {
         "args": [
           {
@@ -768,6 +784,7 @@
         }
       },
       "name": "REFi32asMuli32",
+      "realization": "REFi32asMuli32_realization",
       "trait_path": {
         "args": [
           {
@@ -802,6 +819,7 @@
         }
       },
       "name": "REFi32asSubREFai32",
+      "realization": "REFi32asSubREFai32_realization",
       "trait_path": {
         "args": [
           {
@@ -842,6 +860,7 @@
         }
       },
       "name": "REFi32asSubi32",
+      "realization": "REFi32asSubi32_realization",
       "trait_path": {
         "args": [
           {
@@ -876,6 +895,7 @@
         }
       },
       "name": "REFi64asAddREFai64",
+      "realization": "REFi64asAddREFai64_realization",
       "trait_path": {
         "args": [
           {
@@ -916,6 +936,7 @@
         }
       },
       "name": "REFi64asAddi64",
+      "realization": "REFi64asAddi64_realization",
       "trait_path": {
         "args": [
           {
@@ -950,6 +971,7 @@
         }
       },
       "name": "REFi64asMulREFai64",
+      "realization": "REFi64asMulREFai64_realization",
       "trait_path": {
         "args": [
           {
@@ -990,6 +1012,7 @@
         }
       },
       "name": "REFi64asMuli64",
+      "realization": "REFi64asMuli64_realization",
       "trait_path": {
         "args": [
           {
@@ -1024,6 +1047,7 @@
         }
       },
       "name": "REFi64asSubREFai64",
+      "realization": "REFi64asSubREFai64_realization",
       "trait_path": {
         "args": [
           {
@@ -1064,6 +1088,7 @@
         }
       },
       "name": "REFi64asSubi64",
+      "realization": "REFi64asSubi64_realization",
       "trait_path": {
         "args": [
           {
@@ -1098,6 +1123,7 @@
         }
       },
       "name": "REFi8asAddREFai8",
+      "realization": "REFi8asAddREFai8_realization",
       "trait_path": {
         "args": [
           {
@@ -1138,6 +1164,7 @@
         }
       },
       "name": "REFi8asAddi8",
+      "realization": "REFi8asAddi8_realization",
       "trait_path": {
         "args": [
           {
@@ -1172,6 +1199,7 @@
         }
       },
       "name": "REFi8asMulREFai8",
+      "realization": "REFi8asMulREFai8_realization",
       "trait_path": {
         "args": [
           {
@@ -1212,6 +1240,7 @@
         }
       },
       "name": "REFi8asMuli8",
+      "realization": "REFi8asMuli8_realization",
       "trait_path": {
         "args": [
           {
@@ -1246,6 +1275,7 @@
         }
       },
       "name": "REFi8asSubREFai8",
+      "realization": "REFi8asSubREFai8_realization",
       "trait_path": {
         "args": [
           {
@@ -1286,6 +1316,7 @@
         }
       },
       "name": "REFi8asSubi8",
+      "realization": "REFi8asSubi8_realization",
       "trait_path": {
         "args": [
           {
@@ -1320,6 +1351,7 @@
         }
       },
       "name": "REFisizeasAddREFaisize",
+      "realization": "REFisizeasAddREFaisize_realization",
       "trait_path": {
         "args": [
           {
@@ -1360,6 +1392,7 @@
         }
       },
       "name": "REFisizeasAddisize",
+      "realization": "REFisizeasAddisize_realization",
       "trait_path": {
         "args": [
           {
@@ -1394,6 +1427,7 @@
         }
       },
       "name": "REFisizeasMulREFaisize",
+      "realization": "REFisizeasMulREFaisize_realization",
       "trait_path": {
         "args": [
           {
@@ -1434,6 +1468,7 @@
         }
       },
       "name": "REFisizeasMulisize",
+      "realization": "REFisizeasMulisize_realization",
       "trait_path": {
         "args": [
           {
@@ -1468,6 +1503,7 @@
         }
       },
       "name": "REFisizeasSubREFaisize",
+      "realization": "REFisizeasSubREFaisize_realization",
       "trait_path": {
         "args": [
           {
@@ -1508,6 +1544,7 @@
         }
       },
       "name": "REFisizeasSubisize",
+      "realization": "REFisizeasSubisize_realization",
       "trait_path": {
         "args": [
           {
@@ -1542,6 +1579,7 @@
         }
       },
       "name": "REFmutTasDeref",
+      "realization": "REFmutTasDeref_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1572,6 +1610,7 @@
         }
       },
       "name": "REFmutTasDerefMut",
+      "realization": "REFmutTasDerefMut_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1602,6 +1641,7 @@
         }
       },
       "name": "REFu128asAddREFau128",
+      "realization": "REFu128asAddREFau128_realization",
       "trait_path": {
         "args": [
           {
@@ -1642,6 +1682,7 @@
         }
       },
       "name": "REFu128asAddu128",
+      "realization": "REFu128asAddu128_realization",
       "trait_path": {
         "args": [
           {
@@ -1676,6 +1717,7 @@
         }
       },
       "name": "REFu128asMulREFau128",
+      "realization": "REFu128asMulREFau128_realization",
       "trait_path": {
         "args": [
           {
@@ -1716,6 +1758,7 @@
         }
       },
       "name": "REFu128asMulu128",
+      "realization": "REFu128asMulu128_realization",
       "trait_path": {
         "args": [
           {
@@ -1750,6 +1793,7 @@
         }
       },
       "name": "REFu128asSubREFau128",
+      "realization": "REFu128asSubREFau128_realization",
       "trait_path": {
         "args": [
           {
@@ -1790,6 +1834,7 @@
         }
       },
       "name": "REFu128asSubu128",
+      "realization": "REFu128asSubu128_realization",
       "trait_path": {
         "args": [
           {
@@ -1824,6 +1869,7 @@
         }
       },
       "name": "REFu16asAddREFau16",
+      "realization": "REFu16asAddREFau16_realization",
       "trait_path": {
         "args": [
           {
@@ -1864,6 +1910,7 @@
         }
       },
       "name": "REFu16asAddu16",
+      "realization": "REFu16asAddu16_realization",
       "trait_path": {
         "args": [
           {
@@ -1898,6 +1945,7 @@
         }
       },
       "name": "REFu16asMulREFau16",
+      "realization": "REFu16asMulREFau16_realization",
       "trait_path": {
         "args": [
           {
@@ -1938,6 +1986,7 @@
         }
       },
       "name": "REFu16asMulu16",
+      "realization": "REFu16asMulu16_realization",
       "trait_path": {
         "args": [
           {
@@ -1972,6 +2021,7 @@
         }
       },
       "name": "REFu16asSubREFau16",
+      "realization": "REFu16asSubREFau16_realization",
       "trait_path": {
         "args": [
           {
@@ -2012,6 +2062,7 @@
         }
       },
       "name": "REFu16asSubu16",
+      "realization": "REFu16asSubu16_realization",
       "trait_path": {
         "args": [
           {
@@ -2046,6 +2097,7 @@
         }
       },
       "name": "REFu32asAddREFau32",
+      "realization": "REFu32asAddREFau32_realization",
       "trait_path": {
         "args": [
           {
@@ -2086,6 +2138,7 @@
         }
       },
       "name": "REFu32asAddu32",
+      "realization": "REFu32asAddu32_realization",
       "trait_path": {
         "args": [
           {
@@ -2120,6 +2173,7 @@
         }
       },
       "name": "REFu32asMulREFau32",
+      "realization": "REFu32asMulREFau32_realization",
       "trait_path": {
         "args": [
           {
@@ -2160,6 +2214,7 @@
         }
       },
       "name": "REFu32asMulu32",
+      "realization": "REFu32asMulu32_realization",
       "trait_path": {
         "args": [
           {
@@ -2194,6 +2249,7 @@
         }
       },
       "name": "REFu32asSubREFau32",
+      "realization": "REFu32asSubREFau32_realization",
       "trait_path": {
         "args": [
           {
@@ -2234,6 +2290,7 @@
         }
       },
       "name": "REFu32asSubu32",
+      "realization": "REFu32asSubu32_realization",
       "trait_path": {
         "args": [
           {
@@ -2268,6 +2325,7 @@
         }
       },
       "name": "REFu64asAddREFau64",
+      "realization": "REFu64asAddREFau64_realization",
       "trait_path": {
         "args": [
           {
@@ -2308,6 +2366,7 @@
         }
       },
       "name": "REFu64asAddu64",
+      "realization": "REFu64asAddu64_realization",
       "trait_path": {
         "args": [
           {
@@ -2342,6 +2401,7 @@
         }
       },
       "name": "REFu64asMulREFau64",
+      "realization": "REFu64asMulREFau64_realization",
       "trait_path": {
         "args": [
           {
@@ -2382,6 +2442,7 @@
         }
       },
       "name": "REFu64asMulu64",
+      "realization": "REFu64asMulu64_realization",
       "trait_path": {
         "args": [
           {
@@ -2416,6 +2477,7 @@
         }
       },
       "name": "REFu64asSubREFau64",
+      "realization": "REFu64asSubREFau64_realization",
       "trait_path": {
         "args": [
           {
@@ -2456,6 +2518,7 @@
         }
       },
       "name": "REFu64asSubu64",
+      "realization": "REFu64asSubu64_realization",
       "trait_path": {
         "args": [
           {
@@ -2490,6 +2553,7 @@
         }
       },
       "name": "REFu8asAddREFau8",
+      "realization": "REFu8asAddREFau8_realization",
       "trait_path": {
         "args": [
           {
@@ -2530,6 +2594,7 @@
         }
       },
       "name": "REFu8asAddu8",
+      "realization": "REFu8asAddu8_realization",
       "trait_path": {
         "args": [
           {
@@ -2564,6 +2629,7 @@
         }
       },
       "name": "REFu8asMulREFau8",
+      "realization": "REFu8asMulREFau8_realization",
       "trait_path": {
         "args": [
           {
@@ -2604,6 +2670,7 @@
         }
       },
       "name": "REFu8asMulu8",
+      "realization": "REFu8asMulu8_realization",
       "trait_path": {
         "args": [
           {
@@ -2638,6 +2705,7 @@
         }
       },
       "name": "REFu8asSubREFau8",
+      "realization": "REFu8asSubREFau8_realization",
       "trait_path": {
         "args": [
           {
@@ -2678,6 +2746,7 @@
         }
       },
       "name": "REFu8asSubu8",
+      "realization": "REFu8asSubu8_realization",
       "trait_path": {
         "args": [
           {
@@ -2712,6 +2781,7 @@
         }
       },
       "name": "REFusizeasAddREFausize",
+      "realization": "REFusizeasAddREFausize_realization",
       "trait_path": {
         "args": [
           {
@@ -2752,6 +2822,7 @@
         }
       },
       "name": "REFusizeasAddusize",
+      "realization": "REFusizeasAddusize_realization",
       "trait_path": {
         "args": [
           {
@@ -2786,6 +2857,7 @@
         }
       },
       "name": "REFusizeasMulREFausize",
+      "realization": "REFusizeasMulREFausize_realization",
       "trait_path": {
         "args": [
           {
@@ -2826,6 +2898,7 @@
         }
       },
       "name": "REFusizeasMulusize",
+      "realization": "REFusizeasMulusize_realization",
       "trait_path": {
         "args": [
           {
@@ -2860,6 +2933,7 @@
         }
       },
       "name": "REFusizeasSubREFausize",
+      "realization": "REFusizeasSubREFausize_realization",
       "trait_path": {
         "args": [
           {
@@ -2900,6 +2974,7 @@
         }
       },
       "name": "REFusizeasSubusize",
+      "realization": "REFusizeasSubusize_realization",
       "trait_path": {
         "args": [
           {
@@ -2928,6 +3003,7 @@
         }
       },
       "name": "i128asAddREFai128",
+      "realization": "i128asAddREFai128_realization",
       "trait_path": {
         "args": [
           {
@@ -2962,6 +3038,7 @@
         }
       },
       "name": "i128asAdd",
+      "realization": "i128asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -2990,6 +3067,7 @@
         }
       },
       "name": "i128asAddAssignREFi128",
+      "realization": "i128asAddAssignREFi128_realization",
       "trait_path": {
         "args": [
           {
@@ -3024,6 +3102,7 @@
         }
       },
       "name": "i128asAddAssign",
+      "realization": "i128asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3052,6 +3131,7 @@
         }
       },
       "name": "i128asMulREFai128",
+      "realization": "i128asMulREFai128_realization",
       "trait_path": {
         "args": [
           {
@@ -3086,6 +3166,7 @@
         }
       },
       "name": "i128asMul",
+      "realization": "i128asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -3114,6 +3195,7 @@
         }
       },
       "name": "i128asMulAssignREFi128",
+      "realization": "i128asMulAssignREFi128_realization",
       "trait_path": {
         "args": [
           {
@@ -3148,6 +3230,7 @@
         }
       },
       "name": "i128asMulAssign",
+      "realization": "i128asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3176,6 +3259,7 @@
         }
       },
       "name": "i128asSubREFai128",
+      "realization": "i128asSubREFai128_realization",
       "trait_path": {
         "args": [
           {
@@ -3210,6 +3294,7 @@
         }
       },
       "name": "i128asSub",
+      "realization": "i128asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -3238,6 +3323,7 @@
         }
       },
       "name": "i128asSubAssignREFi128",
+      "realization": "i128asSubAssignREFi128_realization",
       "trait_path": {
         "args": [
           {
@@ -3272,6 +3358,7 @@
         }
       },
       "name": "i128asSubAssign",
+      "realization": "i128asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3300,6 +3387,7 @@
         }
       },
       "name": "i16asAddREFai16",
+      "realization": "i16asAddREFai16_realization",
       "trait_path": {
         "args": [
           {
@@ -3334,6 +3422,7 @@
         }
       },
       "name": "i16asAdd",
+      "realization": "i16asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -3362,6 +3451,7 @@
         }
       },
       "name": "i16asAddAssignREFi16",
+      "realization": "i16asAddAssignREFi16_realization",
       "trait_path": {
         "args": [
           {
@@ -3396,6 +3486,7 @@
         }
       },
       "name": "i16asAddAssign",
+      "realization": "i16asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3424,6 +3515,7 @@
         }
       },
       "name": "i16asMulREFai16",
+      "realization": "i16asMulREFai16_realization",
       "trait_path": {
         "args": [
           {
@@ -3458,6 +3550,7 @@
         }
       },
       "name": "i16asMul",
+      "realization": "i16asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -3486,6 +3579,7 @@
         }
       },
       "name": "i16asMulAssignREFi16",
+      "realization": "i16asMulAssignREFi16_realization",
       "trait_path": {
         "args": [
           {
@@ -3520,6 +3614,7 @@
         }
       },
       "name": "i16asMulAssign",
+      "realization": "i16asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3548,6 +3643,7 @@
         }
       },
       "name": "i16asSubREFai16",
+      "realization": "i16asSubREFai16_realization",
       "trait_path": {
         "args": [
           {
@@ -3582,6 +3678,7 @@
         }
       },
       "name": "i16asSub",
+      "realization": "i16asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -3610,6 +3707,7 @@
         }
       },
       "name": "i16asSubAssignREFi16",
+      "realization": "i16asSubAssignREFi16_realization",
       "trait_path": {
         "args": [
           {
@@ -3644,6 +3742,7 @@
         }
       },
       "name": "i16asSubAssign",
+      "realization": "i16asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3672,6 +3771,7 @@
         }
       },
       "name": "i32asAddREFai32",
+      "realization": "i32asAddREFai32_realization",
       "trait_path": {
         "args": [
           {
@@ -3706,6 +3806,7 @@
         }
       },
       "name": "i32asAdd",
+      "realization": "i32asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -3734,6 +3835,7 @@
         }
       },
       "name": "i32asAddAssignREFi32",
+      "realization": "i32asAddAssignREFi32_realization",
       "trait_path": {
         "args": [
           {
@@ -3768,6 +3870,7 @@
         }
       },
       "name": "i32asAddAssign",
+      "realization": "i32asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3796,6 +3899,7 @@
         }
       },
       "name": "i32asMulREFai32",
+      "realization": "i32asMulREFai32_realization",
       "trait_path": {
         "args": [
           {
@@ -3830,6 +3934,7 @@
         }
       },
       "name": "i32asMul",
+      "realization": "i32asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -3858,6 +3963,7 @@
         }
       },
       "name": "i32asMulAssignREFi32",
+      "realization": "i32asMulAssignREFi32_realization",
       "trait_path": {
         "args": [
           {
@@ -3892,6 +3998,7 @@
         }
       },
       "name": "i32asMulAssign",
+      "realization": "i32asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -3920,6 +4027,7 @@
         }
       },
       "name": "i32asSubREFai32",
+      "realization": "i32asSubREFai32_realization",
       "trait_path": {
         "args": [
           {
@@ -3954,6 +4062,7 @@
         }
       },
       "name": "i32asSub",
+      "realization": "i32asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -3982,6 +4091,7 @@
         }
       },
       "name": "i32asSubAssignREFi32",
+      "realization": "i32asSubAssignREFi32_realization",
       "trait_path": {
         "args": [
           {
@@ -4016,6 +4126,7 @@
         }
       },
       "name": "i32asSubAssign",
+      "realization": "i32asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4044,6 +4155,7 @@
         }
       },
       "name": "i64asAddREFai64",
+      "realization": "i64asAddREFai64_realization",
       "trait_path": {
         "args": [
           {
@@ -4078,6 +4190,7 @@
         }
       },
       "name": "i64asAdd",
+      "realization": "i64asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -4106,6 +4219,7 @@
         }
       },
       "name": "i64asAddAssignREFi64",
+      "realization": "i64asAddAssignREFi64_realization",
       "trait_path": {
         "args": [
           {
@@ -4140,6 +4254,7 @@
         }
       },
       "name": "i64asAddAssign",
+      "realization": "i64asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4168,6 +4283,7 @@
         }
       },
       "name": "i64asMulREFai64",
+      "realization": "i64asMulREFai64_realization",
       "trait_path": {
         "args": [
           {
@@ -4202,6 +4318,7 @@
         }
       },
       "name": "i64asMul",
+      "realization": "i64asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -4230,6 +4347,7 @@
         }
       },
       "name": "i64asMulAssignREFi64",
+      "realization": "i64asMulAssignREFi64_realization",
       "trait_path": {
         "args": [
           {
@@ -4264,6 +4382,7 @@
         }
       },
       "name": "i64asMulAssign",
+      "realization": "i64asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4292,6 +4411,7 @@
         }
       },
       "name": "i64asSubREFai64",
+      "realization": "i64asSubREFai64_realization",
       "trait_path": {
         "args": [
           {
@@ -4326,6 +4446,7 @@
         }
       },
       "name": "i64asSub",
+      "realization": "i64asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -4354,6 +4475,7 @@
         }
       },
       "name": "i64asSubAssignREFi64",
+      "realization": "i64asSubAssignREFi64_realization",
       "trait_path": {
         "args": [
           {
@@ -4388,6 +4510,7 @@
         }
       },
       "name": "i64asSubAssign",
+      "realization": "i64asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4416,6 +4539,7 @@
         }
       },
       "name": "i8asAddREFai8",
+      "realization": "i8asAddREFai8_realization",
       "trait_path": {
         "args": [
           {
@@ -4450,6 +4574,7 @@
         }
       },
       "name": "i8asAdd",
+      "realization": "i8asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -4478,6 +4603,7 @@
         }
       },
       "name": "i8asAddAssignREFi8",
+      "realization": "i8asAddAssignREFi8_realization",
       "trait_path": {
         "args": [
           {
@@ -4512,6 +4638,7 @@
         }
       },
       "name": "i8asAddAssign",
+      "realization": "i8asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4540,6 +4667,7 @@
         }
       },
       "name": "i8asMulREFai8",
+      "realization": "i8asMulREFai8_realization",
       "trait_path": {
         "args": [
           {
@@ -4574,6 +4702,7 @@
         }
       },
       "name": "i8asMul",
+      "realization": "i8asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -4602,6 +4731,7 @@
         }
       },
       "name": "i8asMulAssignREFi8",
+      "realization": "i8asMulAssignREFi8_realization",
       "trait_path": {
         "args": [
           {
@@ -4636,6 +4766,7 @@
         }
       },
       "name": "i8asMulAssign",
+      "realization": "i8asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4664,6 +4795,7 @@
         }
       },
       "name": "i8asSubREFai8",
+      "realization": "i8asSubREFai8_realization",
       "trait_path": {
         "args": [
           {
@@ -4698,6 +4830,7 @@
         }
       },
       "name": "i8asSub",
+      "realization": "i8asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -4726,6 +4859,7 @@
         }
       },
       "name": "i8asSubAssignREFi8",
+      "realization": "i8asSubAssignREFi8_realization",
       "trait_path": {
         "args": [
           {
@@ -4760,6 +4894,7 @@
         }
       },
       "name": "i8asSubAssign",
+      "realization": "i8asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4788,6 +4923,7 @@
         }
       },
       "name": "isizeasAddREFaisize",
+      "realization": "isizeasAddREFaisize_realization",
       "trait_path": {
         "args": [
           {
@@ -4822,6 +4958,7 @@
         }
       },
       "name": "isizeasAdd",
+      "realization": "isizeasAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -4850,6 +4987,7 @@
         }
       },
       "name": "isizeasAddAssignREFisize",
+      "realization": "isizeasAddAssignREFisize_realization",
       "trait_path": {
         "args": [
           {
@@ -4884,6 +5022,7 @@
         }
       },
       "name": "isizeasAddAssign",
+      "realization": "isizeasAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -4912,6 +5051,7 @@
         }
       },
       "name": "isizeasMulREFaisize",
+      "realization": "isizeasMulREFaisize_realization",
       "trait_path": {
         "args": [
           {
@@ -4946,6 +5086,7 @@
         }
       },
       "name": "isizeasMul",
+      "realization": "isizeasMul_realization",
       "trait_path": {
         "args": [
           {
@@ -4974,6 +5115,7 @@
         }
       },
       "name": "isizeasMulAssignREFisize",
+      "realization": "isizeasMulAssignREFisize_realization",
       "trait_path": {
         "args": [
           {
@@ -5008,6 +5150,7 @@
         }
       },
       "name": "isizeasMulAssign",
+      "realization": "isizeasMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5036,6 +5179,7 @@
         }
       },
       "name": "isizeasSubREFaisize",
+      "realization": "isizeasSubREFaisize_realization",
       "trait_path": {
         "args": [
           {
@@ -5070,6 +5214,7 @@
         }
       },
       "name": "isizeasSub",
+      "realization": "isizeasSub_realization",
       "trait_path": {
         "args": [
           {
@@ -5098,6 +5243,7 @@
         }
       },
       "name": "isizeasSubAssignREFisize",
+      "realization": "isizeasSubAssignREFisize_realization",
       "trait_path": {
         "args": [
           {
@@ -5132,6 +5278,7 @@
         }
       },
       "name": "isizeasSubAssign",
+      "realization": "isizeasSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5160,6 +5307,7 @@
         }
       },
       "name": "u128asAddREFau128",
+      "realization": "u128asAddREFau128_realization",
       "trait_path": {
         "args": [
           {
@@ -5194,6 +5342,7 @@
         }
       },
       "name": "u128asAdd",
+      "realization": "u128asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -5222,6 +5371,7 @@
         }
       },
       "name": "u128asAddAssignREFu128",
+      "realization": "u128asAddAssignREFu128_realization",
       "trait_path": {
         "args": [
           {
@@ -5256,6 +5406,7 @@
         }
       },
       "name": "u128asAddAssign",
+      "realization": "u128asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5284,6 +5435,7 @@
         }
       },
       "name": "u128asMulREFau128",
+      "realization": "u128asMulREFau128_realization",
       "trait_path": {
         "args": [
           {
@@ -5318,6 +5470,7 @@
         }
       },
       "name": "u128asMul",
+      "realization": "u128asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -5346,6 +5499,7 @@
         }
       },
       "name": "u128asMulAssignREFu128",
+      "realization": "u128asMulAssignREFu128_realization",
       "trait_path": {
         "args": [
           {
@@ -5380,6 +5534,7 @@
         }
       },
       "name": "u128asMulAssign",
+      "realization": "u128asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5408,6 +5563,7 @@
         }
       },
       "name": "u128asSubREFau128",
+      "realization": "u128asSubREFau128_realization",
       "trait_path": {
         "args": [
           {
@@ -5442,6 +5598,7 @@
         }
       },
       "name": "u128asSub",
+      "realization": "u128asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -5470,6 +5627,7 @@
         }
       },
       "name": "u128asSubAssignREFu128",
+      "realization": "u128asSubAssignREFu128_realization",
       "trait_path": {
         "args": [
           {
@@ -5504,6 +5662,7 @@
         }
       },
       "name": "u128asSubAssign",
+      "realization": "u128asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5532,6 +5691,7 @@
         }
       },
       "name": "u16asAddREFau16",
+      "realization": "u16asAddREFau16_realization",
       "trait_path": {
         "args": [
           {
@@ -5566,6 +5726,7 @@
         }
       },
       "name": "u16asAdd",
+      "realization": "u16asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -5594,6 +5755,7 @@
         }
       },
       "name": "u16asAddAssignREFu16",
+      "realization": "u16asAddAssignREFu16_realization",
       "trait_path": {
         "args": [
           {
@@ -5628,6 +5790,7 @@
         }
       },
       "name": "u16asAddAssign",
+      "realization": "u16asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5656,6 +5819,7 @@
         }
       },
       "name": "u16asMulREFau16",
+      "realization": "u16asMulREFau16_realization",
       "trait_path": {
         "args": [
           {
@@ -5690,6 +5854,7 @@
         }
       },
       "name": "u16asMul",
+      "realization": "u16asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -5718,6 +5883,7 @@
         }
       },
       "name": "u16asMulAssignREFu16",
+      "realization": "u16asMulAssignREFu16_realization",
       "trait_path": {
         "args": [
           {
@@ -5752,6 +5918,7 @@
         }
       },
       "name": "u16asMulAssign",
+      "realization": "u16asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5780,6 +5947,7 @@
         }
       },
       "name": "u16asSubREFau16",
+      "realization": "u16asSubREFau16_realization",
       "trait_path": {
         "args": [
           {
@@ -5814,6 +5982,7 @@
         }
       },
       "name": "u16asSub",
+      "realization": "u16asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -5842,6 +6011,7 @@
         }
       },
       "name": "u16asSubAssignREFu16",
+      "realization": "u16asSubAssignREFu16_realization",
       "trait_path": {
         "args": [
           {
@@ -5876,6 +6046,7 @@
         }
       },
       "name": "u16asSubAssign",
+      "realization": "u16asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -5904,6 +6075,7 @@
         }
       },
       "name": "u32asAddREFau32",
+      "realization": "u32asAddREFau32_realization",
       "trait_path": {
         "args": [
           {
@@ -5938,6 +6110,7 @@
         }
       },
       "name": "u32asAdd",
+      "realization": "u32asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -5966,6 +6139,7 @@
         }
       },
       "name": "u32asAddAssignREFu32",
+      "realization": "u32asAddAssignREFu32_realization",
       "trait_path": {
         "args": [
           {
@@ -6000,6 +6174,7 @@
         }
       },
       "name": "u32asAddAssign",
+      "realization": "u32asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6028,6 +6203,7 @@
         }
       },
       "name": "u32asMulREFau32",
+      "realization": "u32asMulREFau32_realization",
       "trait_path": {
         "args": [
           {
@@ -6062,6 +6238,7 @@
         }
       },
       "name": "u32asMul",
+      "realization": "u32asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -6090,6 +6267,7 @@
         }
       },
       "name": "u32asMulAssignREFu32",
+      "realization": "u32asMulAssignREFu32_realization",
       "trait_path": {
         "args": [
           {
@@ -6124,6 +6302,7 @@
         }
       },
       "name": "u32asMulAssign",
+      "realization": "u32asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6152,6 +6331,7 @@
         }
       },
       "name": "u32asSubREFau32",
+      "realization": "u32asSubREFau32_realization",
       "trait_path": {
         "args": [
           {
@@ -6186,6 +6366,7 @@
         }
       },
       "name": "u32asSub",
+      "realization": "u32asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -6214,6 +6395,7 @@
         }
       },
       "name": "u32asSubAssignREFu32",
+      "realization": "u32asSubAssignREFu32_realization",
       "trait_path": {
         "args": [
           {
@@ -6248,6 +6430,7 @@
         }
       },
       "name": "u32asSubAssign",
+      "realization": "u32asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6276,6 +6459,7 @@
         }
       },
       "name": "u64asAddREFau64",
+      "realization": "u64asAddREFau64_realization",
       "trait_path": {
         "args": [
           {
@@ -6310,6 +6494,7 @@
         }
       },
       "name": "u64asAdd",
+      "realization": "u64asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -6338,6 +6523,7 @@
         }
       },
       "name": "u64asAddAssignREFu64",
+      "realization": "u64asAddAssignREFu64_realization",
       "trait_path": {
         "args": [
           {
@@ -6372,6 +6558,7 @@
         }
       },
       "name": "u64asAddAssign",
+      "realization": "u64asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6400,6 +6587,7 @@
         }
       },
       "name": "u64asMulREFau64",
+      "realization": "u64asMulREFau64_realization",
       "trait_path": {
         "args": [
           {
@@ -6434,6 +6622,7 @@
         }
       },
       "name": "u64asMul",
+      "realization": "u64asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -6462,6 +6651,7 @@
         }
       },
       "name": "u64asMulAssignREFu64",
+      "realization": "u64asMulAssignREFu64_realization",
       "trait_path": {
         "args": [
           {
@@ -6496,6 +6686,7 @@
         }
       },
       "name": "u64asMulAssign",
+      "realization": "u64asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6524,6 +6715,7 @@
         }
       },
       "name": "u64asSubREFau64",
+      "realization": "u64asSubREFau64_realization",
       "trait_path": {
         "args": [
           {
@@ -6558,6 +6750,7 @@
         }
       },
       "name": "u64asSub",
+      "realization": "u64asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -6586,6 +6779,7 @@
         }
       },
       "name": "u64asSubAssignREFu64",
+      "realization": "u64asSubAssignREFu64_realization",
       "trait_path": {
         "args": [
           {
@@ -6620,6 +6814,7 @@
         }
       },
       "name": "u64asSubAssign",
+      "realization": "u64asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6648,6 +6843,7 @@
         }
       },
       "name": "u8asAddREFau8",
+      "realization": "u8asAddREFau8_realization",
       "trait_path": {
         "args": [
           {
@@ -6682,6 +6878,7 @@
         }
       },
       "name": "u8asAdd",
+      "realization": "u8asAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -6710,6 +6907,7 @@
         }
       },
       "name": "u8asAddAssignREFu8",
+      "realization": "u8asAddAssignREFu8_realization",
       "trait_path": {
         "args": [
           {
@@ -6744,6 +6942,7 @@
         }
       },
       "name": "u8asAddAssign",
+      "realization": "u8asAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6772,6 +6971,7 @@
         }
       },
       "name": "u8asMulREFau8",
+      "realization": "u8asMulREFau8_realization",
       "trait_path": {
         "args": [
           {
@@ -6806,6 +7006,7 @@
         }
       },
       "name": "u8asMul",
+      "realization": "u8asMul_realization",
       "trait_path": {
         "args": [
           {
@@ -6834,6 +7035,7 @@
         }
       },
       "name": "u8asMulAssignREFu8",
+      "realization": "u8asMulAssignREFu8_realization",
       "trait_path": {
         "args": [
           {
@@ -6868,6 +7070,7 @@
         }
       },
       "name": "u8asMulAssign",
+      "realization": "u8asMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -6896,6 +7099,7 @@
         }
       },
       "name": "u8asSubREFau8",
+      "realization": "u8asSubREFau8_realization",
       "trait_path": {
         "args": [
           {
@@ -6930,6 +7134,7 @@
         }
       },
       "name": "u8asSub",
+      "realization": "u8asSub_realization",
       "trait_path": {
         "args": [
           {
@@ -6958,6 +7163,7 @@
         }
       },
       "name": "u8asSubAssignREFu8",
+      "realization": "u8asSubAssignREFu8_realization",
       "trait_path": {
         "args": [
           {
@@ -6992,6 +7198,7 @@
         }
       },
       "name": "u8asSubAssign",
+      "realization": "u8asSubAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -7020,6 +7227,7 @@
         }
       },
       "name": "usizeasAddREFausize",
+      "realization": "usizeasAddREFausize_realization",
       "trait_path": {
         "args": [
           {
@@ -7054,6 +7262,7 @@
         }
       },
       "name": "usizeasAdd",
+      "realization": "usizeasAdd_realization",
       "trait_path": {
         "args": [
           {
@@ -7082,6 +7291,7 @@
         }
       },
       "name": "usizeasAddAssignREFusize",
+      "realization": "usizeasAddAssignREFusize_realization",
       "trait_path": {
         "args": [
           {
@@ -7116,6 +7326,7 @@
         }
       },
       "name": "usizeasAddAssign",
+      "realization": "usizeasAddAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -7144,6 +7355,7 @@
         }
       },
       "name": "usizeasMulREFausize",
+      "realization": "usizeasMulREFausize_realization",
       "trait_path": {
         "args": [
           {
@@ -7178,6 +7390,7 @@
         }
       },
       "name": "usizeasMul",
+      "realization": "usizeasMul_realization",
       "trait_path": {
         "args": [
           {
@@ -7206,6 +7419,7 @@
         }
       },
       "name": "usizeasMulAssignREFusize",
+      "realization": "usizeasMulAssignREFusize_realization",
       "trait_path": {
         "args": [
           {
@@ -7240,6 +7454,7 @@
         }
       },
       "name": "usizeasMulAssign",
+      "realization": "usizeasMulAssign_realization",
       "trait_path": {
         "args": [
           {
@@ -7268,6 +7483,7 @@
         }
       },
       "name": "usizeasSubREFausize",
+      "realization": "usizeasSubREFausize_realization",
       "trait_path": {
         "args": [
           {
@@ -7302,6 +7518,7 @@
         }
       },
       "name": "usizeasSub",
+      "realization": "usizeasSub_realization",
       "trait_path": {
         "args": [
           {
@@ -7330,6 +7547,7 @@
         }
       },
       "name": "usizeasSubAssignREFusize",
+      "realization": "usizeasSubAssignREFusize_realization",
       "trait_path": {
         "args": [
           {
@@ -7364,6 +7582,7 @@
         }
       },
       "name": "usizeasSubAssign",
+      "realization": "usizeasSubAssign_realization",
       "trait_path": {
         "args": [
           {

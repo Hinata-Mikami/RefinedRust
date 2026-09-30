@@ -14,22 +14,24 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Box_TA_from_raw_in_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(Allocator_A_spec : !(spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) (DropGlue_A_drop_glue_loc : loc) (unique_Unique_T_new_unchecked_T_loc : loc) , 
+  ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt))))) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(Allocator_A_realization : !(trait_spec_realization (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt))))) (DropGlue_A_drop_glue_loc : loc) (unique_Unique_T_new_unchecked_T_loc : loc) (unique_Unique_T_new_unchecked_T_loc_linking : spec_with 0 [T_rt] (thread_id → iProp Σ)) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (((Box_sls (T_st) (A_st)) : syn_type)) →
   syn_type_is_layoutable (((unique_Unique_sls (T_st)) : syn_type)) →
-  DropGlue_A_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_A_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_A_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  unique_Unique_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} unique_Unique_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_unique_Unique_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st) DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
+  DropGlue_A_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_A_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec_collapse_params _ _ (λ (DropGlue_A_lfts_inst : prod_vec lft DropGlue_A_realization.(trait_ctx_lfts)) (DropGlue_A_tys_inst : plist type DropGlue_A_realization.(trait_ctx_tys)), spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_A_realization.(trait_ctx_spec) DropGlue_A_lfts_inst DropGlue_A_tys_inst -[] -[]))  -[] -[]) (λ π, (DropGlue_A_realization.(trait_ctx_wf) DropGlue_A_lfts_inst DropGlue_A_tys_inst π))%I)) -∗
+  unique_Unique_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} unique_Unique_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_unique_Unique_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st) DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (from_assumption_hint (unique_Unique_T_new_unchecked_T_loc_linking -[] -[T_ty] π)))%I) -∗
   typed_function π (Box_TA_from_raw_in_def DropGlue_A_drop_glue_loc  unique_Unique_T_new_unchecked_T_loc  T_st  A_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Box_TA_from_raw_in T_rt A_rt T_st A_st DropGlue_T_spec_attrs DropGlue_A_spec_attrs Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty))
-  ∗ (⌜((trait_incl_of_Box_TA_from_raw_in (T_rt) (A_rt) (T_st) (A_st) (DropGlue_T_spec_attrs) (DropGlue_T_spec) (DropGlue_A_spec_attrs) (DropGlue_A_spec) (Allocator_A_spec_attrs) (Allocator_A_spec))-[] -[T_ty; A_ty])%Z⌝))).
+  ∗ (((trait_incl_of_Box_TA_from_raw_in (T_rt) (A_rt) (T_st) (A_st) (DropGlue_T_spec_attrs) (DropGlue_T_realization) (DropGlue_A_spec_attrs) (DropGlue_A_realization) (Allocator_A_spec_attrs) (Allocator_A_realization))-[] -[T_ty; A_ty]) π)
+  ∗ (□ (unique_Unique_T_new_unchecked_T_loc_linking -[] -[T_ty] π)))).
 End proof.
 
 Ltac Box_TA_from_raw_in_prelude :=
   unfold Box_TA_from_raw_in_lemma;
   set (FN_NAME := FUNCTION_NAME "Box_TA_from_raw_in");
-  intros T_rt A_rt T_st A_st DropGlue_T_spec_attrs DropGlue_T_spec DropGlue_A_spec_attrs DropGlue_A_spec Allocator_A_spec_attrs Allocator_A_spec;
+  intros T_rt A_rt T_st A_st DropGlue_T_spec_attrs DropGlue_T_realization DropGlue_A_spec_attrs DropGlue_A_realization Allocator_A_spec_attrs Allocator_A_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -408,6 +408,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "REFAasEq",
+      "realization": "REFAasEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -438,6 +439,7 @@
         }
       },
       "name": "REFAasOrd",
+      "realization": "REFAasOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -473,6 +475,7 @@
         }
       },
       "name": "REFAasPartialEqREFB",
+      "realization": "REFAasPartialEqREFB_realization",
       "trait_path": {
         "args": [
           {
@@ -518,6 +521,7 @@
         }
       },
       "name": "REFAasPartialEqREFmutB",
+      "realization": "REFAasPartialEqREFmutB_realization",
       "trait_path": {
         "args": [
           {
@@ -578,6 +582,7 @@
         }
       },
       "name": "REFAasPartialOrdREFB",
+      "realization": "REFAasPartialOrdREFB_realization",
       "trait_path": {
         "args": [
           {
@@ -623,6 +628,7 @@
         }
       },
       "name": "REFmutAasPartialEqREFB",
+      "realization": "REFmutAasPartialEqREFB_realization",
       "trait_path": {
         "args": [
           {
@@ -668,6 +674,7 @@
         }
       },
       "name": "REFmutAasPartialEqREFmutB",
+      "realization": "REFmutAasPartialEqREFmutB_realization",
       "trait_path": {
         "args": [
           {
@@ -696,6 +703,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "unitasEq",
+      "realization": "unitasEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -720,6 +728,7 @@
         }
       },
       "name": "unitasOrd",
+      "realization": "unitasOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -749,6 +758,7 @@
         }
       },
       "name": "unitasPartialEq",
+      "realization": "unitasPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -777,6 +787,7 @@
         }
       },
       "name": "unitasPartialOrd",
+      "realization": "unitasPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -797,6 +808,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "boolasEq",
+      "realization": "boolasEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -824,6 +836,7 @@
         }
       },
       "name": "boolasPartialEq",
+      "realization": "boolasPartialEq_realization",
       "trait_path": {
         "args": [
           "Bool"
@@ -844,6 +857,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i128asEq",
+      "realization": "i128asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -868,6 +882,7 @@
         }
       },
       "name": "i128asOrd",
+      "realization": "i128asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -897,6 +912,7 @@
         }
       },
       "name": "i128asPartialEq",
+      "realization": "i128asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -945,6 +961,7 @@
         }
       },
       "name": "i128asPartialOrd",
+      "realization": "i128asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -967,6 +984,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i16asEq",
+      "realization": "i16asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -991,6 +1009,7 @@
         }
       },
       "name": "i16asOrd",
+      "realization": "i16asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1020,6 +1039,7 @@
         }
       },
       "name": "i16asPartialEq",
+      "realization": "i16asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1068,6 +1088,7 @@
         }
       },
       "name": "i16asPartialOrd",
+      "realization": "i16asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1090,6 +1111,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i32asEq",
+      "realization": "i32asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1114,6 +1136,7 @@
         }
       },
       "name": "i32asOrd",
+      "realization": "i32asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1143,6 +1166,7 @@
         }
       },
       "name": "i32asPartialEq",
+      "realization": "i32asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1191,6 +1215,7 @@
         }
       },
       "name": "i32asPartialOrd",
+      "realization": "i32asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1213,6 +1238,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i64asEq",
+      "realization": "i64asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1237,6 +1263,7 @@
         }
       },
       "name": "i64asOrd",
+      "realization": "i64asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1266,6 +1293,7 @@
         }
       },
       "name": "i64asPartialEq",
+      "realization": "i64asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1314,6 +1342,7 @@
         }
       },
       "name": "i64asPartialOrd",
+      "realization": "i64asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1336,6 +1365,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i8asEq",
+      "realization": "i8asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1360,6 +1390,7 @@
         }
       },
       "name": "i8asOrd",
+      "realization": "i8asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1389,6 +1420,7 @@
         }
       },
       "name": "i8asPartialEq",
+      "realization": "i8asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1437,6 +1469,7 @@
         }
       },
       "name": "i8asPartialOrd",
+      "realization": "i8asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1459,6 +1492,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "isizeasEq",
+      "realization": "isizeasEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1483,6 +1517,7 @@
         }
       },
       "name": "isizeasOrd",
+      "realization": "isizeasOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1512,6 +1547,7 @@
         }
       },
       "name": "isizeasPartialEq",
+      "realization": "isizeasPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1560,6 +1596,7 @@
         }
       },
       "name": "isizeasPartialOrd",
+      "realization": "isizeasPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1582,6 +1619,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u128asEq",
+      "realization": "u128asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1606,6 +1644,7 @@
         }
       },
       "name": "u128asOrd",
+      "realization": "u128asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1635,6 +1674,7 @@
         }
       },
       "name": "u128asPartialEq",
+      "realization": "u128asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1683,6 +1723,7 @@
         }
       },
       "name": "u128asPartialOrd",
+      "realization": "u128asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1705,6 +1746,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u16asEq",
+      "realization": "u16asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1729,6 +1771,7 @@
         }
       },
       "name": "u16asOrd",
+      "realization": "u16asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1758,6 +1801,7 @@
         }
       },
       "name": "u16asPartialEq",
+      "realization": "u16asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1806,6 +1850,7 @@
         }
       },
       "name": "u16asPartialOrd",
+      "realization": "u16asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1828,6 +1873,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u32asEq",
+      "realization": "u32asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1852,6 +1898,7 @@
         }
       },
       "name": "u32asOrd",
+      "realization": "u32asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1881,6 +1928,7 @@
         }
       },
       "name": "u32asPartialEq",
+      "realization": "u32asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -1929,6 +1977,7 @@
         }
       },
       "name": "u32asPartialOrd",
+      "realization": "u32asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -1951,6 +2000,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u64asEq",
+      "realization": "u64asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -1975,6 +2025,7 @@
         }
       },
       "name": "u64asOrd",
+      "realization": "u64asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2004,6 +2055,7 @@
         }
       },
       "name": "u64asPartialEq",
+      "realization": "u64asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -2052,6 +2104,7 @@
         }
       },
       "name": "u64asPartialOrd",
+      "realization": "u64asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -2074,6 +2127,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u8asEq",
+      "realization": "u8asEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2098,6 +2152,7 @@
         }
       },
       "name": "u8asOrd",
+      "realization": "u8asOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2127,6 +2182,7 @@
         }
       },
       "name": "u8asPartialEq",
+      "realization": "u8asPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -2175,6 +2231,7 @@
         }
       },
       "name": "u8asPartialOrd",
+      "realization": "u8asPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -2197,6 +2254,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "usizeasEq",
+      "realization": "usizeasEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2221,6 +2279,7 @@
         }
       },
       "name": "usizeasOrd",
+      "realization": "usizeasOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2250,6 +2309,7 @@
         }
       },
       "name": "usizeasPartialEq",
+      "realization": "usizeasPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -2298,6 +2358,7 @@
         }
       },
       "name": "usizeasPartialOrd",
+      "realization": "usizeasPartialOrd_realization",
       "trait_path": {
         "args": [
           {
@@ -2331,6 +2392,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "std_option_OptionTasEq",
+      "realization": "std_option_OptionTasEq_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2366,6 +2428,7 @@
         }
       },
       "name": "std_option_OptionTasOrd",
+      "realization": "std_option_OptionTasOrd_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -2401,6 +2464,7 @@
         }
       },
       "name": "std_option_OptionTasPartialEq",
+      "realization": "std_option_OptionTasPartialEq_realization",
       "trait_path": {
         "args": [
           {
@@ -2451,6 +2515,7 @@
         }
       },
       "name": "std_option_OptionTasPartialOrd",
+      "realization": "std_option_OptionTasPartialOrd_realization",
       "trait_path": {
         "args": [
           {

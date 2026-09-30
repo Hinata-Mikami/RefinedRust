@@ -12,14 +12,15 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition layout_Layout_from_size_align_lemma (π : thread_id) : Prop :=
-  ∀ (layout_Layout_from_size_align_unchecked_loc : loc) , 
+  ∀ (layout_Layout_from_size_align_unchecked_loc : loc) (layout_Layout_from_size_align_unchecked_loc_linking : spec_with 0 [] (thread_id → iProp Σ)) , 
   syn_type_is_layoutable ((layout_Layout_sls : syn_type)) →
   syn_type_is_layoutable ((layout_LayoutError_sls : syn_type)) →
   syn_type_is_layoutable (((Result_Ok_sls (layout_Layout_st) (layout_LayoutError_st)) : syn_type)) →
   syn_type_is_layoutable (((Result_els (layout_Layout_st) (layout_LayoutError_st)) : syn_type)) →
-  layout_Layout_from_size_align_unchecked_loc ◁ᵥ{π, MetaNone} layout_Layout_from_size_align_unchecked_loc @ function_ptr [(IntSynType USize); (IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_from_size_align_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
+  layout_Layout_from_size_align_unchecked_loc ◁ᵥ{π, MetaNone} layout_Layout_from_size_align_unchecked_loc @ function_ptr [(IntSynType USize); (IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_from_size_align_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (from_assumption_hint (layout_Layout_from_size_align_unchecked_loc_linking -[] -[] π)))%I) -∗
   typed_function π (layout_Layout_from_size_align_def layout_Layout_from_size_align_unchecked_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_from_size_align -[] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_layout_Layout_from_size_align-[] -[])%Z⌝))).
+  ∗ ((trait_incl_of_layout_Layout_from_size_align-[] -[]) π)
+  ∗ (□ (layout_Layout_from_size_align_unchecked_loc_linking -[] -[] π)))).
 End proof.
 
 Ltac layout_Layout_from_size_align_prelude :=

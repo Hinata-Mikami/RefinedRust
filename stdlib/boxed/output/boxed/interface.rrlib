@@ -145,6 +145,7 @@
         }
       },
       "name": "BoxTAasstd_ops_Drop",
+      "realization": "BoxTAasstd_ops_Drop_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -170,7 +171,8 @@
         "alloc",
         "boxed",
         "Box"
-      ]
+      ],
+      "realization": "drop_glue_Box_realization"
     }
   ],
   "module_dependencies": [

@@ -12,16 +12,16 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition const_ptr_wrapping_sub_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) , 
   syn_type_is_layoutable (T_st) →
   ⊢ typed_function π (ptr_wrapping_sub T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_wrapping_sub T_rt T_st DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_const_ptr_wrapping_sub (T_rt) (T_st) (DropGlue_T_spec_attrs) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
+  ∗ (((trait_incl_of_const_ptr_wrapping_sub (T_rt) (T_st) (DropGlue_T_spec_attrs) (DropGlue_T_realization))-[] -[T_ty]) π))).
 End proof.
 
 Ltac const_ptr_wrapping_sub_prelude :=
   unfold const_ptr_wrapping_sub_lemma;
   set (FN_NAME := FUNCTION_NAME "const_ptr_wrapping_sub");
-  intros T_rt T_st DropGlue_T_spec_attrs DropGlue_T_spec;
+  intros T_rt T_st DropGlue_T_spec_attrs DropGlue_T_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -700,6 +700,7 @@
         }
       },
       "name": "alignment_Alignmentasstd_clone_Clone",
+      "realization": "alignment_Alignmentasstd_clone_Clone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -725,6 +726,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "alignment_Alignmentasstd_marker_Copy",
+      "realization": "alignment_Alignmentasstd_marker_Copy_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -756,6 +758,7 @@
         }
       },
       "name": "alignment_AlignmentEnumasstd_clone_Clone",
+      "realization": "alignment_AlignmentEnumasstd_clone_Clone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -781,6 +784,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "alignment_AlignmentEnumasstd_marker_Copy",
+      "realization": "alignment_AlignmentEnumasstd_marker_Copy_realization",
       "trait_path": {
         "args": [],
         "path": [

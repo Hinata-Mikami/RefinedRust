@@ -230,6 +230,7 @@
         }
       },
       "name": "OptionTasstd_clone_Clone",
+      "realization": "OptionTasstd_clone_Clone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -265,6 +266,7 @@
         }
       },
       "name": "OptionTasstd_fmt_Debug",
+      "realization": "OptionTasstd_fmt_Debug_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -294,6 +296,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "OptionTasstd_marker_Copy",
+      "realization": "OptionTasstd_marker_Copy_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -319,7 +322,8 @@
         "core",
         "option",
         "Option"
-      ]
+      ],
+      "realization": "drop_glue_Option_realization"
     }
   ],
   "module_dependencies": [

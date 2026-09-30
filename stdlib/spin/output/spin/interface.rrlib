@@ -230,6 +230,7 @@
         }
       },
       "name": "relax_Spinasrelax_RelaxStrategy",
+      "realization": "relax_Spinasrelax_RelaxStrategy_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -269,6 +270,7 @@
         }
       },
       "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref",
+      "realization": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -308,6 +310,7 @@
         }
       },
       "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut",
+      "realization": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -333,7 +336,8 @@
         "spin",
         "rwlock",
         "RwLock"
-      ]
+      ],
+      "realization": "drop_glue_rwlock_RwLock_realization"
     },
     {
       "has_semantic_interp": false,
@@ -351,7 +355,8 @@
         "spin",
         "rwlock",
         "RwLockWriteGuard"
-      ]
+      ],
+      "realization": "drop_glue_rwlock_RwLockWriteGuard_realization"
     }
   ],
   "module_dependencies": [

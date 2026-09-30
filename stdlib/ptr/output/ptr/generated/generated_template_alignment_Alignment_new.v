@@ -12,15 +12,17 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition alignment_Alignment_new_lemma (π : thread_id) : Prop :=
-  ∀ (alignment_Alignment_new_unchecked_loc : loc) (usize_is_power_of_two_loc : loc) , 
+  ∀ (alignment_Alignment_new_unchecked_loc : loc) (usize_is_power_of_two_loc : loc) (alignment_Alignment_new_unchecked_loc_linking : spec_with 0 [] (thread_id → iProp Σ)) (usize_is_power_of_two_loc_linking : spec_with 0 [] (thread_id → iProp Σ)) , 
   syn_type_is_layoutable ((alignment_Alignment_sls : syn_type)) →
   syn_type_is_layoutable (((Option_els (alignment_Alignment_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_None_sls (alignment_Alignment_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_Some_sls (alignment_Alignment_st)) : syn_type)) →
-  alignment_Alignment_new_unchecked_loc ◁ᵥ{π, MetaNone} alignment_Alignment_new_unchecked_loc @ function_ptr [(IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_new_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
-  usize_is_power_of_two_loc ◁ᵥ{π, MetaNone} usize_is_power_of_two_loc @ function_ptr [(IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usize_is_power_of_two (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
+  alignment_Alignment_new_unchecked_loc ◁ᵥ{π, MetaNone} alignment_Alignment_new_unchecked_loc @ function_ptr [(IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_new_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (from_assumption_hint (alignment_Alignment_new_unchecked_loc_linking -[] -[] π)))%I) -∗
+  usize_is_power_of_two_loc ◁ᵥ{π, MetaNone} usize_is_power_of_two_loc @ function_ptr [(IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usize_is_power_of_two (RRGS:=RRGS)  -[] -[]) (λ π, (from_assumption_hint (usize_is_power_of_two_loc_linking -[] -[] π)))%I) -∗
   typed_function π (alignment_Alignment_new_def alignment_Alignment_new_unchecked_loc  usize_is_power_of_two_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_new -[] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_alignment_Alignment_new-[] -[])%Z⌝))).
+  ∗ ((trait_incl_of_alignment_Alignment_new-[] -[]) π)
+  ∗ (□ (alignment_Alignment_new_unchecked_loc_linking -[] -[] π))
+  ∗ (□ (usize_is_power_of_two_loc_linking -[] -[] π)))).
 End proof.
 
 Ltac alignment_Alignment_new_prelude :=

@@ -27,7 +27,9 @@ Proof.
       end⌝
          ∗ True)%I.
   rep <- 44  liRStep; liShow.
-  { iRename select (∀ _, _)%I into "Hpres".
+  { liFromSyntaxGoal.
+    iIntros "Hclos".
+    iRename select (∀ _ _ _ _, traits_iterator_Iterator_Next _ _ _ _ _ _ -∗ ClosInv _ _ _ -∗ _)%I into "Hpres".
     iPoseProof ("Hpres" with "[$] [$]") as "(%pclos & Hpre & ? & Hcl)".
     rep liRStep; liShow.
     iPoseProof ("Hcl" with "[$]") as "(% & ?)".

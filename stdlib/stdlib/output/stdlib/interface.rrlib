@@ -17,6 +17,7 @@
     "range",
     "result",
     "rr_internal",
+    "sized",
     "vec"
   ],
   "items": [],

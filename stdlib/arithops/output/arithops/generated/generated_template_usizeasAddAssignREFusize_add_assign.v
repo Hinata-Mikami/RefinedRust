@@ -8,9 +8,10 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition usizeasAddAssignREFusize_add_assign_lemma (π : thread_id) : Prop :=
   ∀ (usizeasAddAssign_add_assign_loc : loc) , 
-  usizeasAddAssign_add_assign_loc ◁ᵥ{π, MetaNone} usizeasAddAssign_add_assign_loc @ function_ptr [RefSynType; (IntSynType USize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasAddAssign_add_assign (RRGS:=RRGS)  -[late_lft_0] -[]) (λ π, (True))%I) -∗
+  usizeasAddAssign_add_assign_loc ◁ᵥ{π, MetaNone} usizeasAddAssign_add_assign_loc @ function_ptr [RefSynType; (IntSynType USize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), let realization := (usizeasAddAssign_realization) in fn_spec_add_late_pre ((AddAssign_add_assign_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[] -[] -[] -[]))  -[late_lft_0] -[]) (λ π, (realization.(trait_ctx_wf) -[] -[] π))%I) -∗
   typed_function π (usizeasAddAssignREFusize_add_assign_def usizeasAddAssign_add_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasAddAssignREFusize_add_assign -[ulft_1; ulft_2] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_usizeasAddAssignREFusize_add_assign-[ulft_1; ulft_2] -[])%Z⌝))).
+  ∗ ((trait_incl_of_usizeasAddAssignREFusize_add_assign-[ulft_1; ulft_2] -[]) π)
+  ∗ ((introduce_direct ((let realization := (usizeasAddAssign_realization) in realization.(trait_ctx_wf) -[] -[] π)))))).
 End proof.
 
 Ltac usizeasAddAssignREFusize_add_assign_prelude :=

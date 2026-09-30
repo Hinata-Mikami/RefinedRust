@@ -17,6 +17,7 @@ From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_pt
 From rrstd.range.range.generated Require Export generated_specs_range.
 From rrstd.result.result.generated Require Export generated_specs_result.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
+From rrstd.sized.sized.generated Require Export generated_specs_sized.
 From rrstd.vec.vec.generated Require Export generated_specs_vec.
 Section code.
 Context `{!LayoutAlg}.

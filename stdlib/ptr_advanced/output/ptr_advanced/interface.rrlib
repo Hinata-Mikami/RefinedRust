@@ -245,6 +245,7 @@
         }
       },
       "name": "nonnull_NonNullTasstd_clone_Clone",
+      "realization": "nonnull_NonNullTasstd_clone_Clone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -274,6 +275,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "nonnull_NonNullTasstd_marker_Copy",
+      "realization": "nonnull_NonNullTasstd_marker_Copy_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -309,6 +311,7 @@
         }
       },
       "name": "unique_UniqueTasstd_clone_Clone",
+      "realization": "unique_UniqueTasstd_clone_Clone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -338,6 +341,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "unique_UniqueTasstd_marker_Copy",
+      "realization": "unique_UniqueTasstd_marker_Copy_realization",
       "trait_path": {
         "args": [],
         "path": [

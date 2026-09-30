@@ -11,7 +11,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i16asPartialOrd_ge_lemma (π : thread_id) : Prop :=
   ⊢ typed_function π (i16asPartialOrd_ge_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i16asPartialOrd_ge -[ulft_1; ulft_2] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i16asPartialOrd_ge-[ulft_1; ulft_2] -[])%Z⌝))).
+  ∗ ((trait_incl_of_i16asPartialOrd_ge-[ulft_1; ulft_2] -[]) π))).
 End proof.
 
 Ltac i16asPartialOrd_ge_prelude :=

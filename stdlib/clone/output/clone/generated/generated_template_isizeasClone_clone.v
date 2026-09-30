@@ -9,7 +9,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition isizeasClone_clone_lemma (π : thread_id) : Prop :=
   ⊢ typed_function π (isizeasClone_clone_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isizeasClone_clone -[ulft_1] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_isizeasClone_clone-[ulft_1] -[])%Z⌝))).
+  ∗ ((trait_incl_of_isizeasClone_clone-[ulft_1] -[]) π))).
 End proof.
 
 Ltac isizeasClone_clone_prelude :=

@@ -11,19 +11,23 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition nonnull_NonNull_T_as_ref_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (mut_ptr_cast_const_T_loc : loc) (nonnull_NonNull_T_as_ptr_T_loc : loc) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_realization : !(trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) (mut_ptr_cast_const_T_loc : loc) (nonnull_NonNull_T_as_ptr_T_loc : loc) (mut_ptr_cast_const_T_loc_linking : spec_with 0 [T_rt] (thread_id → iProp Σ)) (nonnull_NonNull_T_as_ptr_T_loc_linking : spec_with 0 [T_rt] (thread_id → iProp Σ)) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (T_st)) : syn_type)) →
-  mut_ptr_cast_const_T_loc ◁ᵥ{π, MetaNone} mut_ptr_cast_const_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_cast_const (RRGS:=RRGS) ((T_rt)) (T_st) DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
-  nonnull_NonNull_T_as_ptr_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_as_ptr_T_loc @ function_ptr [(nonnull_NonNull_st (T_st))] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_as_ptr (RRGS:=RRGS) ((T_rt)) (T_st) DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
+  mut_ptr_cast_const_T_loc ◁ᵥ{π, MetaNone} mut_ptr_cast_const_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_cast_const (RRGS:=RRGS) ((T_rt)) (T_st) DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (from_assumption_hint (mut_ptr_cast_const_T_loc_linking -[] -[T_ty] π)))%I) -∗
+  nonnull_NonNull_T_as_ptr_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_as_ptr_T_loc @ function_ptr [(nonnull_NonNull_st (T_st))] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_as_ptr (RRGS:=RRGS) ((T_rt)) (T_st) DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (from_assumption_hint (nonnull_NonNull_T_as_ptr_T_loc_linking -[] -[T_ty] π)))%I) -∗
   typed_function π (nonnull_NonNull_T_as_ref_def mut_ptr_cast_const_T_loc  nonnull_NonNull_T_as_ptr_T_loc  T_st  ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_as_ref T_rt T_st DropGlue_T_spec_attrs -[ulft_a; ulft_2] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_nonnull_NonNull_T_as_ref (T_rt) (T_st) (DropGlue_T_spec_attrs) (DropGlue_T_spec))-[ulft_a; ulft_2] -[T_ty])%Z⌝))).
+  ∗ (((trait_incl_of_nonnull_NonNull_T_as_ref (T_rt) (T_st) (DropGlue_T_spec_attrs) (DropGlue_T_realization))-[ulft_a; ulft_2] -[T_ty]) π)
+  ∗ (□ (mut_ptr_cast_const_T_loc_linking -[] -[T_ty] π))
+  ∗ (□ (nonnull_NonNull_T_as_ptr_T_loc_linking -[] -[T_ty] π)))).
 End proof.
 
 Ltac nonnull_NonNull_T_as_ref_prelude :=
   unfold nonnull_NonNull_T_as_ref_lemma;
   set (FN_NAME := FUNCTION_NAME "nonnull_NonNull_T_as_ref");
-  intros T_rt T_st DropGlue_T_spec_attrs DropGlue_T_spec;
+  intros T_rt T_st DropGlue_T_spec_attrs DropGlue_T_realization;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -92,6 +92,7 @@
         }
       },
       "name": "REFFasFnA",
+      "realization": "REFFasFnA_realization",
       "trait_path": {
         "args": [
           {
@@ -126,6 +127,7 @@
         }
       },
       "name": "REFFasFnMutA",
+      "realization": "REFFasFnMutA_realization",
       "trait_path": {
         "args": [
           {
@@ -160,6 +162,7 @@
         }
       },
       "name": "REFFasFnOnceA",
+      "realization": "REFFasFnOnceA_realization",
       "trait_path": {
         "args": [
           {
@@ -194,6 +197,7 @@
         }
       },
       "name": "REFmutFasFnMutA",
+      "realization": "REFmutFasFnMutA_realization",
       "trait_path": {
         "args": [
           {
@@ -228,6 +232,7 @@
         }
       },
       "name": "REFmutFasFnOnceA",
+      "realization": "REFmutFasFnOnceA_realization",
       "trait_path": {
         "args": [
           {

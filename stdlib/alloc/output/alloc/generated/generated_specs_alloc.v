@@ -309,6 +309,8 @@ Definition scope_bindable_Allocator_spec `{Self_rt : !RT} : (ScopeBindable ((All
 
 Definition Allocator_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (_ATTRS: ((Allocator_spec_attrs ((Self_rt))))) : (spec_with _ _ (Allocator_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_Allocator_spec _ _ ((Self_rt))).
+Arguments Allocator_base_spec : simpl never.
+
 
 End Allocator.
 
@@ -334,6 +336,8 @@ Definition scope_bindable_AllocatorClone_spec `{Self_rt : !RT} : (ScopeBindable 
 
 Definition AllocatorClone_base_spec (Self_rt: RT) (Self_st: syn_type) (Allocator_Self_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (_ATTRS: ((AllocatorClone_spec_attrs ((Self_rt)) (Allocator_Self_spec_attrs) (Clone_Self_spec_attrs)))) : (spec_with _ _ (AllocatorClone_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_AllocatorClone_spec _ _ ((Self_rt))).
+Arguments AllocatorClone_base_spec : simpl never.
+
 
 End AllocatorClone.
 
@@ -348,8 +352,8 @@ End AllocatorClone_trait_req_incls.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_layout_Layout_align  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_layout_Layout_align  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_layout_Layout_align  :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -363,8 +367,8 @@ Definition type_of_layout_Layout_align  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_layout_Layout_from_size_align  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_layout_Layout_from_size_align  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_layout_Layout_from_size_align  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -380,8 +384,8 @@ Definition type_of_layout_Layout_from_size_align  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_layout_Layout_from_size_align_unchecked  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_layout_Layout_from_size_align_unchecked  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_layout_Layout_from_size_align_unchecked  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -397,8 +401,8 @@ Definition type_of_layout_Layout_from_size_align_unchecked  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+Definition trait_incl_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (λ π, ((∃ (DropGlue_T_lfts_inst : prod_vec lft DropGlue_T_realization.(trait_ctx_lfts)) (DropGlue_T_tys_inst : plist type DropGlue_T_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_T_realization.(trait_ctx_spec) DropGlue_T_lfts_inst DropGlue_T_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))⌝ ∗ DropGlue_T_realization.(trait_ctx_wf) DropGlue_T_lfts_inst DropGlue_T_tys_inst π))%I).
 
 Definition type_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
@@ -411,8 +415,8 @@ Definition type_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spe
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_layout_Layout_size  : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_layout_Layout_size  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_layout_Layout_size  :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -426,8 +430,8 @@ Definition type_of_layout_Layout_size  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_alloc_alloc_internal  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_alloc_alloc_internal  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_alloc_alloc_internal  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -446,8 +450,8 @@ Definition type_of_alloc_alloc_internal  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_alloc_dealloc_internal  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_alloc_dealloc_internal  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_alloc_dealloc_internal  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -464,8 +468,8 @@ Definition type_of_alloc_dealloc_internal  :=
       (* unwind post... *) (λ π : thread_id, True).
 
 
-Definition trait_incl_of_alloc_alloc  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_alloc_alloc  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_alloc_alloc  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -481,8 +485,8 @@ Definition type_of_alloc_alloc  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_alloc_dealloc  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_alloc_dealloc  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_alloc_dealloc  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -498,8 +502,8 @@ Definition type_of_alloc_dealloc  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_realloc  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_realloc  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_realloc  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -521,8 +525,8 @@ Definition type_of_realloc  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_alloc_realloc_internal  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_alloc_realloc_internal  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_alloc_realloc_internal  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -551,6 +555,20 @@ Section REFAasAllocator_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition REFAasAllocator_spec (A_rt: RT) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with _ _ (Allocator_spec ((place_rfnRT (A_rt))))) :=
     spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (@mk_Allocator_spec _ _ ((place_rfnRT (A_rt)))).
+  Arguments REFAasAllocator_spec : simpl never.
+
+  Program Definition REFAasAllocator_realization (A_rt: RT) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_realization: (trait_spec_realization (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt))))) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt))))) : trait_spec_realization (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (place_rfnRT (A_rt)))) :=
+  {|
+    trait_ctx_lfts := 1;
+    trait_ctx_tys := [A_rt];
+    trait_ctx_wf := λ '( *[ulft_0]) '( *[A_ty]) π, (((typaram_wf A_rt A_st A_ty))
+  ∗ (∃ (Allocator_A_lfts_inst : prod_vec lft Allocator_A_realization.(trait_ctx_lfts)) (Allocator_A_tys_inst : plist type Allocator_A_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl Allocator_spec_incl (Allocator_A_realization.(trait_ctx_spec) Allocator_A_lfts_inst Allocator_A_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st DropGlue_A_spec_attrs Allocator_A_spec_attrs-[] -[A_ty]))⌝ ∗ Allocator_A_realization.(trait_ctx_wf) Allocator_A_lfts_inst Allocator_A_tys_inst π)
+  ∗ (∃ (DropGlue_A_lfts_inst : prod_vec lft DropGlue_A_realization.(trait_ctx_lfts)) (DropGlue_A_tys_inst : plist type DropGlue_A_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_A_realization.(trait_ctx_spec) DropGlue_A_lfts_inst DropGlue_A_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (A_rt) A_st DropGlue_A_spec_attrs-[] -[A_ty]))⌝ ∗ DropGlue_A_realization.(trait_ctx_wf) DropGlue_A_lfts_inst DropGlue_A_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[ulft_0]) '( *[A_ty]) _ _, (REFAasAllocator_spec (A_rt) (A_st) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[ulft_0] -[A_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition REFAasAllocator_spec_subsumption  :=
     ∀ `(A_rt : !RT) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (REFAasAllocator_spec (A_rt) (A_st) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[ulft_0] -[A_ty]) (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), scope_add_typarams _ -[A_ty] ((Allocator_base_spec (place_rfnRT (A_rt)) RefSynType (drop_glue_trivial_spec_attrs ((place_rfnRT (A_rt)))) (REFAasAllocator_spec_attrs (A_rt) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[] -[(shr_ref ulft_0 A_ty)])))).
 End REFAasAllocator_spec.
@@ -559,6 +577,20 @@ Section REFAasAllocatorClone_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition REFAasAllocatorClone_spec (A_rt: RT) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with _ _ (AllocatorClone_spec ((place_rfnRT (A_rt))))) :=
     spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (@mk_AllocatorClone_spec _ _ ((place_rfnRT (A_rt)))).
+  Arguments REFAasAllocatorClone_spec : simpl never.
+
+  Program Definition REFAasAllocatorClone_realization (A_rt: RT) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_realization: (trait_spec_realization (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt))))) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt))))) : trait_spec_realization (spec_with 0 [] (AllocatorClone_spec (RRGS:=RRGS) (place_rfnRT (A_rt)))) :=
+  {|
+    trait_ctx_lfts := 1;
+    trait_ctx_tys := [A_rt];
+    trait_ctx_wf := λ '( *[ulft_0]) '( *[A_ty]) π, (((typaram_wf A_rt A_st A_ty))
+  ∗ (∃ (Allocator_A_lfts_inst : prod_vec lft Allocator_A_realization.(trait_ctx_lfts)) (Allocator_A_tys_inst : plist type Allocator_A_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl Allocator_spec_incl (Allocator_A_realization.(trait_ctx_spec) Allocator_A_lfts_inst Allocator_A_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st DropGlue_A_spec_attrs Allocator_A_spec_attrs-[] -[A_ty]))⌝ ∗ Allocator_A_realization.(trait_ctx_wf) Allocator_A_lfts_inst Allocator_A_tys_inst π)
+  ∗ (∃ (DropGlue_A_lfts_inst : prod_vec lft DropGlue_A_realization.(trait_ctx_lfts)) (DropGlue_A_tys_inst : plist type DropGlue_A_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_A_realization.(trait_ctx_spec) DropGlue_A_lfts_inst DropGlue_A_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (A_rt) A_st DropGlue_A_spec_attrs-[] -[A_ty]))⌝ ∗ DropGlue_A_realization.(trait_ctx_wf) DropGlue_A_lfts_inst DropGlue_A_tys_inst π))%I;
+    trait_ctx_spec := λ '( *[ulft_0]) '( *[A_ty]) _ _, (REFAasAllocatorClone_spec (A_rt) (A_st) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[ulft_0] -[A_ty];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition REFAasAllocatorClone_spec_subsumption  :=
     ∀ `(A_rt : !RT) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl AllocatorClone_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (REFAasAllocatorClone_spec (A_rt) (A_st) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[ulft_0] -[A_ty]) (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), scope_add_typarams _ -[A_ty] ((AllocatorClone_base_spec (place_rfnRT (A_rt)) RefSynType (REFAasAllocator_spec_attrs ((A_rt)) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs)) (REFTasClone_spec_attrs ((A_rt)) (DropGlue_A_spec_attrs)) (drop_glue_trivial_spec_attrs ((place_rfnRT (A_rt)))) (REFAasAllocatorClone_spec_attrs (A_rt) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[] -[(shr_ref ulft_0 A_ty)])))).
 End REFAasAllocatorClone_spec.
@@ -567,6 +599,18 @@ Section GlobalasAllocator_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition GlobalasAllocator_spec  : (spec_with _ _ (Allocator_spec ((Global_inv_t_rt)))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Allocator_spec _ _ ((Global_inv_t_rt))).
+  Arguments GlobalasAllocator_spec : simpl never.
+
+  Program Definition GlobalasAllocator_realization  : trait_spec_realization (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (Global_inv_t_rt))) :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+    trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I;
+    trait_ctx_spec := λ '( *[]) '( *[]) _ _, GlobalasAllocator_spec-[] -[];
+  |}.
+  Next Obligation.
+    solve_trait_realization_pers.
+  Qed.
   Definition GlobalasAllocator_spec_subsumption  :=
     trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), GlobalasAllocator_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Allocator_base_spec (Global_inv_t_rt) Global_st (drop_glue_trivial_spec_attrs ((Global_inv_t_rt))) GlobalasAllocator_spec_attrs-[] -[(Global_inv_t   -[] -[])])))).
 End GlobalasAllocator_spec.

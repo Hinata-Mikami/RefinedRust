@@ -8,7 +8,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i16_is_positive_lemma (π : thread_id) : Prop :=
   ⊢ typed_function π (i16_is_positive_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i16_is_positive -[] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i16_is_positive-[] -[])%Z⌝))).
+  ∗ ((trait_incl_of_i16_is_positive-[] -[]) π))).
 End proof.
 
 Ltac i16_is_positive_prelude :=

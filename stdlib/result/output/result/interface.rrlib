@@ -215,6 +215,7 @@
         }
       },
       "name": "ResultTEasstd_clone_Clone",
+      "realization": "ResultTEasstd_clone_Clone_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -247,6 +248,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "ResultTEasstd_marker_Copy",
+      "realization": "ResultTEasstd_marker_Copy_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -272,7 +274,8 @@
         "core",
         "result",
         "Result"
-      ]
+      ],
+      "realization": "drop_glue_Result_realization"
     }
   ],
   "module_dependencies": [

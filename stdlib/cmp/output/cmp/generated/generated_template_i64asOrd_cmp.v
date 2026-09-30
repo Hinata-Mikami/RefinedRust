@@ -15,7 +15,7 @@ Definition i64asOrd_cmp_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((Ordering_Greater_sls : syn_type)) →
   syn_type_is_layoutable ((Ordering_Less_sls : syn_type)) →
   ⊢ typed_function π (i64asOrd_cmp_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i64asOrd_cmp -[ulft_1; ulft_2] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i64asOrd_cmp-[ulft_1; ulft_2] -[])%Z⌝))).
+  ∗ ((trait_incl_of_i64asOrd_cmp-[ulft_1; ulft_2] -[]) π))).
 End proof.
 
 Ltac i64asOrd_cmp_prelude :=

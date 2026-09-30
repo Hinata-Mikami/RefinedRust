@@ -48,7 +48,8 @@
         "core",
         "ops",
         "Range"
-      ]
+      ],
+      "realization": "drop_glue_Range_realization"
     }
   ],
   "module_dependencies": [

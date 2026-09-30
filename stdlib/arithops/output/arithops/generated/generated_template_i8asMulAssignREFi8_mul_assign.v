@@ -8,9 +8,10 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i8asMulAssignREFi8_mul_assign_lemma (π : thread_id) : Prop :=
   ∀ (i8asMulAssign_mul_assign_loc : loc) , 
-  i8asMulAssign_mul_assign_loc ◁ᵥ{π, MetaNone} i8asMulAssign_mul_assign_loc @ function_ptr [RefSynType; (IntSynType I8)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i8asMulAssign_mul_assign (RRGS:=RRGS)  -[late_lft_0] -[]) (λ π, (True))%I) -∗
+  i8asMulAssign_mul_assign_loc ◁ᵥ{π, MetaNone} i8asMulAssign_mul_assign_loc @ function_ptr [RefSynType; (IntSynType I8)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), let realization := (i8asMulAssign_realization) in fn_spec_add_late_pre ((MulAssign_mul_assign_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[] -[] -[] -[]))  -[late_lft_0] -[]) (λ π, (realization.(trait_ctx_wf) -[] -[] π))%I) -∗
   typed_function π (i8asMulAssignREFi8_mul_assign_def i8asMulAssign_mul_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i8asMulAssignREFi8_mul_assign -[ulft_1; ulft_2] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i8asMulAssignREFi8_mul_assign-[ulft_1; ulft_2] -[])%Z⌝))).
+  ∗ ((trait_incl_of_i8asMulAssignREFi8_mul_assign-[ulft_1; ulft_2] -[]) π)
+  ∗ ((introduce_direct ((let realization := (i8asMulAssign_realization) in realization.(trait_ctx_wf) -[] -[] π)))))).
 End proof.
 
 Ltac i8asMulAssignREFi8_mul_assign_prelude :=

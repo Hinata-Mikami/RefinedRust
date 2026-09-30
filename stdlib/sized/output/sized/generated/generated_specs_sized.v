@@ -76,6 +76,8 @@ Definition scope_bindable_Sized_spec `{Self_rt : !RT} : (ScopeBindable ((Sized_s
 
 Definition Sized_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (_ATTRS: ((Sized_spec_attrs ((Self_rt))))) : (spec_with _ _ (Sized_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_Sized_spec _ _ ((Self_rt))).
+Arguments Sized_base_spec : simpl never.
+
 
 End Sized.
 
@@ -126,6 +128,8 @@ Definition Drop_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_
            <TY> Self_ty : (spec_with 1 [] fn_spec);
     |}
 .
+Arguments Drop_base_spec : simpl never.
+
 
 End Drop.
 
@@ -135,8 +139,9 @@ End Sized_trait_req_incls.
 
 Section Drop_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_Drop_drop (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (Drop_Self_spec_attrs: (Drop_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Drop_Self_spec: (spec_with 0 [] (Drop_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl Drop_spec_incl Drop_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Drop_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs Drop_Self_spec_attrs-[] -[Self_ty])))).
+  Definition trait_incl_of_Drop_drop (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_realization: (trait_spec_realization (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt))))) (Drop_Self_spec_attrs: (Drop_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Drop_Self_realization: (trait_spec_realization (spec_with 0 [] (Drop_spec (RRGS:=RRGS) (Self_rt))))) : (spec_with _ _ (thread_id → iProp Σ)) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), (λ π, ((∃ (DropGlue_Self_lfts_inst : prod_vec lft DropGlue_Self_realization.(trait_ctx_lfts)) (DropGlue_Self_tys_inst : plist type DropGlue_Self_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl DropGlue_spec_incl (DropGlue_Self_realization.(trait_ctx_spec) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))⌝ ∗ DropGlue_Self_realization.(trait_ctx_wf) DropGlue_Self_lfts_inst DropGlue_Self_tys_inst π)
+      ∗ (∃ (Drop_Self_lfts_inst : prod_vec lft Drop_Self_realization.(trait_ctx_lfts)) (Drop_Self_tys_inst : plist type Drop_Self_realization.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl Drop_spec_incl (Drop_Self_realization.(trait_ctx_spec) Drop_Self_lfts_inst Drop_Self_tys_inst) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Drop_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs Drop_Self_spec_attrs-[] -[Self_ty]))⌝ ∗ Drop_Self_realization.(trait_ctx_wf) Drop_Self_lfts_inst Drop_Self_tys_inst π))%I).
 End Drop_trait_req_incls.
 
 Section specs.

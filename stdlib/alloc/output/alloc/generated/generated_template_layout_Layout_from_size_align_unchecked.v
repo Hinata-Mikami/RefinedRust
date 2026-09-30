@@ -12,12 +12,13 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition layout_Layout_from_size_align_unchecked_lemma (π : thread_id) : Prop :=
-  ∀ (alignment_Alignment_new_unchecked_loc : loc) , 
+  ∀ (alignment_Alignment_new_unchecked_loc : loc) (alignment_Alignment_new_unchecked_loc_linking : spec_with 0 [] (thread_id → iProp Σ)) , 
   syn_type_is_layoutable ((layout_Layout_sls : syn_type)) →
   syn_type_is_layoutable ((alignment_Alignment_sls : syn_type)) →
-  alignment_Alignment_new_unchecked_loc ◁ᵥ{π, MetaNone} alignment_Alignment_new_unchecked_loc @ function_ptr [(IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_new_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
+  alignment_Alignment_new_unchecked_loc ◁ᵥ{π, MetaNone} alignment_Alignment_new_unchecked_loc @ function_ptr [(IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_new_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (from_assumption_hint (alignment_Alignment_new_unchecked_loc_linking -[] -[] π)))%I) -∗
   typed_function π (layout_Layout_from_size_align_unchecked_def alignment_Alignment_new_unchecked_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_from_size_align_unchecked -[] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_layout_Layout_from_size_align_unchecked-[] -[])%Z⌝))).
+  ∗ ((trait_incl_of_layout_Layout_from_size_align_unchecked-[] -[]) π)
+  ∗ (□ (alignment_Alignment_new_unchecked_loc_linking -[] -[] π)))).
 End proof.
 
 Ltac layout_Layout_from_size_align_unchecked_prelude :=

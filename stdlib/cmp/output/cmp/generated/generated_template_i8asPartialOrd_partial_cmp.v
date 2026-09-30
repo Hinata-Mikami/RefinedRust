@@ -14,9 +14,10 @@ Definition i8asPartialOrd_partial_cmp_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   syn_type_is_layoutable (((Option_els (Ordering_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_Some_sls (Ordering_st)) : syn_type)) →
-  i8asOrd_cmp_loc ◁ᵥ{π, MetaNone} i8asOrd_cmp_loc @ function_ptr [RefSynType; RefSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i8asOrd_cmp (RRGS:=RRGS)  -[late_lft_0; late_lft_1] -[]) (λ π, (True))%I) -∗
+  i8asOrd_cmp_loc ◁ᵥ{π, MetaNone} i8asOrd_cmp_loc @ function_ptr [RefSynType; RefSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), let realization := (i8asOrd_realization) in fn_spec_add_late_pre ((Ord_cmp_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[] -[] -[] -[]))  -[late_lft_0; late_lft_1] -[]) (λ π, (realization.(trait_ctx_wf) -[] -[] π))%I) -∗
   typed_function π (i8asPartialOrd_partial_cmp_def i8asOrd_cmp_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i8asPartialOrd_partial_cmp -[ulft_1; ulft_2] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i8asPartialOrd_partial_cmp-[ulft_1; ulft_2] -[])%Z⌝))).
+  ∗ ((trait_incl_of_i8asPartialOrd_partial_cmp-[ulft_1; ulft_2] -[]) π)
+  ∗ ((introduce_direct ((let realization := (i8asOrd_realization) in realization.(trait_ctx_wf) -[] -[] π)))))).
 End proof.
 
 Ltac i8asPartialOrd_partial_cmp_prelude :=

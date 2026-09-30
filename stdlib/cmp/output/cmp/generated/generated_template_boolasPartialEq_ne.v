@@ -11,7 +11,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition boolasPartialEq_ne_lemma (π : thread_id) : Prop :=
   ⊢ typed_function π (boolasPartialEq_ne_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_boolasPartialEq_ne -[ulft_1; ulft_2] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_boolasPartialEq_ne-[ulft_1; ulft_2] -[])%Z⌝))).
+  ∗ ((trait_incl_of_boolasPartialEq_ne-[ulft_1; ulft_2] -[]) π))).
 End proof.
 
 Ltac boolasPartialEq_ne_prelude :=

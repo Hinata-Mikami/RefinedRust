@@ -227,6 +227,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "ControlFlowBasResidualC",
+      "realization": "ControlFlowBasResidualC_realization",
       "trait_path": {
         "args": [
           {
@@ -269,6 +270,7 @@
         }
       },
       "name": "ControlFlowBCasFromResidualControlFlowB",
+      "realization": "ControlFlowBCasFromResidualControlFlowB_realization",
       "trait_path": {
         "args": [
           {
@@ -328,6 +330,7 @@
         }
       },
       "name": "ControlFlowBCasTry",
+      "realization": "ControlFlowBCasTry_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -352,6 +355,7 @@
         }
       },
       "name": "Tasconvert_FromT",
+      "realization": "Tasconvert_FromT_realization",
       "trait_path": {
         "args": [
           {
@@ -380,6 +384,7 @@
         }
       },
       "name": "Tasconvert_IntoU",
+      "realization": "Tasconvert_IntoU_realization",
       "trait_path": {
         "args": [
           {
@@ -411,6 +416,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "std_option_OptionasResidualT",
+      "realization": "std_option_OptionasResidualT_realization",
       "trait_path": {
         "args": [
           {
@@ -450,6 +456,7 @@
         }
       },
       "name": "std_option_OptionTasFromResidual",
+      "realization": "std_option_OptionTasFromResidual_realization",
       "trait_path": {
         "args": [
           {
@@ -503,6 +510,7 @@
         }
       },
       "name": "std_option_OptionTasTry",
+      "realization": "std_option_OptionTasTry_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -533,6 +541,7 @@
       "kind": "trait_impl",
       "method_specs": {},
       "name": "std_result_ResultEasResidualT",
+      "realization": "std_result_ResultEasResidualT_realization",
       "trait_path": {
         "args": [
           {
@@ -580,6 +589,7 @@
         }
       },
       "name": "std_result_ResultTEasTry",
+      "realization": "std_result_ResultTEasTry_realization",
       "trait_path": {
         "args": [],
         "path": [
@@ -618,6 +628,7 @@
         }
       },
       "name": "std_result_ResultTFasFromResidualstd_result_ResultE",
+      "realization": "std_result_ResultTFasFromResidualstd_result_ResultE_realization",
       "trait_path": {
         "args": [
           {
@@ -659,7 +670,8 @@
         "core",
         "ops",
         "ControlFlow"
-      ]
+      ],
+      "realization": "drop_glue_ControlFlow_realization"
     }
   ],
   "module_dependencies": [

@@ -13,8 +13,8 @@ End closure_attrs.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_i128_is_negative  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i128_is_negative  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i128_is_negative  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -28,8 +28,8 @@ Definition type_of_i128_is_negative  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i128_is_positive  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i128_is_positive  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i128_is_positive  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -43,8 +43,8 @@ Definition type_of_i128_is_positive  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i16_is_negative  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i16_is_negative  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i16_is_negative  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -58,8 +58,8 @@ Definition type_of_i16_is_negative  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i16_is_positive  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i16_is_positive  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i16_is_positive  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -73,8 +73,8 @@ Definition type_of_i16_is_positive  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i32_is_negative  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i32_is_negative  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i32_is_negative  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -88,8 +88,8 @@ Definition type_of_i32_is_negative  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i32_is_positive  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i32_is_positive  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i32_is_positive  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -103,8 +103,8 @@ Definition type_of_i32_is_positive  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i64_is_negative  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i64_is_negative  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i64_is_negative  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -118,8 +118,8 @@ Definition type_of_i64_is_negative  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i64_is_positive  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i64_is_positive  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i64_is_positive  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -133,8 +133,8 @@ Definition type_of_i64_is_positive  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i8_is_negative  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i8_is_negative  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i8_is_negative  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -148,8 +148,8 @@ Definition type_of_i8_is_negative  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i8_is_positive  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i8_is_positive  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i8_is_positive  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -163,8 +163,8 @@ Definition type_of_i8_is_positive  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_isize_is_negative  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_isize_is_negative  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_isize_is_negative  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -178,8 +178,8 @@ Definition type_of_isize_is_negative  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_isize_is_positive  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_isize_is_positive  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_isize_is_positive  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -193,8 +193,8 @@ Definition type_of_isize_is_positive  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u128_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u128_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u128_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -208,8 +208,8 @@ Definition type_of_u128_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u16_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u16_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u16_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -223,8 +223,8 @@ Definition type_of_u16_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u32_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u32_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u32_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -238,8 +238,8 @@ Definition type_of_u32_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u64_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u64_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u64_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -253,8 +253,8 @@ Definition type_of_u64_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u8_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u8_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u8_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -268,8 +268,8 @@ Definition type_of_u8_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_usize_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_usize_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_usize_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -284,8 +284,8 @@ Definition type_of_usize_abs_diff  :=
       (* unwind post... *) (λ π : thread_id, True).
 
 
-Definition trait_incl_of_i128_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i128_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i128_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -299,8 +299,8 @@ Definition type_of_i128_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i16_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i16_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i16_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -314,8 +314,8 @@ Definition type_of_i16_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i32_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i32_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i32_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -329,8 +329,8 @@ Definition type_of_i32_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i64_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i64_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i64_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -344,8 +344,8 @@ Definition type_of_i64_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_i8_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_i8_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_i8_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -359,8 +359,8 @@ Definition type_of_i8_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_isize_abs_diff  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_isize_abs_diff  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_isize_abs_diff  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -374,8 +374,8 @@ Definition type_of_isize_abs_diff  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u128_is_power_of_two  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u128_is_power_of_two  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u128_is_power_of_two  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -389,8 +389,8 @@ Definition type_of_u128_is_power_of_two  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u16_is_power_of_two  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u16_is_power_of_two  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u16_is_power_of_two  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -404,8 +404,8 @@ Definition type_of_u16_is_power_of_two  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u32_is_power_of_two  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u32_is_power_of_two  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u32_is_power_of_two  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -419,8 +419,8 @@ Definition type_of_u32_is_power_of_two  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u64_is_power_of_two  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u64_is_power_of_two  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u64_is_power_of_two  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -434,8 +434,8 @@ Definition type_of_u64_is_power_of_two  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_u8_is_power_of_two  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_u8_is_power_of_two  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_u8_is_power_of_two  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
@@ -449,8 +449,8 @@ Definition type_of_u8_is_power_of_two  :=
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_usize_is_power_of_two  : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+Definition trait_incl_of_usize_is_power_of_two  : (spec_with _ _ (thread_id → iProp Σ)) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (λ π, (True)%I).
 
 Definition type_of_usize_is_power_of_two  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 

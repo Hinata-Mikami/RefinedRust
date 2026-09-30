@@ -13,7 +13,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition alloc_dealloc_internal_lemma (π : thread_id) : Prop :=
   ⊢ typed_function π (alloc_dealloc_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alloc_dealloc_internal -[] -[]) (λ π, (True)
-  ∗ (⌜(trait_incl_of_alloc_dealloc_internal-[] -[])%Z⌝))).
+  ∗ ((trait_incl_of_alloc_dealloc_internal-[] -[]) π))).
 End proof.
 
 Ltac alloc_dealloc_internal_prelude :=
