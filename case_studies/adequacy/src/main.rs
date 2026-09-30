@@ -4,7 +4,7 @@
 #![feature(stmt_expr_attributes)]
 #![allow(unused)]
 
-#![rr::include("option")]
+#![rr::include("stdlib")]
 
 
 #[rr::verify]
@@ -63,4 +63,37 @@ fn main2() {
 #[rr::verify]
 fn recurse() {
     recurse();
+}
+
+#[rr::refined_by("pending" : "bool")]
+struct One {
+    #[rr::field("#pending")]
+    pending: bool,
+}
+
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Inv" := "λ π _ pending, True%I")]
+#[rr::instantiate("Next" := "λ π _ pending result pending', ⌜pending' = false ∧ result = (if pending then Some 42 else None)⌝%I")]
+impl std::iter::Iterator for One {
+    type Item = i32;
+
+    #[rr::default_spec]
+    fn next(&mut self) -> Option<i32> {
+        if self.pending {
+            self.pending = false;
+            Some(42)
+        } else {
+            None
+        }
+    }
+}
+
+#[rr::verify]
+fn main_map() {
+    let mut iter = One { pending: true }.map(
+        #[rr::returns("x")]
+        |x: i32| x,
+    );
+    let first = iter.next();
+    let second = iter.next();
 }

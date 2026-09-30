@@ -1,5 +1,5 @@
 output_dir = "output"
 lib_load_paths = ["../../stdlib/"]
 #dump_borrowck_info = true
-extra_proofs=["proof_adequacy", "proof_adequacy2", "proof_linking_recursive"]
-extra_dependencies=["rrstd.option.option.proofs"]
+extra_proofs=["proof_adequacy", "proof_adequacy2", "proof_linking_recursive", "proof_adequacy_map"]
+extra_dependencies=["rrstd.option.option.proofs", "rrstd.iterator.iterator.proofs", "rrstd.closures.closures.proofs"]
