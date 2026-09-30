@@ -61,7 +61,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     fn should_close_unwind_early(&self, action: mir::UnwindAction) -> bool {
-        if environment::has_tool_attribute(self.tcx, self.proc.get_id(), "may_unwind_if") {
+        // An inherited specification may permit unwinding even without a local
+        // `may_unwind_if`. Without resolved unwind metadata, check its unwind
+        // paths against the inherited contract rather than closing them early.
+        if environment::has_tool_attribute(self.tcx, self.proc.get_id(), "may_unwind_if")
+            || environment::has_tool_attribute(self.tcx, self.proc.get_id(), "default_spec")
+        {
             return false;
         }
 

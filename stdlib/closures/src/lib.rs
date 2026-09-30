@@ -117,7 +117,6 @@ where
     type Output = F::Output;
 
     #[rr::default_spec]
-    #[rr::only_spec]
     fn call_once(self, args: A) -> F::Output {
         (*self).call_mut(args)
     }
