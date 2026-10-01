@@ -746,6 +746,45 @@ Section function_subsume.
     by iApply typed_function_specialize.
   Qed.
 
+  (** Adapt only the added late precondition, preserving all specification parameters. *)
+  Lemma typed_function_late_pre_mono {lfts : nat} {rts : list RT}
+      π fn (eqp1 eqp2 : eq rts rts) (S : spec_with lfts rts fn_spec)
+      (P Q : spec_with lfts rts (thread_id → iProp Σ)) :
+    typed_function π fn (eqp1, spec! κs : lfts | tys : rts,
+      fn_spec_add_late_pre (S κs tys) (P κs tys)) -∗
+    (□ ∀ κs tys, Q κs tys π -∗ P κs tys π) -∗
+    typed_function π fn (eqp2, spec! κs : lfts | tys : rts,
+      fn_spec_add_late_pre (S κs tys) (Q κs tys)).
+  Proof.
+    iIntros "#Hfn #HP".
+    rewrite /typed_function.
+    iIntros (κs tys x ϝ f) "!> Hlayout". iIntros (lsa).
+    rewrite /fn_init_context /fn_spec_add_late_pre /fn_params_add_late_pre /=.
+    iIntros "(Hcred & Hna & Hlocals & Hargs & Hlive & [Hsc HQ] & Hpre)".
+    iApply ("Hfn" $! κs tys x ϝ f with "Hlayout").
+    rewrite /fn_init_context /fn_spec_add_late_pre /fn_params_add_late_pre /=.
+    iFrame. iApply ("HP" with "HQ").
+  Qed.
+
+
+  (** Discharge the added requirement without introducing a redundant [True] precondition. *)
+  Lemma typed_function_late_pre_discharge {lfts : nat} {rts : list RT}
+      π fn (eqp1 eqp2 : eq rts rts) (S : spec_with lfts rts fn_spec)
+      (P : spec_with lfts rts (thread_id → iProp Σ)) :
+    typed_function π fn (eqp1, spec! κs : lfts | tys : rts,
+      fn_spec_add_late_pre (S κs tys) (P κs tys)) -∗
+    (□ ∀ κs tys, P κs tys π) -∗
+    typed_function π fn (eqp2, S).
+  Proof.
+    iIntros "#Hfn #HP".
+    rewrite /typed_function.
+    iIntros (κs tys x ϝ f) "!> Hlayout". iIntros (lsa).
+    rewrite /fn_init_context /=.
+    iIntros "(Hcred & Hna & Hlocals & Hargs & Hlive & Hsc & Hpre)".
+    iApply ("Hfn" $! κs tys x ϝ f with "Hlayout").
+    rewrite /fn_init_context /fn_spec_add_late_pre /fn_params_add_late_pre /=.
+    iFrame. iApply "HP".
+  Qed.
 
   (* If I have f ◁ F1, then f ◁ F2. *)
   (* I can strengthen the precondition and weaken the postcondition *)
