@@ -82,6 +82,7 @@ struct Config {
     no_verify: bool,
     no_assumption: bool,
     admit_proofs: bool,
+    generate_linking_requirements: bool,
     generate_dune_project: bool,
     #[serde(deserialize_with = "vec_or_split_colon")]
     lib_load_paths: Vec<String>,
@@ -115,6 +116,7 @@ impl Default for Config {
             no_verify: false,
             no_assumption: false,
             admit_proofs: false,
+            generate_linking_requirements: false,
             generate_dune_project: true,
             lib_load_paths: vec![],
             extra_dependencies: vec![],
@@ -309,6 +311,12 @@ pub fn admit_proofs() -> bool {
     access_config(|c| c.admit_proofs)
 }
 
+/// Thread callee obligations through function lemmas for adequacy linking.
+#[must_use]
+pub fn generate_linking_requirements() -> bool {
+    access_config(|c| c.generate_linking_requirements)
+}
+
 /// Whether to generate a dune-project file for this project
 #[must_use]
 pub fn generate_dune_project() -> bool {
@@ -415,6 +423,14 @@ mod tests {
     #[test]
     fn read_default() {
         setup(|c| assert_eq!(c.be_rustc, false));
+    }
+
+    #[test]
+    fn linking_requirements_are_opt_in() {
+        let default: Config = toml::from_str("").unwrap();
+        assert!(!default.generate_linking_requirements);
+        let enabled: Config = toml::from_str("generate_linking_requirements = true").unwrap();
+        assert!(enabled.generate_linking_requirements);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 output_dir = "output"
+generate_linking_requirements = true
 lib_load_paths = ["../../stdlib/"]
 #dump_borrowck_info = true
 extra_proofs=["proof_adequacy", "proof_adequacy2", "proof_linking_recursive", "proof_adequacy_map"]

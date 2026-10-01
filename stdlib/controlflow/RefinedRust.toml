@@ -2,3 +2,4 @@ generate_dune_project = false
 lib_load_paths = ["../option", "../result"]
 extra_specs = "extra_specs.v"
 output_dir = "output"
+generate_linking_requirements = true

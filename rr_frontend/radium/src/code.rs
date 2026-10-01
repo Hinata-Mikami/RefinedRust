@@ -1016,7 +1016,12 @@ impl Function<'_> {
         &self.code.name
     }
 
-    pub fn generate_lemma_statement<F>(&self, f: &mut F, is_default_trait_impl: bool) -> Result<(), io::Error>
+    pub fn generate_lemma_statement<F>(
+        &self,
+        f: &mut F,
+        is_default_trait_impl: bool,
+        generate_linking_requirements: bool,
+    ) -> Result<(), io::Error>
     where
         F: io::Write,
     {
@@ -1051,9 +1056,11 @@ impl Function<'_> {
             for s in &self.used_statics {
                 write!(f, "({} : loc) ", s.loc_name)?;
             }
-            for proc_use in &self.other_functions {
-                if let Some(param) = proc_use.linking_parameter() {
-                    write!(f, "{param} ")?;
+            if generate_linking_requirements {
+                for proc_use in &self.other_functions {
+                    if let Some(param) = proc_use.linking_parameter() {
+                        write!(f, "{param} ")?;
+                    }
                 }
             }
             writeln!(f, ", ")?;
@@ -1122,7 +1129,9 @@ impl Function<'_> {
                     UsedProcedureSpec::Literal(_)
                     | UsedProcedureSpec::TraitMethod(_, _)
                     | UsedProcedureSpec::RealizedMethod(_) => {
-                        writeln!(f, "function_ptr [{}] {} -∗", arg_syntys.join("; "), proc_use)?;
+                        let mut spec = String::new();
+                        proc_use.write_spec(&mut spec, generate_linking_requirements).unwrap();
+                        writeln!(f, "function_ptr [{}] {spec} -∗", arg_syntys.join("; "))?;
                     },
                 }
             }
@@ -1182,12 +1191,15 @@ impl Function<'_> {
         let params_late_pre = self.spec.generics.generate_validity_term_for_generics();
 
         let mut late_pre = vec![params_late_pre, coq::iris::IProp::Atom(format!("({trait_late_pre}) π"))];
-        late_pre.extend(self.other_functions.iter().filter_map(|used| used.call_linking_requirement("π")));
-        late_pre.extend(
-            self.other_functions
-                .iter()
-                .filter_map(|used| used.literal_linking_requirement(&self.spec.generics, "π")),
-        );
+        if generate_linking_requirements {
+            late_pre
+                .extend(self.other_functions.iter().filter_map(|used| used.call_linking_requirement("π")));
+            late_pre.extend(
+                self.other_functions
+                    .iter()
+                    .filter_map(|used| used.literal_linking_requirement(&self.spec.generics, "π")),
+            );
+        }
         let prop = coq::iris::IProp::Sep(late_pre);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.spec.generics.generate_sized_requirements(),
@@ -1501,7 +1513,15 @@ impl fmt::Display for UsedProcedureSpec<'_> {
 
 #[cfg(test)]
 mod used_procedure_spec_tests {
+    use std::cell::RefCell;
+
     use super::*;
+
+    fn render(procedure: &UsedProcedure<'_>, linking: bool) -> String {
+        let mut rendered = String::new();
+        procedure.write_spec(&mut rendered, linking).unwrap();
+        rendered
+    }
 
     #[test]
     fn literal_linking_preserves_caller_parameters() {
@@ -1526,7 +1546,11 @@ mod used_procedure_spec_tests {
         assert!(!requirement.contains("(outer : lft)"));
         assert!(!requirement.contains("(W_ty :"));
         assert!(requirement.contains("-[outer; borrow] -[W_ty] π"));
-        assert!(procedure.to_string().contains("from_assumption_hint (foo_REFW_loc_linking"));
+        assert!(render(&procedure, true).contains("from_assumption_hint (foo_REFW_loc_linking"));
+        let unlinked = render(&procedure, false);
+        assert!(!unlinked.contains("_linking"));
+        assert!(unlinked.contains("type_of_foo"));
+        assert!(unlinked.contains("typaram_wf W_rt"));
     }
 
     #[test]
@@ -1558,6 +1582,63 @@ mod used_procedure_spec_tests {
             has_spec_attrs: false,
             declared_attrs: vec![],
             method_trait_incl_decls: BTreeMap::new(),
+        }
+    }
+
+    #[test]
+    fn abstract_method_keeps_context_binders_without_linking() {
+        let trait_spec = literal_trait_spec();
+        let trait_use = RefCell::new(Some(traits::LiteralSpecUse::new(
+            &trait_spec,
+            traits::ReqScope::empty(),
+            GenericScopeInst::empty(),
+            "Trait_T".to_owned(),
+            false,
+            traits::AttrDependency::ValueOnly,
+            vec![],
+            TyParamOrigin::Direct,
+        )));
+        let procedure = UsedProcedure::new(
+            "method_loc".to_owned(),
+            UsedProcedureSpec::TraitMethod(
+                traits::QuantifiedImpl::new(&trait_use, traits::ReqScopeInst::new(vec![])),
+                "method".to_owned(),
+            ),
+            GenericScope::empty(),
+            GenericScopeInst::empty(),
+            vec![],
+        );
+        for linking in [false, true] {
+            let rendered = render(&procedure, linking);
+            assert!(rendered.contains("spec_collapse_params"));
+            assert!(rendered.contains("Trait_T_realization.(trait_ctx_lfts)"));
+            assert!(rendered.contains("Trait_T_realization.(trait_ctx_spec)"));
+            assert_eq!(rendered.contains("trait_ctx_wf"), linking);
+        }
+    }
+
+    #[test]
+    fn lemma_gates_both_callee_assumptions_and_caller_obligations() {
+        let arena = Arena::new();
+        let mut builder = FunctionBuilder::new("caller", "caller_code", "caller_spec", "caller_traits");
+        builder.add_function_spec_from_builder(functions::LiteralSpecBuilder::new());
+        builder.require_function(UsedProcedure::new(
+            "callee_loc".to_owned(),
+            UsedProcedureSpec::Literal("callee_spec".to_owned()),
+            GenericScope::empty(),
+            GenericScopeInst::empty(),
+            vec![],
+        ));
+        let function = builder.into_function(&arena);
+        for linking in [false, true] {
+            let mut bytes = Vec::new();
+            function.generate_lemma_statement(&mut bytes, false, linking).unwrap();
+            let rendered = String::from_utf8(bytes).unwrap();
+            assert_eq!(rendered.contains("callee_loc_linking :"), linking);
+            assert_eq!(rendered.contains("from_assumption_hint (callee_loc_linking"), linking);
+            assert_eq!(rendered.contains("□ (callee_loc_linking"), linking);
+            assert!(rendered.contains("callee_spec"));
+            assert!(rendered.contains("caller_traits"));
         }
     }
 
@@ -1665,7 +1746,7 @@ mod used_procedure_spec_tests {
             vec![],
         );
 
-        let rendered = procedure.to_string();
+        let rendered = render(&procedure, true);
         assert!(rendered.contains("let realization := (impl_realization) in fn_spec_add_late_pre"));
         assert!(rendered.contains(
             "Trait_method_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[] -[Impl_ty] -[] -[])"
@@ -1674,6 +1755,10 @@ mod used_procedure_spec_tests {
         assert_eq!(rendered.matches("impl_realization").count(), 1);
         assert!(!rendered.contains("spec_collapse_params"));
         assert!(!rendered.contains("typaram_wf Impl_rt"));
+        let unlinked = render(&procedure, false);
+        assert!(unlinked.contains("Trait_method_spec"));
+        assert!(unlinked.contains("realization.(trait_ctx_spec)"));
+        assert!(!unlinked.contains("trait_ctx_wf"));
     }
 }
 
@@ -1822,10 +1907,12 @@ impl UsedProcedure<'_> {
 
         Some(coq::iris::IProp::Sep(requirements))
     }
-}
 
-impl fmt::Display for UsedProcedure<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// Render the callee assumption in the same linking mode as the caller lemma.
+    fn write_spec<F>(&self, f: &mut F, generate_linking_requirements: bool) -> fmt::Result
+    where
+        F: fmt::Write,
+    {
         let trait_context_inst = if self.spec_term.needs_abstract_context_collapse()
             && let UsedProcedureSpec::TraitMethod(spec_use, _) = &self.spec_term
         {
@@ -1923,17 +2010,18 @@ impl fmt::Display for UsedProcedure<'_> {
         if !matches!(&generics_term, coq::iris::IProp::Sep(props) if props.is_empty()) {
             late_pre.push(generics_term);
         }
-        if let (UsedProcedureSpec::TraitMethod(_, _), Some((realization, lfts_inst, tys_inst))) =
-            (&self.spec_term, &trait_context_inst)
+        if generate_linking_requirements
+            && let (UsedProcedureSpec::TraitMethod(_, _), Some((realization, lfts_inst, tys_inst))) =
+                (&self.spec_term, &trait_context_inst)
         {
             late_pre.push(coq::iris::IProp::Atom(format!(
                 "{realization}.(trait_ctx_wf) {lfts_inst} {tys_inst} π"
             )));
         }
-        if let Some(method) = &realized_method {
+        if generate_linking_requirements && let Some(method) = &realized_method {
             late_pre.push(coq::iris::IProp::Atom(method.get_wf_term("π")));
         }
-        if let Some(application) = self.linking_application("π") {
+        if generate_linking_requirements && let Some(application) = self.linking_application("π") {
             late_pre.push(coq::iris::IProp::Atom(format!("from_assumption_hint ({application})")));
         }
 

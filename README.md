@@ -161,6 +161,25 @@ On changes to implementations or specifications, only the files located in `gene
 The default automatic proofs in `proof_*.v` files are stable under any changes to a function.
 Of course, once you change proofs manually, changing an implementation or specification may require changes to your manually-written code.
 
+## Linking requirements for adequacy
+
+By default, generated function lemmas assume callee specifications without threading
+their additional linking obligations through the caller. This reduces Rocq proof-checking
+work for modular verification.
+
+To generate function lemmas suitable for adequacy linking, set this in `RefinedRust.toml`:
+
+```toml
+generate_linking_requirements = true
+```
+
+Alternatively, use `RR_GENERATE_LINKING_REQUIREMENTS=true cargo refinedrust`.
+Enable this for each crate whose body proofs participate in the linking proof,
+including dependencies. Regenerate the templates and recheck the proofs when switching
+modes.
+
+
+
 ## License
 We currently re-use code from the following projects:
 - rustc: https://github.com/rust-lang/rust (under the MIT license)

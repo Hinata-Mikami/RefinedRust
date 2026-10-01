@@ -848,7 +848,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             )
             .unwrap();
 
-            fun.generate_lemma_statement(file, is_trait_default).unwrap();
+            fun.generate_lemma_statement(file, is_trait_default, rrconfig::generate_linking_requirements())
+                .unwrap();
 
             write!(file, "End proof.\n\n").unwrap();
 
