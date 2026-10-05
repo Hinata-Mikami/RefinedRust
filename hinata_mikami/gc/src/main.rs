@@ -379,60 +379,113 @@ impl Heap {
         nexts'
     ")]
 
+
+    /* 
+        ループ内で毎回 self.all_nodes を借用すると、
+        そのたびに新しい一時 lifetime (κ, κ0, …) ができて 
+        self の型の中に ShrBlockedLtype が積み重なり，検証が困難に。
+        ループの外で一度だけ借用しておく形に変更
+    */
+
     #[rr::returns("()")]
     unsafe fn sweep(&mut self) {
-        let mut i = self.all_nodes.len();
+
+        // let mut i = self.all_nodes.len();
+        let nodes = &mut self.all_nodes; // 修正
+
+        let mut i = nodes.len();
 
         while i > 0 {
-
-            /* 
-               i = length locs に固定されてしまっていたので
-               ループ時に動ける i を用意する：ループ不変条件
-            */
-            /*
-               current self.all_nodes
-               =
-               まだ処理していない部分(先頭i個)
-               +
-               処理済み部分のうち marked=true のもの（それ以降）
-             */
-            // keep_marked_suffix :=
-            // take i xs ++ keep_marked (drop i xs) (drop i marks).
             let _ =
                 #[rr::exists("ic" : "Z")]
                 #[rr::inv_var("i": "#ic")]
-                #[rr::inv_vars("self")]
+                #[rr::inv_vars("nodes", "self")]
                 #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]
-                #[rr::inv("
-                    self =
-                    ((-[
-                        keep_marked_suffix
-                        (Z.to_nat ic)
-                        locs
-                        marks
-                    ]), γ)
-                ")]
+                // #[rr::inv("
+                //     self =
+                //     ((-[
+                //         keep_marked_suffix
+                //         (Z.to_nat ic)
+                //         locs
+                //         marks
+                //     ]), γ)
+                // ")]
                 #[rr::ignore] || {};
 
             i -= 1;
 
-            let node_ptr = *vec_index(&self.all_nodes, i);
+            let node_ptr = *vec_index(nodes, i);
 
             if !(*node_ptr).marked {
-                let node_ptr = self.all_nodes.remove(i);
+                let node_ptr = nodes.remove(i);
                 let _ = Box::from_raw(node_ptr);
             }
         }
 
-        let len = self.all_nodes.len();
+        let len = nodes.len();
         let mut i = 0;
 
         while i < len {
-            let node_ptr = *vec_index(&self.all_nodes, i);
+            let node_ptr = *vec_index(nodes, i);
             Node::set_marked(node_ptr, false);
             i += 1;
         }
     }
+
+
+    // unsafe fn sweep(&mut self) {
+    //     let mut i = self.all_nodes.len();
+
+    //     while i > 0 {
+
+    //         /* 
+    //            i = length locs に固定されてしまっていたので
+    //            ループ時に動ける i を用意する：ループ不変条件
+    //         */
+    //         /*
+    //            current self.all_nodes
+    //            =
+    //            まだ処理していない部分(先頭i個)
+    //            +
+    //            処理済み部分のうち marked=true のもの（それ以降）
+    //          */
+    //         // keep_marked_suffix :=
+    //         // take i xs ++ keep_marked (drop i xs) (drop i marks).
+    //         let _ =
+    //             #[rr::exists("ic" : "Z")]
+    //             #[rr::inv_var("i": "#ic")]
+    //             // #[rr::inv_vars("self")]
+    //             #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]
+    //             // #[rr::inv("
+    //             //     self =
+    //             //     ((-[
+    //             //         keep_marked_suffix
+    //             //         (Z.to_nat ic)
+    //             //         locs
+    //             //         marks
+    //             //     ]), γ)
+    //             // ")]
+    //             #[rr::ignore] || {};
+
+    //         i -= 1;
+
+    //         let node_ptr = *vec_index(&self.all_nodes, i);
+
+    //         if !(*node_ptr).marked {
+    //             let node_ptr = self.all_nodes.remove(i);
+    //             let _ = Box::from_raw(node_ptr);
+    //         }
+    //     }
+
+    //     let len = self.all_nodes.len();
+    //     let mut i = 0;
+
+    //     while i < len {
+    //         let node_ptr = *vec_index(&self.all_nodes, i);
+    //         Node::set_marked(node_ptr, false);
+    //         i += 1;
+    //     }
+    // }
     
 
     // #[rr::params("h")]
