@@ -116,6 +116,11 @@ pub enum Command {
     #[from(ignore)]
     Literal(String),
 
+    /// Set or unset a named Rocq option.
+    #[display("{} {} {}.", if *local { "Local" } else { "Global" }, if *enabled { "Set" } else { "Unset" }, name)]
+    #[from(ignore)]
+    Option { local: bool, enabled: bool, name: String },
+
     /// The [`From ... Require`] command.
     ///
     /// [`From ... Require`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require

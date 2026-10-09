@@ -548,28 +548,12 @@ impl<'def> Abstract<'def> {
         let mut out = String::with_capacity(200);
         let spec = &self.spec;
 
-        write!(out, "λ rfn, match rfn with ").unwrap();
+        write!(out, "λ rfn, match rfn as x return RT_rt ({} x) with ", self.enum_rt_def_name()).unwrap();
         for ((_, _, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             write!(out, "| {} => {rfn}", coq::term::App::new(pat, apps.clone())).unwrap();
         }
         if spec.is_partial {
             write!(out, "| _ => () ").unwrap();
-        }
-        write!(out, " end").unwrap();
-
-        out
-    }
-
-    fn generate_enum_is_xrfn(&self, rfn: &str) -> String {
-        let mut out = String::with_capacity(200);
-        let spec = &self.spec;
-
-        write!(out, "match {rfn} with ").unwrap();
-        for ((_, _, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
-            write!(out, "| {} => is_xrfn ({rfn})", coq::term::App::new(pat, apps.clone())).unwrap();
-        }
-        if spec.is_partial {
-            write!(out, "| _ => True ").unwrap();
         }
         write!(out, " end").unwrap();
 
@@ -608,6 +592,10 @@ impl<'def> Abstract<'def> {
         ty_context_names: &[String],
         rt_context_names: &[String],
     ) {
+        let ident = |name: &str| coq::term::Term::Ident(coq::Ident::new(name));
+        let app = |name: &str, args: Vec<coq::term::Term>| -> coq::term::Term {
+            coq::term::App::new(ident(name), args).into()
+        };
         let all_ty_params = self.scope.get_all_ty_params_with_assocs();
         let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
 
@@ -651,17 +639,43 @@ impl<'def> Abstract<'def> {
             let comment = format!("Auto-generated representation of {}", name);
             doc.push(coq::Sentence::Comment(comment));
             doc.push(coq::command::Command::Inductive(ind.clone()));
-            doc.push(
-                coq::command::CommandAttrs::new(coq::command::Instance {
-                    name: None,
-                    params: coq::binder::BinderList::empty(),
-                    ty: coq::term::Type::Literal(format!("Inhabited {}", name)),
+            for (pat, _, _) in &self.spec.variant_patterns {
+                doc.push(coq::command::CommandAttrs::new(coq::command::Arguments {
+                    name: pat.clone(),
+                    arguments_string: "{F}".to_owned(),
+                }).attributes("global"));
+            }
+            if !self.variants.is_empty() {
+                // Prefer a nullary constructor; otherwise require an inhabitant of its payload.
+                let index = self.spec.variant_patterns.iter().position(|(_, apps, _)| apps.is_empty()).unwrap_or(0);
+                let (pat, apps, _) = &self.spec.variant_patterns[index];
+                let variant = self.variants[index].1.borrow();
+                let variant = variant.as_ref().unwrap();
+                let mut params = vec![coq::binder::Binder::new(
+                    Some("F".to_owned()),
+                    coq::term::Type::Function(vec![coq::term::Type::RT], Box::new(coq::term::Type::Type)),
+                )];
+                let witness = if apps.is_empty() {
+                    ident(pat)
+                } else {
+                    params.push(coq::binder::Binder::new_generalized(
+                        coq::binder::Kind::MaxImplicit,
+                        None,
+                        coq::term::Type::Term(Box::new(app("Inhabited", vec![
+                            app("F", vec![ident(&variant.public_rt_def_name())]),
+                        ]))),
+                    ));
+                    app(pat, vec![ident("inhabitant")])
+                };
+                doc.push(coq::command::CommandAttrs::new(coq::command::Instance {
+                    name: Some(format!("{name}_inhabited")),
+                    params: coq::binder::BinderList::new(params),
+                    ty: coq::term::Type::Term(Box::new(app("Inhabited", vec![app(name, vec![ident("F")])]))),
                     body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
-                        proof.push(model::LTac::SolveInhabited);
+                        proof.push(coq::ltac::LTac::Exact(app("populate", vec![witness])));
                     }),
-                })
-                .attributes("global"),
-            );
+                }).attributes("global"));
+            }
 
             document.append_document(doc);
         }
@@ -681,23 +695,95 @@ impl<'def> Abstract<'def> {
         if let Some(ind) = &self.optional_inductive_def {
             let name = ind.get_name();
             let rt_name = format!("{name}RT");
-            let enum_is_xrfn = self.generate_enum_is_xrfn("r");
-            let rt_body = format!("mk_RT {name} ({{ r : {name} | {enum_is_xrfn} }}) (@proj1_sig _ _)");
+            let ordinary_type = coq::term::Type::Term(Box::new(app(name, vec![ident("RT_rt")])));
+            let canonical_type = coq::term::Type::Term(Box::new(app(name, vec![ident("RT_xt")])));
+            let mut branches = Vec::new();
+            for ((_, variant, _), (pat, apps, _)) in
+                self.variants.iter().zip(self.spec.variant_patterns.iter())
+            {
+                let variant = variant.borrow();
+                let variant = variant.as_ref().unwrap();
+                let result = if apps.is_empty() {
+                    ident(pat)
+                } else {
+                    app(pat, vec![app("RT_xrt", vec![ident(&variant.public_rt_def_name()), ident("x")])])
+                };
+                branches.push(coq::term::MatchBranch {
+                    constructor: coq::Ident::new(pat),
+                    binders: apps.iter().map(|name| coq::Ident::new(name)).collect(),
+                    body: result,
+                });
+            }
+            let embedding = coq::term::Term::Match(Box::new(ident("xr")), branches);
+            document.push(coq::command::Command::Option {
+                local: true,
+                enabled: false,
+                name: "Universe Minimization ToSet".to_owned(),
+            });
+            let embedding_name = format!("{name}_embed");
+            document.push(coq::command::Definition::new(
+                embedding_name.clone(),
+                coq::binder::BinderList::new(vec![coq::binder::Binder::new(Some("xr".to_owned()), canonical_type)]),
+                Some(ordinary_type),
+                coq::command::DefinitionBody::Term(embedding),
+            ));
+            let rt_body = app("mk_RT", vec![app(name, vec![ident("RT_rt")]), app(name, vec![ident("RT_xt")]), ident(&embedding_name)]);
             document.push(coq::command::Definition::new(
                 rt_name.clone(),
                 coq::binder::BinderList::empty(),
                 Some(coq::term::Type::RT),
-                coq::command::DefinitionBody::Term(coq::term::Term::Literal(rt_body)),
+                coq::command::DefinitionBody::Term(rt_body),
             ));
             document.push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(
                 &rt_name,
             ))));
+            for ((_, variant, _), (pat, apps, _)) in
+                self.variants.iter().zip(self.spec.variant_patterns.iter())
+            {
+                let variant = variant.borrow();
+                let variant = variant.as_ref().unwrap();
+                let mut params = Vec::new();
+                let value = if apps.is_empty() {
+                    ident(pat)
+                } else {
+                    params.push(coq::binder::Binder::new(
+                        Some("x".to_owned()),
+                        coq::term::Type::Term(Box::new(app("RT_rt", vec![ident(&variant.public_rt_def_name())]))),
+                    ));
+                    app(pat, vec![ident("x")])
+                };
+                let conclusion = coq::term::Type::Term(Box::new(coq::term::Term::ExplicitApp(
+                    coq::Ident::new("IsXrfn"), vec![ident(&rt_name), value],
+                )));
+                let ty = if apps.is_empty() {
+                    conclusion
+                } else {
+                    coq::term::Type::Function(
+                        vec![coq::term::Type::Term(Box::new(coq::term::Term::ExplicitApp(
+                            coq::Ident::new("IsXrfn"), vec![ident(&variant.public_rt_def_name()), ident("x")],
+                        )))],
+                        Box::new(conclusion),
+                    )
+                };
+                document.push(coq::command::CommandAttrs::new(coq::command::Instance {
+                    name: Some(format!("{pat}_is_xrfn")),
+                    params: coq::binder::BinderList::new(params),
+                    ty,
+                    body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                        proof.push(coq::ltac::LTac::Literal("solve_enum_constructor_is_xrfn".to_owned()));
+                    }),
+                }).attributes("global"));
+            }
         }
 
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
+        let enum_rfn_type = self.optional_inductive_def.as_ref().map_or_else(
+            || self.spec.rfn_type.to_string(),
+            |ind| format!("{}RT", ind.get_name()),
+        );
         let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
             "enum ({})",
-            self.spec.rfn_type
+            enum_rfn_type
         ))));
 
         // main def
@@ -710,6 +796,7 @@ impl<'def> Abstract<'def> {
                ({} {})\n\
                ({})\n\
                ({})\n\
+               _\n\
                _\n\
                _\n\
                _",
@@ -732,7 +819,11 @@ impl<'def> Abstract<'def> {
             coq::proof::Terminator::Defined,
         )));
         document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
-            coq::ltac::LTac::Literal("solve_enum_is_xrfn_congr".to_owned()),
+            coq::ltac::LTac::Literal(if self.optional_inductive_def.is_some() {
+                "solve_enum_is_xrfn_congr_auto".to_owned()
+            } else {
+                "solve_enum_is_xrfn_congr".to_owned()
+            }),
             coq::proof::Terminator::Qed,
         )));
         document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(

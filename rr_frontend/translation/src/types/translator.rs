@@ -1449,7 +1449,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let (variant_args, variant_arg_binders, variant_rfn) = if variant_def.fields.is_empty() {
                 (vec![], vec![], "*[]".to_owned())
             } else {
-                let args = vec![coq::binder::Binder::new(None, coq::term::Type::Literal(refinement_type))];
+                let args = vec![coq::binder::Binder::new(
+                    None,
+                    coq::term::Type::Term(Box::new(coq::term::App::new(
+                        coq::term::Term::Ident(coq::Ident::new("F")),
+                        vec![coq::term::Term::Ident(coq::Ident::new(&refinement_type))],
+                    ).into())),
+                )];
                 (args, vec!["x".to_owned()], "x".to_owned())
             };
 
@@ -1461,12 +1467,18 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         // We assume the generated Inductive def is placed in a context where the generic types are in scope.
         let inductive = coq::inductive::Inductive::new(
             inductive_name.clone(),
-            coq::binder::BinderList::empty(),
+            coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                Some("F".to_owned()),
+                coq::term::Type::Function(vec![coq::term::Type::RT], Box::new(coq::term::Type::Type)),
+            )]),
             variants,
         );
 
         let enum_spec = specs::enums::Spec {
-            rfn_type: coq::term::Type::Literal(inductive_name),
+            rfn_type: coq::term::Type::Term(Box::new(coq::term::App::new(
+                coq::term::Term::Ident(coq::Ident::new(&inductive_name)),
+                vec![coq::term::Term::Ident(coq::Ident::new("RT_rt"))],
+            ).into())),
             variant_patterns,
             is_partial: false,
             coq_params: Vec::new(),

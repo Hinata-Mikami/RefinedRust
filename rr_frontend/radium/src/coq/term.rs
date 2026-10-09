@@ -56,6 +56,10 @@ pub enum RocqTerm<T, U> {
     #[from(forward)]
     App(Box<App<Term, Term>>),
 
+    /// An application with all implicit arguments made explicit.
+    #[from(ignore)]
+    ExplicitApp(Ident, Vec<Term>),
+
     /// A let declaration
     LetIn(Pattern, Box<Self>, Box<Self>),
 
@@ -77,6 +81,10 @@ pub enum RocqTerm<T, U> {
     /// A lambda
     #[from(ignore)]
     Lambda(binder::BinderList, Box<Term>),
+
+    /// A match on an inductive value.
+    #[from(ignore)]
+    Match(Box<Term>, Vec<MatchBranch>),
 
     /// An infix operator
     #[from(ignore)]
@@ -119,6 +127,7 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
                 write!(f, "{rec}.({component})")
             },
             Self::App(deref!(a)) => write!(f, "{a}"),
+            Self::ExplicitApp(name, args) => write!(f, "(@{name} {})", fmt_list!(args, " ")),
             Self::LetIn(ident, term, term2) => {
                 write!(f, "let {ident} := {term} in {term2}")
             },
@@ -130,6 +139,13 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             },
             Self::Lambda(binders, deref!(body)) => {
                 write!(f, "{}{}", fmt_binders_empty("λ", binders, "λ '(), "), body)
+            },
+            Self::Match(scrutinee, branches) => {
+                write!(f, "match {scrutinee} with")?;
+                for branch in branches {
+                    write!(f, " | {} {} => {}", branch.constructor, fmt_list!(&branch.binders, " "), branch.body)?;
+                }
+                write!(f, " end")
             },
             Self::Infix(op, terms) => {
                 if terms.is_empty() {
@@ -149,6 +165,13 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             },
         }
     }
+}
+
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
+pub struct MatchBranch {
+    pub constructor: Ident,
+    pub binders: Vec<Ident>,
+    pub body: Term,
 }
 
 /// An [application].
