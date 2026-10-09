@@ -19,16 +19,19 @@ Proof.
     iDestruct "Hinv" as "(%Hdrop & Hinv)".
     rep <-! liRStep; liShow.
     rep <- 20 liRStep; liShow.
-    { liRStep; liShow. liRStep; liShow.
+    - liRStep; liShow. liRStep; liShow.
       liRStep; liShow.
-      liInst Hevar_s2_inner x'.
-      iEval (rewrite /traits_iterator_Iterator_Inv/=).
-      rep liRStep; liShow. }
-    { rep liRStep; liShow.
+      rep liRStep; liShow.
+      rep liRStep; liShow.
       liInst Hevar_seq x'1. liInst Hevar_s2_inner x'.
       rep <- 1 liRStep; liShow.
       iEval (rewrite /traits_iterator_Iterator_Inv/=).
-      rep liRStep; liShow. } }
+      rep liRStep; liShow.
+    - rep liRStep; liShow.
+      liInst Hevar_seq x'1. liInst Hevar_s2_inner x'.
+      rep <- 1 liRStep; liShow.
+      iEval (rewrite /traits_iterator_Iterator_Inv/=).
+      rep liRStep; liShow. }
   rep <-! liRStep; liShow.
   { (* unfold invariant *)
     iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".

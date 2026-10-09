@@ -23,7 +23,18 @@ Proof.
     { iEval (rewrite /traits_iterator_Iterator_Inv/=).
       rep liRStep; liShow. } }
   { rep <-! liRStep; liShow. }
-  { rep liRStep. } 
+  { iRename select (traits_iterator_Iterator_Inv
+      (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs
+        MI_rt traits_iterator_Iterator_MI_Item_rt traits_iterator_Iterator_MI_spec_attrs
+        DropGlue_MI_spec_attrs DropGlue_MIastraits_iterator_Iterator_Item_spec_attrs)
+      π x x0) into "Hinv".
+    iAssert (traits_iterator_Iterator_Inv
+      (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs
+        MI_rt traits_iterator_Iterator_MI_Item_rt traits_iterator_Iterator_MI_spec_attrs
+        DropGlue_MI_spec_attrs DropGlue_MIastraits_iterator_Iterator_Item_spec_attrs)
+      π x (mk_take_x (take_it x0) (take_n x0)))%I with "[Hinv]" as "Hinv".
+    { simpl. iFrame. }
+    rep liRStep. }
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

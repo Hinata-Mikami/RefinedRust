@@ -21,18 +21,18 @@ use std::cmp::Ord;
 #[rr::context("EqDecision {xt_of K}")]
 #[rr::context("Countable {xt_of K}")]
 #[rr::refined_by("M" : "directRT (gmap {xt_of K} ({xt_of V}))")]
-#[rr::exists("k", "v", "a")]
+#[rr::exists("k" : "{xt_of K}", "v" : "{xt_of V}", "a" : "{xt_of A}")]
 #[rr::skip(drop_glue)]
 pub struct BTreeMap<
     K,
     V,
     A: Allocator + Clone = Global,
 > {
-    #[rr::field("#(k)")]
+    #[rr::field("#($# k)")]
     _k: K,
-    #[rr::field("#(v)")]
+    #[rr::field("#($# v)")]
     _v: V,
-    #[rr::field("#(a)")]
+    #[rr::field("#($# a)")]
     _a: A,
 }
 

@@ -44,14 +44,19 @@ Section Option_ty.
         (λ rfn, Some (match rfn with | None => "None" | (Some (x)) => "Some" end))
         (Option_enum_rt)
         (Option_enum_ty -[] -[T_ty])
-        (λ rfn, match rfn with | None => *[]| (Some (x)) => *[x] end)
+        (λ rfn, match rfn as x return RT_rt (Option_enum_rt x) with | None => *[]| (Some (x)) => *[x] end)
         ([("None", mk_enum_tag_sem _ (Option_None_ty -[] -[T_ty]) (λ '( *[]), None)); ("Some", mk_enum_tag_sem _ (Option_Some_ty -[] -[T_ty]) (λ '( *[x]), (Some (x))))])
+        _
         _
         _
         _.
     Next Obligation.
       solve_inhabited.
     Defined.
+
+    Next Obligation.
+      solve_enum_is_xrfn_congr.
+    Qed.
 
     Next Obligation.
       done.

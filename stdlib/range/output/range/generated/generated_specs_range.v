@@ -34,10 +34,15 @@ Section Range_inv_t.
           (λ π (inner_rfn : (Range_rt (Idx_rt))) (_ty_rfn : RT_rt (((Idx_rt) * (Idx_rt))%type : RT)),
                   let '(rstart, rend) := _ty_rfn in ⌜inner_rfn = -[#(rstart); #(rend)]⌝ ∗ True)%I
           (false)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.

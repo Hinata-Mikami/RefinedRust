@@ -116,7 +116,7 @@ Next Obligation.
   iDestruct "Hp" as "(% & % & % & % & % & Hp)".
   rewrite !boringly_persistent_elim.
   unfold name_hint.
-  iDestruct "Hp" as "(-> & -> & % & % & % & %Hlen & % & % &_ )".
+  iDestruct "Hp" as "(-> & -> & % & % & % & % & %Hlen & % & % &_ )".
   subst. iModIntro. iPureIntro. simpl in *. lia.
 Qed.
 
@@ -140,7 +140,7 @@ Proof.
   iDestruct "Hl" as "(%v & Hl & Hv)".
 
   rewrite {1}ex_plain_t_unfold_val/=.
-  iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & %Heq1 & %Hlook1 & %Hlook2 & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
+  iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & %Heq1 & %Hlook1 & %Hlook2 & %Hels_len & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
   unfold name_hint, name_hint_ty in *.
   simpl in *.
 
@@ -314,6 +314,7 @@ Proof.
   - normalize_and_simpl_goal.
     setoid_rewrite lookup_replicate.
     exists None. solve_goal.
+  - rewrite length_app !length_fmap length_replicate. lia.
   - solve_goal.
   - solve_goal.
   - lia.

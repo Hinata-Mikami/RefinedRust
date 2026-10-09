@@ -68,10 +68,15 @@ Section Global_inv_t.
           (λ π (inner_rfn : Global_rt) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ⌜inner_rfn = -[]⌝ ∗ True)%I
           (true)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.
@@ -183,10 +188,15 @@ Section layout_Layout_inv_t.
           (λ π (inner_rfn : layout_Layout_rt) (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
                   let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
           (true)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.
@@ -241,8 +251,8 @@ End closure_attrs.
 Section extra_specs.
 Context `{!refinedrustGS Σ}.
 
-Global Instance shareable_discard_freeable {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) π κ κs a l n :
-  Shareable π κ κs (A.(Allocator_FreeablePerm) a l n) := shareable_discard _ _ _ _.
+Global Instance shareable_discard_freeable {rt Self_rt : RT} (A : Allocator_spec_attrs Self_rt) π κ κs a l n (r : rt) :
+  Shareable π κ κs r (A.(Allocator_FreeablePerm) a l n) := shareable_discard _ _ _ _ _.
 Global Instance ghost_droppable_discard_freeable {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) a l n :
   GhostDroppable (A.(Allocator_FreeablePerm) a l n) := ghost_droppable_discard _.
 

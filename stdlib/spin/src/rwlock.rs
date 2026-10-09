@@ -8,12 +8,12 @@ use core::marker::PhantomData;
 #[rr::trust_me(drop_glue)]
 #[rr::export_as(spin::rwlock::RwLock)]
 #[rr::refined_by("()" : "unit")]
-#[rr::exists("x", "y")]
+#[rr::exists("x" : "{xt_of T}", "y")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct RwLock<T : ?Sized, R = Spin> {
     #[rr::field("#(y)")]
     phantom: PhantomData<R>,
-    #[rr::field("#x")]
+    #[rr::field("#($# x)")]
     data: UnsafeCell<T>,
 }
 
@@ -28,11 +28,11 @@ pub struct RwLockReadGuard<'a, T: 'a + ?Sized> {
 #[rr::trust_me(drop_glue)]
 #[rr::export_as(spin::rwlock::RwLockWriteGuard)]
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
-#[rr::exists("y")]
+#[rr::exists("y" : "{xt_of R}")]
 pub struct RwLockWriteGuard<'a, T: 'a + ?Sized, R = Spin> {
     #[rr::field("#(#tt)")]
     _l: &'a RwLock<T>,
-    #[rr::field("#(y)")]
+    #[rr::field("#($# y)")]
     _r: R,
 }
 

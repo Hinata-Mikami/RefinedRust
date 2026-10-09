@@ -131,6 +131,7 @@ impl<T, A: Allocator> Drop for RawVec<T, A> {
 #[rr::invariant("Hxs" : "xs = project_vec_els len els")]
 #[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
 #[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
+#[rr::invariant("Hels_len": "length els = cap")]
 #[rr::invariant("Hlen_eq": "len = length xs")]
 #[rr::invariant("Hcap": "len ≤ cap")]
 #[rr::invariant("Hbound" : "len ≤ MaxInt usize")]
@@ -286,7 +287,7 @@ impl<T> FromIterator<T> for Vec<T> {
 #[rr::trust_me(drop_glue)]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {A::DropGlueUnwind}")]
 #[rr::refined_by("xs" : "list ({rt_of T})")]
-#[rr::exists("x", "y")]
+#[rr::exists("x", "y" : "{xt_of A}")]
 #[rr::export_as(alloc::vec::into_iter::IntoIter)]
 pub struct IntoIter<
     T,
@@ -294,7 +295,7 @@ pub struct IntoIter<
 > {
     #[rr::field("#(x)")]
     _x: PhantomData<T>,
-    #[rr::field("#(y)")]
+    #[rr::field("#($# y)")]
     _y: A,
 }
 

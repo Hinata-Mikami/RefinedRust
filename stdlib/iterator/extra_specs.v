@@ -190,8 +190,9 @@ Section extra.
   (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
   (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt) π p s1 hist s2 :
     IteratorNextFusedTrans (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) π p s1 hist s2 -∗
-      IteratorNextFusedTrans It_attrs π p s1.1 hist s2.1 ∗
-      ⌜length hist ≤ s1.2⌝ ∗ ⌜s2.2 = (s1.2 - length hist)%nat⌝
+      IteratorNextFusedTrans It_attrs π p s1.(take_it) hist s2.(take_it) ∗
+      ⌜length hist ≤ s1.(take_n)⌝ ∗
+      ⌜s2.(take_n) = (s1.(take_n) - length hist)%nat⌝
   .
   Proof.
     iInduction hist as [ | a hist] "IH" forall (s1 s2); simpl.
@@ -211,9 +212,9 @@ Section extra.
   :
     IteratorLearnInductive (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) p := {|
       iterator_learn_inductive_Q s1 hist s2 :=
-          It_learn.(iterator_learn_inductive_Q) s1.1 hist s2.1 ∧
-          length hist ≤ s1.2 ∧
-          s2.2 = (s1.2 - length hist)%nat
+          It_learn.(iterator_learn_inductive_Q) s1.(take_it) hist s2.(take_it) ∧
+          length hist ≤ s1.(take_n) ∧
+          s2.(take_n) = (s1.(take_n) - length hist)%nat
         ;
     |}.
   Next Obligation.
@@ -236,11 +237,11 @@ Section extra.
   (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt) π p s1 hist s2 :
     IteratorNextFusedTrans (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) π p s1 hist s2 -∗
       ∃ pref,
-        IteratorNextFusedTrans It_attrs π p s1.1 (pref ++ hist) s2.1 ∗
-        ⌜length pref ≤ s1.2⌝ ∗
-        ⌜s2.2 = (s1.2 - length pref)%nat⌝ ∗
+        IteratorNextFusedTrans It_attrs π p s1.(skip_it) (pref ++ hist) s2.(skip_it) ∗
+        ⌜length pref ≤ s1.(skip_n)⌝ ∗
+        ⌜s2.(skip_n) = (s1.(skip_n) - length pref)%nat⌝ ∗
         (* TODO can I find a better formulation for this? *)
-        ⌜if decide (length hist = 0%nat) then pref = [] else length pref = s1.2⌝
+        ⌜if decide (length hist = 0%nat) then pref = [] else length pref = s1.(skip_n)⌝
   .
   Proof.
     iInduction hist as [ | a hist] "IH" forall (s1 s2); simpl.
@@ -270,11 +271,11 @@ Section extra.
     IteratorLearnInductive (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) p := {|
       iterator_learn_inductive_Q s1 hist s2 :=
           ∃ pref,
-          It_learn.(iterator_learn_inductive_Q) s1.1 (pref ++ hist) s2.1 ∧
-          length pref ≤ s1.2 ∧
-          s2.2 = (s1.2 - length pref)%nat ∧
+          It_learn.(iterator_learn_inductive_Q) s1.(skip_it) (pref ++ hist) s2.(skip_it) ∧
+          length pref ≤ s1.(skip_n) ∧
+          s2.(skip_n) = (s1.(skip_n) - length pref)%nat ∧
           (* TODO can I find a better formulation for this? *)
-          if decide (length hist = 0%nat) then pref = [] else length pref = s1.2
+          if decide (length hist = 0%nat) then pref = [] else length pref = s1.(skip_n)
         ;
     |}.
   Next Obligation.

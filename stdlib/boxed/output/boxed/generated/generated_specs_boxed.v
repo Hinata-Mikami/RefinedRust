@@ -41,16 +41,21 @@ Section Box_inv_t.
           (λ π _ (_rfn_binder : RT_rt (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt))))%type : RT)),
                   let '(x, a) := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
           (false)
+          _
           ([] ++ ty_lfts T_ty)
           ([] ++ ty_wf_E T_ty)
           _ _ _ _
         .
   Next Obligation.
-    ex_plain_t_solve_shr_auto.
+    intros ?; ex_plain_t_solve_is_xrfn.
+  Qed.
+
+  Next Obligation.
+    intros ?; ex_plain_t_solve_shr_auto.
   Defined.
 
   Next Obligation.
-    ex_t_solve_persistent.
+    intros ?; ex_t_solve_persistent.
   Qed.
 
   Next Obligation.

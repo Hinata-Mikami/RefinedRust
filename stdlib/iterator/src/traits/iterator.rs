@@ -495,7 +495,7 @@ pub trait Iterator {
 
     #[rr::params("p")]
     #[rr::requires(#iris "{Inv} π p self")]
-    #[rr::ensures("ret = (self, Z.to_nat n)")]
+    #[rr::ensures("ret = mk_skip_x self (Z.to_nat n)")]
     #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
     #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     fn skip(self, n: usize) -> Skip<Self>
@@ -519,7 +519,7 @@ pub trait Iterator {
 
     #[rr::params("p")]
     #[rr::requires(#iris "{Inv} π p self")]
-    #[rr::ensures("ret = (self, Z.to_nat n)")]
+    #[rr::ensures("ret = mk_take_x self (Z.to_nat n)")]
     #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
     fn take(self, n: usize) -> Take<Self>
     where

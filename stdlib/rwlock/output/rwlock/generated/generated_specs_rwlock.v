@@ -32,10 +32,15 @@ Section RwLock_inv_t.
           (λ π (inner_rfn : (RwLock_rt (T_rt))) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
           (true)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.
@@ -107,10 +112,15 @@ Section RwLockReadGuard_inv_t.
           (λ π (inner_rfn : (RwLockReadGuard_rt (T_rt))) (_ty_rfn : RT_rt (((T_rt))%type : RT)),
                   let 'x := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
           (true)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.
@@ -182,10 +192,15 @@ Section PoisonError_inv_t.
           (λ π (inner_rfn : (PoisonError_rt (T_rt))) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z), ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
           (true)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.
@@ -257,10 +272,15 @@ Section RwLockWriteGuard_inv_t.
           (λ π (inner_rfn : (RwLockWriteGuard_rt (T_rt))) (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
                   let 'x := _ty_rfn in ⌜inner_rfn = -[#(#tt)]⌝ ∗ True)%I
           (true)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.

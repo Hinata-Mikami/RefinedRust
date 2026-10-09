@@ -33,10 +33,15 @@ Section UnsafeCell_inv_t.
           (λ π (inner_rfn : (UnsafeCell_rt (T_rt))) (_ty_rfn : RT_rt (((T_rt))%type : RT)),
                   let 'x := _ty_rfn in ⌜inner_rfn = -[#x]⌝ ∗ True)%I
           (false)
+          _
           ([])
           ([])
           _ _ _ _
         .
+  Next Obligation.
+    ex_plain_t_solve_is_xrfn.
+  Qed.
+
   Next Obligation.
     ex_plain_t_solve_shr_auto.
   Defined.
