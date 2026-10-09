@@ -6,6 +6,7 @@
 #![allow(unused)]
 
 #![rr::package("linkedlist")]
+#![rr::import("refinedrust.extra_proofs.linkedlist", "linkedlist")]
 #![rr::include("stdlib")]
 #![rr::include("mem")]
 #![rr::include("sized")]
@@ -183,7 +184,7 @@ impl<T> Drop for List<T> {
 }
 
 
-#[rr::refined_by("xs" : "listRT {rt_of T}")]
+#[rr::refined_by("xs" : "listRT (directRT {xt_of T})")]
 #[rr::depends_on(Link)]
 #[rr::exists("locs" : "list loc", "hd_ptr" : "loc", "prev_ptr" : "loc")]
 #[rr::inv("Hlocs" : "if decide (hd_ptr.(loc_a) = 0)
@@ -195,7 +196,7 @@ impl<T> Drop for List<T> {
 #[rr::inv(#iris "([∗ list] i ↦ x ∈ xs,
     ∃ l lnext lprev : loc, ⌜locs !! i = Some l⌝ ∗ ⌜(locs ++ [NULL_loc]) !! S i = Some lnext⌝ ∗
     ⌜(prev_ptr :: locs) !! i = Some lprev⌝ ∗
-    guarded false (l ◁ₗ[π, Shared {'a}] #( *[#x; #lnext; #lprev]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
+    guarded false (l ◁ₗ[π, Shared {'a}] #( *[#($# x); #lnext; #lprev]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
     True
     )")]
 #[rr::ty_lfts("ty_lfts {T}")]

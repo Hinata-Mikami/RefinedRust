@@ -24,8 +24,8 @@ Proof.
   Unshelve. all: sidecond_hammer.
   { split; first lia.
     revert select ((ly_size _ * _)%nat ≤ _).
-    move: Hi Hcap. clear. nia. }
-  { move: Hi Hcap. clear. nia. }
+    move: Hi. revert select (length xs ≤ length els). clear. nia. }
+  { move: Hi. revert select (length xs ≤ length els). clear. nia. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

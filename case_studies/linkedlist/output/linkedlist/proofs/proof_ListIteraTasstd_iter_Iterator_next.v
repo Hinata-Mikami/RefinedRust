@@ -30,18 +30,21 @@ Proof.
   rep <-! liRStep. liShow.
   apply_update updateable_strip_guards.
   rep <-! liRStep; liShow.
-  rep liRStep; liShow.
+   rep liRStep; liShow.
   (* The consumed node becomes the predecessor cursor for the suffix. *)
-  liInst Hevar_rf (<$#> xs).
+   liInst Hevar_rf xs.
   liInst Hevar_locs locs.
   liInst Hevar_prev_ptr l.
-  rep liRStep; liShow.
+   rep liRStep; liShow.
+
+    iEval (change (list_fmap (RT_xt T_rt) (RT_xt T_rt) id xs) with (id <$> xs);
+      rewrite list_fmap_id) in "Hxs".
+   rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  - move: Hlocs. solve_goal.
-  - rename select (Forall _ locs) into Hlocs.
+   - rename select (Forall _ locs) into Hlocs.
     destruct (decide (loc_a lnext = 0)). 
     + case_bool_decide.
       * exfalso. destruct locs as [ | lh locs]; first done.

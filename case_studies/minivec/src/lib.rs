@@ -187,6 +187,7 @@ pub struct RawVec<T> {
 #[rr::invariant("Hxs" : "xs = project_vec_els len els")]
 #[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
 #[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
+#[rr::invariant("Hels_len": "length els = cap")]
 #[rr::invariant("Hlen_eq": "len = length xs")]
 #[rr::invariant("Hcap": "len ≤ cap")]
 // invariant due to GEP / ptr::offset limits: the total size of the allocation should not exceed isize::max bytes

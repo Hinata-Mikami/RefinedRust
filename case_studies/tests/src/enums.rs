@@ -105,7 +105,7 @@ impl<T> Anon2<T> {
     // TODO: should have a way to escape and interpret this name by writing {anon::ABitAnon}
     #[rr::params("x")]
     #[rr::args("x")]
-    #[rr::returns("enums_Anon2_ABitAnon -[# $# x]")]
+    #[rr::returns("enums_Anon2_ABitAnon *[x]")]
     pub fn new(x: T) -> Self {
         Self::ABitAnon(x)
     }

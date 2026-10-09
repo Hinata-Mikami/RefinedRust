@@ -23,10 +23,10 @@ impl<T: Eq> Tree<T> {
 
 
 #[rr::refined_by("()" : "unitRT")]
-#[rr::exists("x")]
+#[rr::exists("x" : "RT_xt (Option_rt rectypes_Bar_inv_t_rt)")]
 #[rr::only_spec(drop_glue)]
 struct Foo {
-    #[rr::field("#(x)")]
+    #[rr::field("#($# x)")]
     x: Option<Bar>,
 }
 
@@ -68,9 +68,9 @@ enum Bla {
 
 #[rr::refined_by("()" : "unitRT")]
 #[rr::context("EqDecision Z")]
-#[rr::exists("x")]
+#[rr::exists("x" : "RT_xt rectypes_Bla_rt")]
 struct Blub {
-    #[rr::field("#(x)")]
+    #[rr::field("#($# x)")]
     x : Bla, 
 }
 
