@@ -428,7 +428,7 @@ Section acc.
     iDestruct "Hb" as "(%r' & Hauth & Hb)".
     iMod (place_rfn_interp_mut_owned with "Hrfn Hauth") as
       "(Hrfn & Hobs & Hauth)".
-    iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%Hxr & %l' & Hl & Hb)"; first done.
     iModIntro.
     rewrite -opened_ltype_core_contract.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -439,8 +439,8 @@ Section acc.
       rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
       iExists _. iFrame.
       iDestruct "Hc" as
-        ">(% & _ & _ & _ & %r'' & -> & >(%l0 & Hl0 & Hb0))".
-      iModIntro. setoid_rewrite ltype_own_core_equiv.
+        ">(% & _ & _ & _ & %r'' & -> & >(%Hxr' & %l0 & Hl0 & Hb0))".
+      iModIntro. iSplitR; first done. setoid_rewrite ltype_own_core_equiv.
       iExists _. eauto with iFrame.
     - iIntros (?) "Hobs Hat Hcred_cb Hp". simp_ltypes.
       rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
@@ -450,8 +450,8 @@ Section acc.
       { iFrame. }
       eauto 8 with iFrame.
     - rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
-      iExists void*. iFrame "% #". iExists r'. iFrame "Hrfn".
-      iModIntro. iExists l'. iFrame.
+      iExists void*. do 3 iR. iExists r'. iFrame "Hrfn".
+      iModIntro. iSplitR; first done. iExists l'. iFrame.
   Qed.
 
   Global Instance ltype_uniq_openable_shr_done {rt} (lt : ltype rt) κ :

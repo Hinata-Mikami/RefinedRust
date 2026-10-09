@@ -74,6 +74,7 @@ Section accessors.
       |={F}=>
         ∃ variant_ly,
         let v := interp_enum_ltype_variant en variant r in
+        ⌜is_xrfn r⌝ ∗
         ⌜enum_ltype_variant_tag_compat en r v⌝ ∗
         ⌜enum_variant_lookup el.(el_variants) v.(eltv_tag) = Some variant_ly⌝ ∗
         ⌜syn_type_has_layout (ltype_st v.(eltv_ltype)) variant_ly⌝ ∗
@@ -99,7 +100,7 @@ Section accessors.
     iMod (fupd_mask_mono with "Hb") as "Hb'"; first done.
     iModIntro.
     iDestruct "Hb'" as "(%Hxrfn & %variant_ly & %Hvariant & %Hst & %Htag & #Htag & #Htag_pad & #Hpayload & #Htail)".
-    iExists variant_ly. do 3 (iSplitR; first done).
+    iExists variant_ly. do 4 (iSplitR; first done).
     iSplitR; first iFrame "Htag".
     iSplitR; first iFrame "Hpayload".
     iIntros (rte' lte' rfn' re' rnew) "%Hxrfn_new %Htag_new %Hrfn_new %Hst_new #Htag' #Hpayload'".
@@ -827,6 +828,21 @@ End uniform_subltype.
 Section shared_subltype.
   Context `{!typeGS Σ}.
 
+  Local Lemma enum_tag_rt_inj_is_xrfn {rt} (en : enum rt) tag sem rp :
+    enum_tag_ty_inj en tag = Some sem →
+    is_xrfn rp → is_xrfn (sem.(enum_tag_rt_inj) rp).
+  Proof.
+    intros Hsem Hxr.
+    pose proof (enum_tag_ty_find_elem _ _ _ Hsem) as Hel.
+    destruct (enum_tag_inj_roundtrip en tag sem Hel rp) as [Htag Heq Hr].
+    apply (proj2 (enum_r_is_xrfn en _)). rewrite Hr.
+    assert (eq_rect _ RT_rt rp _ Heq =
+      eq_rect _ id rp _ (f_equal RT_rt Heq)) as Htransport.
+    { clear Hr. destruct Heq. done. }
+    rewrite Htransport.
+    apply (proj1 (is_xrfn_transport_iff Heq (f_equal RT_rt Heq) rp)). done.
+  Qed.
+
   Local Lemma enum_ltype_incl'_shared_in {rt1 rt2}
       (en1 : enum rt1) (en2 : enum rt2) variant1 variant2 r1 r2 κ :
     enum_els en1 = enum_els en2 →
@@ -835,20 +851,25 @@ Section shared_subltype.
     v1.(eltv_tag) = v2.(eltv_tag) →
     enum_ltype_variant_compat en2 r2 v2 →
     ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) →
+    (∀ rv, enum_ltype_variant_rfn en2 r2 v2 rv → is_xrfn rv → is_xrfn r2) →
     enum_ltype_variant_ltype_incl' (Shared κ) en1 r1 v1 en2 r2 v2 -∗
     ltype_incl' (Shared κ) (#r1) (#r2) (EnumLtype en1 variant1) (EnumLtype en2 variant2).
   Proof.
-    intros Hels v1 v2 Htag Hcompat Hst. iIntros "#Hincl !>" (π l).
+    intros Hels v1 v2 Htag Hcompat Hst Hcanonical. iIntros "#Hincl !>" (π l).
     destruct Hcompat as [Hcompat [rv2 [Heq2 [Hrfn2 Hcanon2]]]].
     rewrite !ltype_own_enum_unfold /enum_ltype_own.
-    iIntros "(%el & %Halg & %Hly & Hlb & %r & -> & #Hb)".
+    iIntros "(%el & %Halg & %Hly & Hlb & %Hconc & %r & -> & #Hb)".
     iExists el. rewrite -Hels. iR. iR. iFrame "Hlb".
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
     iExists r2. iR. iModIntro.
-    iMod "Hb" as "(%ly & %Hcompat1 & %Hlook & %Hst1 & Htag & Hpad & Hb' & Htail)".
+    iMod "Hb" as "(%Hxr & %ly & %Hcompat1 & %Hlook & %Hst1 & Htag & Hpad & Hb' & Htail)".
     fold v1 in Hlook, Hst1 |- *. fold v2.
     iDestruct "Hb'" as "(%rv1 & %Hrfn1 & Hb')".
-    iPoseProof ("Hincl" $! rv1 rv2 with "[] [] Hb'") as "Hb'"; [done.. |].
-    iModIntro. iExists ly. rewrite -Htag -Hst. do 3 (iSplitR; first done). iFrame. done.
+    iPoseProof ("Hincl" $! rv1 rv2 with "[] [] Hb'") as "#Hpayload2"; [done.. |].
+    iMod (ltype_own_shared_is_xrfn with "Hpayload2") as "%Hxr2".
+    iModIntro. iSplitR; first (iPureIntro; eapply Hcanonical; done).
+    iExists ly. rewrite -Htag -Hst. do 3 (iSplitR; first done). iFrame.
+    iExists rv2. iSplitR; first done. iExact "Hpayload2".
   Qed.
 
   Lemma enum_ltype_incl_shared_in {rt1 rt2}
@@ -859,13 +880,14 @@ Section shared_subltype.
     v1.(eltv_tag) = v2.(eltv_tag) →
     enum_ltype_variant_compat en2 r2 v2 →
     ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) →
+    (∀ rv, enum_ltype_variant_rfn en2 r2 v2 rv → is_xrfn rv → is_xrfn r2) →
     enum_ltype_variant_ltype_incl (Shared κ) en1 r1 v1 en2 r2 v2 -∗
     ltype_incl (Shared κ) (#r1) (#r2) (EnumLtype en1 variant1) (EnumLtype en2 variant2).
   Proof.
-    intros Hels v1 v2 Htag Hcompat Hst. iIntros "#Hincl".
+    intros Hels v1 v2 Htag Hcompat Hst Hcanonical. iIntros "#Hincl".
     iModIntro. iSplit.
     - iApply enum_ltype_incl'_shared_in;
-        [exact Hels | exact Htag | exact Hcompat | exact Hst |].
+        [exact Hels | exact Htag | exact Hcompat | exact Hst | exact Hcanonical |].
       iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
       iDestruct ("Hincl" $! rv1 rv2 with "[] []") as "[Hincl' _]"; [done.. |]. done.
     - rewrite !ltype_core_enum.
@@ -874,6 +896,7 @@ Section shared_subltype.
       + done.
       + done.
       + rewrite !ltype_core_syn_type_eq. done.
+      + exact Hcanonical.
       + iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
         iDestruct ("Hincl" $! rv1 rv2 with "[] []") as "[_ Hcore]"; [done.. |]. done.
   Qed.
@@ -900,6 +923,9 @@ Section shared_subltype.
       + exists (enum_r en2 (sem.(enum_tag_rt_inj) rp)), eq_refl. split; done.
     - simpl. rewrite -Hty. generalize (enum_tag_rt_eq en2 _ _ _ Htag Hsem).
       intros Heq'. destruct Heq'. done.
+    - intros rv2 Hrfn2 Hxr2.
+      change (rv2 = enum_r en2 (sem.(enum_tag_rt_inj) rp)) in Hrfn2.
+      subst rv2. exact (proj2 (enum_r_is_xrfn en2 _) Hxr2).
     - iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
       have -> : rv1 = rv by eapply enum_ltype_variant_rfn_unique.
       change (rv2 = enum_r en2 (sem.(enum_tag_rt_inj) rp)) in Hrfn2. subst rv2.
@@ -939,6 +965,14 @@ Section shared_subltype.
         erewrite Hr. generalize Heq2. intros []. done.
       + erewrite Hr. generalize Heq2. intros []. done.
     - rewrite interp_enum_ltype_variant_Some_match; last done. exact Hst.
+    - intros rv2 Hrfn2 Hxr2.
+      rewrite interp_enum_ltype_variant_Some_match in rv2, Hrfn2, Hxr2; last done.
+      have Heqrv : rv2 = rp.
+      { eapply enum_ltype_variant_rfn_unique; first exact Hrfn2.
+        simpl. eexists (f_equal RT_rt (eq_sym Heq2)).
+        erewrite Hr. generalize Heq2. intros []. done. }
+      subst rv2.
+      eapply enum_tag_rt_inj_is_xrfn; done.
     - iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
       rewrite interp_enum_ltype_variant_Some_match in rv2, Hrfn2 |- *; last done.
       have -> : rv1 = rv by eapply enum_ltype_variant_rfn_unique.
@@ -975,6 +1009,11 @@ Section shared_subltype.
       split; first done. eexists re, (f_equal RT_rt (eq_sym Heq2)). split; first done.
       erewrite Hr. generalize Heq2. intros []. done.
     - rewrite interp_enum_ltype_variant_Some_match; last done. exact Hst.
+    - intros rv2 Hrfn2 Hxr2.
+      rewrite interp_enum_ltype_variant_Some_match in rv2, Hrfn2, Hxr2; last done.
+      have Heqrv : rv2 = re by eapply enum_ltype_variant_rfn_unique; [exact Hrfn2 | done].
+      subst rv2.
+      eapply enum_tag_rt_inj_is_xrfn; done.
     - iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
       rewrite interp_enum_ltype_variant_Some_match in rv2, Hrfn2 |- *; last done.
       have -> : rv1 = rv by eapply enum_ltype_variant_rfn_unique.
@@ -994,15 +1033,16 @@ Section shared_subltype.
   Proof.
     intros Hels. iIntros "#Hincl !>" (π l).
     rewrite !ltype_own_enum_unfold /enum_ltype_own.
-    iIntros "(%el & %Halg & %Hly & Hlb & %r' & Hr & #Hb)".
+    iIntros "(%el & %Halg & %Hly & Hlb & %Hconc & %r' & Hr & #Hb)".
     iExists el. rewrite -Hels. iR. iR. iFrame "Hlb".
-    iExists r'. iFrame "Hr". iModIntro.
+    iSplitR; first done. iExists r'. iFrame "Hr". iModIntro.
     iDestruct ("Hincl" $! r') as "(%Hcompat & %Hst & Hincl')".
-    iMod "Hb" as "(%ly & %Hcompat1 & %Hlook & %Hst1 & Htag & Hpad & Hb' & Htail)".
+    iMod "Hb" as "(%Hxr & %ly & %Hcompat1 & %Hlook & %Hst1 & Htag & Hpad & Hb' & Htail)".
     destruct (Hcompat Hcompat1) as [Htag [Hcompat2 [rv2 [Heq2 [Hrfn2 Hcanon2]]]]].
     iDestruct "Hb'" as "(%rv1 & %Hrfn1 & Hb')".
     iPoseProof ("Hincl'" $! rv1 rv2 with "[] [] Hb'") as "Hb'"; [done.. |].
-    iModIntro. iExists ly. rewrite -Htag -Hst. do 3 (iSplitR; first done). iFrame. done.
+    iModIntro. iSplitR; first done.
+    iExists ly. rewrite -Htag -Hst. do 3 (iSplitR; first done). iFrame. done.
   Qed.
 
   Lemma enum_ltype_incl_shared {rt} (en1 en2 : enum rt) variant1 variant2 r κ :

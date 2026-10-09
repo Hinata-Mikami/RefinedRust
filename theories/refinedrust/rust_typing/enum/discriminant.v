@@ -158,7 +158,7 @@ Section discriminant.
       { symmetry. exact Hev. }
       exact Hcompat.
     - iPoseProof (enum_ltype_acc_shared F with "Hb") as
-        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hcompat & %Hvariant & %Hst & #Htag & #Hpayload & Hclose))"; first done.
+        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hxr & %Hcompat & %Hvariant & %Hst & #Htag & #Hpayload & Hclose))"; first done.
       iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
       iMod (lctx_lft_alive_tok_noend κ with "HE HL") as (q) "(Htok & HL & Htok_cl)"; [solve_ndisj | done | ].
       iPoseProof "Htag" as "#Htag_direct".
@@ -185,7 +185,8 @@ Section discriminant.
       iMod ("Htok_cl" with "Htok HL") as "HL".
       iPoseProof ("HL_cl" with "HL") as "HL".
       iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
-      iMod ("Hclose" $! _ _ (interp_enum_ltype_variant en variant r).(eltv_rfn) rv r with "[] [] [] Htag_direct Hpayload") as "Hb".
+      iMod ("Hclose" $! _ _ (interp_enum_ltype_variant en variant r).(eltv_rfn) rv r with "[] [] [] [] Htag_direct Hpayload") as "Hb".
+      { done. }
       { done. }
       { done. }
       { done. }

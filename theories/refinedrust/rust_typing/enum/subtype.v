@@ -60,10 +60,14 @@ Section subtype.
     iIntros "(%Hels & %Htag & %Hst & #Hincl) Hl".
     iDestruct "Hincl" as "(_ & _ & #Hincl)".
     rewrite /ty_shr /= enum_shr_unfold /enum_shr_def.
-    iDestruct "Hl" as "(%el & %tag & %ly & -> & %Halg & %Ht & %Hlook & %Hly & %Hloc & Htag & Hpad & Hl & Htail)".
+    iDestruct "Hl" as "(%Hxr & %el & %tag & %ly & -> & %Halg & %Ht & %Hlook & %Hly & %Hloc & Htag & Hpad & Hl & Htail)".
+    iPoseProof ("Hincl" with "Hl") as "Hl".
+    iPoseProof (ty_shr_is_xrfn with "Hl") as "%Hpayload_xr".
+    iSplitR.
+    { iPureIntro. exact (proj2 (enum_r_is_xrfn e2 r2) Hpayload_xr). }
     rewrite -Hels -Htag -Hst.
     iExists el, tag, ly. do 6 (iSplitR; first done).
-    iFrame. by iApply "Hincl".
+    iFrame.
   Qed.
 
   Lemma enum_t_type_incl {rt1 rt2} (e1 : enum rt1) (e2 : enum rt2) r1 r2 :

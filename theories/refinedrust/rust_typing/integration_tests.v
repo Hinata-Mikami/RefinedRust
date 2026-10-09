@@ -466,6 +466,7 @@ Section std_option_Option_ty.
     _
     _
     _
+    _
   .
   Next Obligation.
     solve_inhabited.
@@ -1097,6 +1098,7 @@ Section rectypes_List_ty.
         (rectypes_List_enum_ty -[] -[T_ty])
         (λ rfn, match rfn with | [] => *[]| (cons (x) (xs)) => (x, xs) end)
         ([("Nil", mk_enum_tag_sem _ (rectypes_List_Nil_ty -[] -[T_ty]) (λ '( *[]), [])); ("Cons", mk_enum_tag_sem _ (rectypes_List_Cons_inv_t -[] -[T_ty]) (λ '( (x, xs)), (cons (x) (xs))))])
+        _
         _
         _
         _.

@@ -197,7 +197,7 @@ Section rules.
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hweak"; first apply Hweak.
     iPoseProof (enum_ltype_acc_shared F with "Hl") as "(%el & %Halg & %Hly & #Hlb & Hb)"; first done.
     iApply fupd_wpe.
-    iMod (fupd_mask_mono with "Hb") as "(%variant_ly & %Hcompat & %Hvariant & %Hst & #Htag & #Hpayload & Hcl)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%variant_ly & %Hxr & %Hcompat & %Hvariant & %Hst & #Htag & #Hpayload & Hcl)"; first done.
     iDestruct "Hpayload" as "(%rv & %Hrfn_payload & #Hpayload)".
 
     rewrite -Hels.
@@ -218,7 +218,8 @@ Section rules.
     iPoseProof (typed_place_cond_syn_type_compat with "Hcond") as "%Hst_compat".
     pose proof (Hst_compat _ Hst) as Hst_new.
     iEval (rewrite /GetEnumDataLocSt /use_enum_layout_alg' Halg /=) in "Hl2".
-    iMod ("Hcl" $! _ upd'.(pupd_lt) (Some re') re' r with "[] [] [] Htag Hl2") as "Hl".
+    iMod ("Hcl" $! _ upd'.(pupd_lt) (Some re') re' r with "[] [] [] [] Htag Hl2") as "Hl".
+    { done. }
     { done. }
     { done. }
     { done. }

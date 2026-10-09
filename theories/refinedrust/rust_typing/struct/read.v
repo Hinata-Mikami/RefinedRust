@@ -1122,7 +1122,7 @@ Section read.
       (qtok) "(Htok & Hcltok & HL)"; [done.. |].
     iPoseProof (struct_ltype_acc_shared F with "Hl") as
       "(%sl & %Halg & %Hly & %Hlen & #Hlb & Hacc)"; first done.
-    iMod "Hacc" as "(Hl & Hstruct_close)".
+    iMod "Hacc" as "(%Hxr & Hl & Hstruct_close)".
     have Hsl : struct_layout_spec_has_layout sls sl := Halg.
     iPoseProof (struct_ltype_focus_components_with_padding π lts rs sls sl
       (Shared κ) l with "Hl") as "(Hnamed & Hpadding & Hunfocus)".
@@ -1166,8 +1166,9 @@ Section read.
       { rewrite /struct_ltype_padding_own /struct_read_padding_source
           length_hpzipl. done. }
       iPoseProof ("Hunfocus" with "Hnamed Hpadding") as "Hsource".
-      iMod ("Hstruct_close" $! rts lts rs with "[] Hsource") as "Hstruct";
+      iMod ("Hstruct_close" $! rts lts rs with "[] [$Hsource]") as "Hstruct";
         first done.
+      { done. }
       iModIntro. iFrame. }
     iApply "HT".
   Qed.

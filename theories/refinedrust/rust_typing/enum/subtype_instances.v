@@ -356,6 +356,7 @@ Section subltype.
     ⌜enum_els en1 = enum_els en2⌝ ∗
     ⌜v1.(eltv_tag) = v2.(eltv_tag)⌝ ∗
     ⌜enum_ltype_variant_compat en2 r2' v2⌝ ∗
+    ⌜∀ rv, enum_ltype_variant_rfn en2 r2' v2 rv → is_xrfn rv → is_xrfn r2'⌝ ∗
     ∃ rv1 rv2,
     ⌜enum_ltype_variant_rfn en1 r1 v1 rv1⌝ ∗
     ⌜enum_ltype_variant_rfn en2 r2' v2 rv2⌝ ∗
@@ -363,11 +364,11 @@ Section subltype.
     ⊢ weak_subltype E L (Shared κ) (#r1) r2
       (EnumLtype en1 variant1) (EnumLtype en2 variant2) T.
   Proof.
-    iIntros "(%r2' & -> & %Hels & %Htag & %Hcompat & %rv1 & %rv2 & %Hrfn1 & %Hrfn2 & HT)" (??) "#CTX #HE HL".
+    iIntros "(%r2' & -> & %Hels & %Htag & %Hcompat & %Hcanonical & %rv1 & %rv2 & %Hrfn1 & %Hrfn2 & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
     iApply enum_ltype_incl_shared_in;
-      [exact Hels | exact Htag | exact Hcompat | exact Hst |].
+      [exact Hels | exact Htag | exact Hcompat | exact Hst | exact Hcanonical |].
     iIntros (rv1' rv2') "%Hrfn1' %Hrfn2'".
     have -> : rv1' = rv1 by eapply enum_ltype_variant_rfn_unique.
     have -> : rv2' = rv2 by eapply enum_ltype_variant_rfn_unique.
@@ -395,6 +396,8 @@ Section subltype.
     iSplit; first done. iSplit; first done. iSplit.
     { iPureIntro. split; first done.
       exists (enum_r en2 r2'), eq_refl. split; done. }
+    iSplitR.
+    { iPureIntro. intros rv -> Hxr. exact (proj2 (enum_r_is_xrfn en2 r2') Hxr). }
     iExists re, (enum_r en2 r2'). iFrame. done.
   Qed.
   Definition weak_subltype_enum_shared_some_none_inst := [instance @weak_subltype_enum_shared_some_none].

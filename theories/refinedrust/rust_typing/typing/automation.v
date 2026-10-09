@@ -467,8 +467,15 @@ Ltac liRGoto goto_bb :=
                 notypeclasses refine (tac_fast_apply (typed_goto_acc E L f fn R U Inv goto_bb ϝ _ _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
               | Some ?var =>
-                notypeclasses refine (tac_fast_apply (typed_goto_acc' E L f fn R U goto_bb ϝ _ var Inv _) _);
-                  [unfold_code_marker_and_compute_map_lookup|  ]
+                (* The canonical refinement type does not uniquely identify its RT. *)
+                let envs := eval hnf in Δ in
+                let spatial := lazymatch envs with Envs _ ?spatial _ => spatial end in
+                let own_prop := find_type_assign_in_env var spatial in
+                lazymatch own_prop with
+                | @ltype_own _ _ ?rt _ _ _ _ _ =>
+                  notypeclasses refine (tac_fast_apply (typed_goto_acc' E L f fn R U goto_bb ϝ _ (rt := rt) var Inv _) _);
+                    [unfold_code_marker_and_compute_map_lookup|  ]
+                end
               end)
         end
       | (* do a direct jump *)
@@ -1733,6 +1740,32 @@ Ltac solve_enum_is_xrfn_congr :=
   try done;
   split; destruct r; solve_enum_is_xrfn_case
 .
+
+(** Automatically refined enums use the same inductive with ordinary or canonical payloads. *)
+Ltac solve_enum_constructor_is_xrfn :=
+  first
+    [ intros [[xr ->]];
+      lazymatch goal with
+      | |- IsXrfn (?ctor RT_rt _) => constructor; exists (ctor RT_xt xr); reflexivity
+      end
+    | lazymatch goal with
+      | |- IsXrfn (?ctor RT_rt) => constructor; exists (ctor RT_xt); reflexivity
+      end ].
+
+Ltac solve_enum_is_xrfn_congr_auto :=
+  intro_adt_params; intros r; destruct r;
+  (split;
+    [ intros (xr & Heq); destruct xr; simpl in Heq; try discriminate;
+      inversion Heq; subst; apply is_xrfn_proof
+    | first
+        [ intros (xr & ->);
+          lazymatch goal with
+          | |- is_xrfn (?ctor RT_rt _) => exists (ctor RT_xt xr); reflexivity
+          end
+        | intros _;
+          lazymatch goal with
+          | |- is_xrfn (?ctor RT_rt) => exists (ctor RT_xt); reflexivity
+          end ] ]).
 
 Ltac solve_fixpoint_ne :=
   unfold TCNoResolve; apply _.

@@ -3268,6 +3268,13 @@ Proof.
   apply is_xrfn_proof.
 Qed.
 
+Global Instance is_xrfn_list_all {rt : RT} (rs : list rt)
+    `{!∀ r : rt, IsXrfn r} : IsXrfn rs.
+Proof.
+  constructor. apply is_xrfn_list_iff, Forall_forall.
+  intros r _. apply is_xrfn_proof.
+Qed.
+
 Canonical Structure propRT : RT := directRT Prop.
 
 Canonical Structure funRT (A B : Type) : RT := directRT (A → B).
@@ -3305,6 +3312,10 @@ Proof.
   econstructor.
   destruct rs; apply is_xrfn_proof.
 Qed.
+
+Global Instance is_xrfn_option_all {rt : RT} (rs : option rt)
+    `{!∀ r : rt, IsXrfn r} : IsXrfn rs.
+Proof. destruct rs; apply _. Qed.
 
 Definition plistRT (l : list RT) : RT :=
   mk_RT (plist (RT_rt ∘ place_rfnRT) l) (plist (RT_xt ∘ place_rfnRT) l)

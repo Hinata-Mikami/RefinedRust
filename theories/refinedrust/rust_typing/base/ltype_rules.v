@@ -979,7 +979,7 @@ Section blocked_subtyping.
     - rewrite /ltype_incl'. iModIntro. destruct b.
       + iIntros (π l) "Hb".
         rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
-        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & %r' & Hrfn & Hshr & Hinh)".
+        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & %Hconc & %r' & Hrfn & Hshr & Hinh)".
         iPoseProof ("H12" $! inhabitant) as "(#Hsc12 & _ & _)".
         iModIntro.
         iExists ly. rewrite -Hst. iFrame "%".
@@ -994,10 +994,10 @@ Section blocked_subtyping.
         iDestruct ("H12" $! r') as "(_ & Hown12 & _)". by iApply "Hown12".
       + iIntros (π l) "Hb".
         iEval (rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own) in "Hb".
-        iDestruct "Hb" as (ly) "(_ & _ & _ & _ & %r' & _ & [])".
+        iDestruct "Hb" as (ly) "(_ & _ & _ & _ & _ & %r' & _ & [])".
       + iIntros (π l) "Hb".
         rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
-        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & %r' & Hrfn & Hrfnmut & Hshr & Hinh & Hcred)".
+        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & %Hconc & %r' & Hrfn & Hrfnmut & Hshr & Hinh & Hcred)".
         iPoseProof ("H12" $! inhabitant) as "(#Hsc12 & _ & _)".
         iExists ly. rewrite -Hst. iFrame "%".
         iSplitL "Hsc Hsc12"; first by iApply "Hsc12".
