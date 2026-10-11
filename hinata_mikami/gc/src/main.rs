@@ -381,7 +381,7 @@ impl Heap {
 
 
     /* 
-        ループ内で毎回 self.all_nodes を借用すると、
+        ループ内で毎回 &mut self.all_nodes を借用すると、
         そのたびに新しい一時 lifetime (κ, κ0, …) ができて 
         self の型の中に ShrBlockedLtype が積み重なり，検証が困難に。
         ループの外で一度だけ借用しておく形に変更
