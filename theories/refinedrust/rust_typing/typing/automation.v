@@ -1747,6 +1747,13 @@ Ltac solve_enum_is_xrfn_congr :=
 .
 
 (** Automatically refined enums use the same inductive with ordinary or canonical payloads. *)
+Ltac solve_enum_embed_simpl :=
+  lazymatch goal with
+  | |- SimplBothRel _ _ (?embed ?xr) _ =>
+    let head := get_head embed in
+    unfold SimplBothRel; destruct xr; cbn [head]; naive_solver
+  end.
+
 Ltac solve_enum_constructor_is_xrfn :=
   first
     [ intros [[xr ->]];

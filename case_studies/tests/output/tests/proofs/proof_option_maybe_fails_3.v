@@ -13,8 +13,6 @@ Proof.
   option_maybe_fails_3_prelude.
 
   rep liRStep; liShow.
-  liInst Hevar_x0 (option_Error_MyError (F := RT_xt)).
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

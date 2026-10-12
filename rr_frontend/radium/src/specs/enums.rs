@@ -640,14 +640,18 @@ impl<'def> Abstract<'def> {
             doc.push(coq::Sentence::Comment(comment));
             doc.push(coq::command::Command::Inductive(ind.clone()));
             for (pat, _, _) in &self.spec.variant_patterns {
-                doc.push(coq::command::CommandAttrs::new(coq::command::Arguments {
-                    name: pat.clone(),
-                    arguments_string: "{F}".to_owned(),
-                }).attributes("global"));
+                doc.push(
+                    coq::command::CommandAttrs::new(coq::command::Arguments {
+                        name: pat.clone(),
+                        arguments_string: "{F}".to_owned(),
+                    })
+                    .attributes("global"),
+                );
             }
             if !self.variants.is_empty() {
                 // Prefer a nullary constructor; otherwise require an inhabitant of its payload.
-                let index = self.spec.variant_patterns.iter().position(|(_, apps, _)| apps.is_empty()).unwrap_or(0);
+                let index =
+                    self.spec.variant_patterns.iter().position(|(_, apps, _)| apps.is_empty()).unwrap_or(0);
                 let (pat, apps, _) = &self.spec.variant_patterns[index];
                 let variant = self.variants[index].1.borrow();
                 let variant = variant.as_ref().unwrap();
@@ -661,20 +665,25 @@ impl<'def> Abstract<'def> {
                     params.push(coq::binder::Binder::new_generalized(
                         coq::binder::Kind::MaxImplicit,
                         None,
-                        coq::term::Type::Term(Box::new(app("Inhabited", vec![
-                            app("F", vec![ident(&variant.public_rt_def_name())]),
-                        ]))),
+                        coq::term::Type::Term(Box::new(app("Inhabited", vec![app("F", vec![ident(
+                            &variant.public_rt_def_name(),
+                        )])]))),
                     ));
                     app(pat, vec![ident("inhabitant")])
                 };
-                doc.push(coq::command::CommandAttrs::new(coq::command::Instance {
-                    name: Some(format!("{name}_inhabited")),
-                    params: coq::binder::BinderList::new(params),
-                    ty: coq::term::Type::Term(Box::new(app("Inhabited", vec![app(name, vec![ident("F")])]))),
-                    body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
-                        proof.push(coq::ltac::LTac::Exact(app("populate", vec![witness])));
-                    }),
-                }).attributes("global"));
+                doc.push(
+                    coq::command::CommandAttrs::new(coq::command::Instance {
+                        name: Some(format!("{name}_inhabited")),
+                        params: coq::binder::BinderList::new(params),
+                        ty: coq::term::Type::Term(Box::new(app("Inhabited", vec![app(name, vec![ident(
+                            "F",
+                        )])]))),
+                        body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                            proof.push(coq::ltac::LTac::Exact(app("populate", vec![witness])));
+                        }),
+                    })
+                    .attributes("global"),
+                );
             }
 
             document.append_document(doc);
@@ -723,11 +732,18 @@ impl<'def> Abstract<'def> {
             let embedding_name = format!("{name}_embed");
             document.push(coq::command::Definition::new(
                 embedding_name.clone(),
-                coq::binder::BinderList::new(vec![coq::binder::Binder::new(Some("xr".to_owned()), canonical_type)]),
+                coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                    Some("xr".to_owned()),
+                    canonical_type,
+                )]),
                 Some(ordinary_type),
                 coq::command::DefinitionBody::Term(embedding),
             ));
-            let rt_body = app("mk_RT", vec![app(name, vec![ident("RT_rt")]), app(name, vec![ident("RT_xt")]), ident(&embedding_name)]);
+            let rt_body = app("mk_RT", vec![
+                app(name, vec![ident("RT_rt")]),
+                app(name, vec![ident("RT_xt")]),
+                ident(&embedding_name),
+            ]);
             document.push(coq::command::Definition::new(
                 rt_name.clone(),
                 coq::binder::BinderList::empty(),
@@ -748,43 +764,95 @@ impl<'def> Abstract<'def> {
                 } else {
                     params.push(coq::binder::Binder::new(
                         Some("x".to_owned()),
-                        coq::term::Type::Term(Box::new(app("RT_rt", vec![ident(&variant.public_rt_def_name())]))),
+                        coq::term::Type::Term(Box::new(app("RT_rt", vec![ident(
+                            &variant.public_rt_def_name(),
+                        )]))),
                     ));
                     app(pat, vec![ident("x")])
                 };
+                let mut simpl_params = params.clone();
                 let conclusion = coq::term::Type::Term(Box::new(coq::term::Term::ExplicitApp(
-                    coq::Ident::new("IsXrfn"), vec![ident(&rt_name), value],
+                    coq::Ident::new("IsXrfn"),
+                    vec![ident(&rt_name), value.clone()],
                 )));
                 let ty = if apps.is_empty() {
                     conclusion
                 } else {
                     coq::term::Type::Function(
                         vec![coq::term::Type::Term(Box::new(coq::term::Term::ExplicitApp(
-                            coq::Ident::new("IsXrfn"), vec![ident(&variant.public_rt_def_name()), ident("x")],
+                            coq::Ident::new("IsXrfn"),
+                            vec![ident(&variant.public_rt_def_name()), ident("x")],
                         )))],
                         Box::new(conclusion),
                     )
                 };
-                document.push(coq::command::CommandAttrs::new(coq::command::Instance {
-                    name: Some(format!("{pat}_is_xrfn")),
-                    params: coq::binder::BinderList::new(params),
-                    ty,
-                    body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
-                        proof.push(coq::ltac::LTac::Literal("solve_enum_constructor_is_xrfn".to_owned()));
-                    }),
-                }).attributes("global"));
+                document.push(
+                    coq::command::CommandAttrs::new(coq::command::Instance {
+                        name: Some(format!("{pat}_is_xrfn")),
+                        params: coq::binder::BinderList::new(params),
+                        ty,
+                        body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                            proof.push(coq::ltac::LTac::Literal("solve_enum_constructor_is_xrfn".to_owned()));
+                        }),
+                    })
+                    .attributes("global"),
+                );
+
+                // Invert a known constructor through the canonical embedding using
+                // Lithium's ordinary equality and existential simplification rules.
+                let canonical_type = coq::term::Type::Term(Box::new(app(name, vec![ident("RT_xt")])));
+                simpl_params.push(coq::binder::Binder::new(Some("xr".to_owned()), canonical_type.clone()));
+                let canonical_value = coq::term::Term::AsType(
+                    Box::new(if apps.is_empty() { ident(pat) } else { app(pat, vec![ident("xp")]) }),
+                    Box::new(canonical_type),
+                );
+                let constructor_eq = app("eq", vec![ident("xr"), canonical_value]);
+                let simplified = if apps.is_empty() {
+                    constructor_eq
+                } else {
+                    coq::term::Term::Exists(
+                        coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                            Some("xp".to_owned()),
+                            coq::term::Type::Term(Box::new(app("RT_xt", vec![ident(
+                                &variant.public_rt_def_name(),
+                            )]))),
+                        )]),
+                        Box::new(app("and", vec![
+                            constructor_eq,
+                            app("eq", vec![
+                                ident("x"),
+                                app("RT_xrt", vec![ident(&variant.public_rt_def_name()), ident("xp")]),
+                            ]),
+                        ])),
+                    )
+                };
+                document.push(
+                    coq::command::CommandAttrs::new(coq::command::Instance {
+                        name: Some(format!("{pat}_embed_simpl")),
+                        params: coq::binder::BinderList::new(simpl_params),
+                        ty: coq::term::Type::Term(Box::new(app("SimplBothRel", vec![
+                            ident("eq"),
+                            value,
+                            app(&embedding_name, vec![ident("xr")]),
+                            simplified,
+                        ]))),
+                        body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                            proof.push(coq::ltac::LTac::Literal("solve_enum_embed_simpl".to_owned()));
+                        }),
+                    })
+                    .attributes("global"),
+                );
             }
         }
 
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
-        let enum_rfn_type = self.optional_inductive_def.as_ref().map_or_else(
-            || self.spec.rfn_type.to_string(),
-            |ind| format!("{}RT", ind.get_name()),
-        );
-        let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
-            "enum ({})",
-            enum_rfn_type
-        ))));
+        let enum_rfn_type = self
+            .optional_inductive_def
+            .as_ref()
+            .map_or_else(|| self.spec.rfn_type.to_string(), |ind| format!("{}RT", ind.get_name()));
+        let enum_type = self
+            .scope
+            .get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!("enum ({})", enum_rfn_type))));
 
         // main def
         let enum_body = format!(
