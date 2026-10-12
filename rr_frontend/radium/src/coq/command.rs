@@ -119,7 +119,11 @@ pub enum Command {
     /// Set or unset a named Rocq option.
     #[display("{} {} {}.", if *local { "Local" } else { "Global" }, if *enabled { "Set" } else { "Unset" }, name)]
     #[from(ignore)]
-    Option { local: bool, enabled: bool, name: String },
+    Option {
+        local: bool,
+        enabled: bool,
+        name: String,
+    },
 
     /// The [`From ... Require`] command.
     ///

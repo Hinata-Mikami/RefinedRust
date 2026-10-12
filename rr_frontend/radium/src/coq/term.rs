@@ -143,7 +143,13 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             Self::Match(scrutinee, branches) => {
                 write!(f, "match {scrutinee} with")?;
                 for branch in branches {
-                    write!(f, " | {} {} => {}", branch.constructor, fmt_list!(&branch.binders, " "), branch.body)?;
+                    write!(
+                        f,
+                        " | {} {} => {}",
+                        branch.constructor,
+                        fmt_list!(&branch.binders, " "),
+                        branch.body
+                    )?;
                 }
                 write!(f, " end")
             },
