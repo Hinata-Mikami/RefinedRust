@@ -26,6 +26,7 @@ Proof.
     { lia. }
     iPoseProof (big_sepL_delete _ _ 0 with "Hold") as "(Hfirst & Hrest)".
     { rewrite list_lookup_fmap Hlook_first //. }
+    iEval (unfold linkedlist_node) in "Hfirst".
     iRevert "Hfirst".
     rep <-! liRStep; liShow.
     apply_update (updateable_strip_guards).

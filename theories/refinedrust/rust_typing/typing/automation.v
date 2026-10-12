@@ -1527,7 +1527,12 @@ Ltac solve_trait_realization_pers :=
 Global Hint Extern 100 (IsXrfn _) =>
   progress invert_is_xrfn_assumptions; solve_is_xrfn : typeclass_instances.
 Global Hint Extern 100 (IsXrfnImplies _ _) =>
-  constructor; intros; solve_is_xrfn : typeclass_instances.
+  constructor; intros;
+  repeat match goal with
+  | H : _ ∧ _ |- _ => destruct H
+  | H : simplify_boringly_impl_q _ |- _ => cbn in H
+  end;
+  solve_is_xrfn : typeclass_instances.
 
 (** Enum-related tactic calls *)
 Ltac solve_mk_enum_tag_consistent :=

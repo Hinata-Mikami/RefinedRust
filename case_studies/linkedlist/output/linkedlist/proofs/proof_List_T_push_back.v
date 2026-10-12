@@ -55,6 +55,7 @@ Proof.
   { rewrite list_lookup_fmap. rewrite Hlook//. }
   rename select (_ !! _ = Some tl_ptr) into Hlook_last.
   rewrite Hlen_eq in Hlook_last.
+  iEval (unfold linkedlist_node) in "Hlast".
   iRevert "Hlast".
 
   rep <-! liRStep. liShow.
@@ -81,6 +82,7 @@ Proof.
   { iIntros "Hold". rep liRStep. liShow.
     iApply (big_sepL_delete  _ _ (length self - 1)).
     { rewrite list_lookup_fmap. rewrite Hlook//. }
+    unfold linkedlist_node.
     liShow. rep liRStep; liShow.
     iApply (big_sepL_impl with "Hcl").
     iModIntro. iIntros (k xk Hxk) "Hnode".

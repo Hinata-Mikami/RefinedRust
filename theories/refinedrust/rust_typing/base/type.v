@@ -2986,11 +2986,14 @@ Next Obligation.
 Qed.
 Global Arguments mk_pers_ex_inv_def : simpl never.
 
-(** Typeclass to customize how a prop is shared *)
+(** Typeclass to customize how a prop is shared. [assumptions] may be
+    used by the sharing proof, but [shareable_prop] is available without
+    supplying evidence for them. *)
 Class Shareable `{!typeGS Σ} {rt : RT} (π : thread_id) (κ : lft) (κs : list lft)
-    (outer : rt) (P : iProp Σ) := {
+    (outer : rt) (assumptions : Prop) (P : iProp Σ) := {
   shareable_prop : iProp Σ;
   shareable_proof :
+    assumptions →
     is_xrfn outer →
     ∀ F G q,
     lftE ⊆ F →
@@ -3004,7 +3007,7 @@ Class Shareable `{!typeGS Σ} {rt : RT} (π : thread_id) (κ : lft) (κs : list 
        G)) -∗
    logical_step F G;
 }.
-Global Hint Mode Shareable + + + + + + + + : typeclass_instances.
+Global Hint Mode Shareable + + + + + + + + + : typeclass_instances.
 
 (** Typeclass to customize how a prop is ghost-dropped *)
 Class GhostDroppable `{!typeGS Σ} (P : iProp Σ) := {
@@ -3043,7 +3046,7 @@ Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabit
   inv_P_xrfn
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts y (P π x y)))
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts y True (P π x y)))
   (Hdrop : ∀ π x y, TCNoResolve (GhostDroppable (P π x y)))
   inv_P_shr_pers
   inv_P_shr_mono
@@ -3055,7 +3058,7 @@ Next Obligation.
   iIntros (q0 ? Hyr) "CTX Hna Htok Hb".
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr0 x y q y').(shareable_proof) Hyr with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 x y q y').(shareable_proof) I Hyr with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
   iIntros "(Hshr' & Htok & Htok1)". iFrame.
 Qed.
@@ -3074,7 +3077,7 @@ Program Definition mk_ex_inv_def_auto_shr `{!typeGS Σ} {X : RT} {Y : RT} `{!Inh
   inv_P_xrfn
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts y (P π x y)))
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts y True (P π x y)))
   inv_P_shr_pers
   inv_P_shr_mono
   inv_P_ghost_droppable
@@ -3086,7 +3089,7 @@ Next Obligation.
   iIntros (q0 ? Hyr) "CTX Hna Htok Hb".
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr0 x y q y').(shareable_proof) Hyr with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 x y q y').(shareable_proof) I Hyr with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
   iIntros "(Hshr' & Htok & Htok1)". iFrame.
 Qed.

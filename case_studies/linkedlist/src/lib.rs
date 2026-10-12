@@ -35,10 +35,7 @@ struct Link<T> {
 #[rr::inv("Hnot_null": "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 // Ownership of the Link pointer for every element.
 #[rr::inv(#iris "([∗ list] i ↦ x ∈ xs,
-    ∃ l lnext lprev : loc, ⌜locs !! i = Some l⌝ ∗ ⌜(locs ++ [NULL_loc]) !! S i = Some lnext⌝ ∗
-    ⌜(NULL_loc :: locs) !! i = Some lprev⌝ ∗
-    guarded true (l ◁ₗ[π, Owned] #( *[#x; #lnext; #lprev]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
-    freeable_nz l (ly_size (use_struct_layout_alg' (Link_sls {st_of T}))) 1 HeapAlloc
+    linkedlist_node π {T} (Link_sls {st_of T}) locs i x
     )")]
 #[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π x")]
 #[rr::ty_lfts("ty_lfts {T}")]
@@ -194,10 +191,7 @@ impl<T> Drop for List<T> {
 #[rr::inv("Hnot_null": "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 // Ownership of the Link pointer for every element.
 #[rr::inv(#iris "([∗ list] i ↦ x ∈ xs,
-    ∃ l lnext lprev : loc, ⌜locs !! i = Some l⌝ ∗ ⌜(locs ++ [NULL_loc]) !! S i = Some lnext⌝ ∗
-    ⌜(prev_ptr :: locs) !! i = Some lprev⌝ ∗
-    guarded false (l ◁ₗ[π, Shared {'a}] #( *[#($# x); #lnext; #lprev]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
-    True
+    linkedlist_node_shared π {'a} {T} (Link_sls {st_of T}) locs prev_ptr i ($# x)
     )")]
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]

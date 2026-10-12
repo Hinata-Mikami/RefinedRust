@@ -16,7 +16,12 @@ Proof.
   Vec_T_get_unchecked_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_typed_array_access l i (UntypedSynType $ st_of T_ty MetaNone)).
+  iRename select (_ ◁ₗ[_, Shared _] _ @ _)%I into "Harray".
+  let Harray := iTypeOf' "Harray" in
+  lazymatch Harray with
+  | (?l ◁ₗ[_, Shared _] _ @ _)%I =>
+    apply_update (updateable_typed_array_access l i (UntypedSynType $ st_of T_ty MetaNone))
+  end.
   repeat liRStep; liShow.
 
   all: print_remaining_goal.
@@ -24,8 +29,8 @@ Proof.
   Unshelve. all: sidecond_hammer.
   { split; first lia.
     revert select ((ly_size _ * _)%nat ≤ _).
-    move: Hi. revert select (length xs ≤ length els). clear. nia. }
-  { move: Hi. revert select (length xs ≤ length els). clear. nia. }
+    move: Hi. revert select (length xs ≤ length _). clear. nia. }
+  { move: Hi. revert select (length xs ≤ length _). clear. nia. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

@@ -20,6 +20,7 @@ Proof.
   rename select (head locs = Some _) into Hhead.
   apply head_Some in Hhead as (locs' & ->).
   (* Extract the old head's value while intentionally retaining its allocation. *)
+  iEval (unfold linkedlist_node) in "Hels".
   iRevert "Hels". simpl.
   rep <-! liRStep; liShow.
   apply_update updateable_strip_guards.

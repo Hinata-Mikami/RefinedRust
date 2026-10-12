@@ -25,6 +25,7 @@ Proof.
   { rewrite list_lookup_fmap Hlook_last_elem //. }
   rename select (last locs = Some tl_ptr) into Hlast_loc.
   rewrite last_lookup in Hlast_loc.
+  iEval (unfold linkedlist_node) in "Hlast".
   iRevert "Hlast".
   rep <-! liRStep; liShow.
   apply_update updateable_strip_guards.
@@ -57,6 +58,7 @@ Proof.
   iPoseProof (big_sepL_delete _ _ (length self - 2) with "Hrest") as
     "(Hnew_last & Hrest_other)".
   { rewrite list_lookup_fmap Hlook_prev_elem //. }
+  iEval (unfold linkedlist_node) in "Hnew_last".
   iRevert "Hnew_last".
   rewrite decide_False; last lia.
   (* Strip the predecessor's guard at the write backtracking point. *)

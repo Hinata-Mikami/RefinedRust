@@ -24,6 +24,7 @@ Proof.
   destruct locs as [ | hl locs]; first done.
   iRename select ([∗ list] _ ↦ _ ∈ _, _)%I into "Hxs".
   simpl. iDestruct "Hxs" as "(Hx & Hxs)".
+  iEval (unfold linkedlist_node_shared) in "Hx".
   iRevert "Hx".
   move: Hhead. 
 
