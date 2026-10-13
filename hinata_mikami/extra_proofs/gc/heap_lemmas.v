@@ -1,6 +1,7 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing.
 From iris.base_logic.lib Require Import ghost_map.
+From hinata_mikami.extra_proofs.gc Require Import gc_defs.
 
 Section heap_lemmas.
 
@@ -189,5 +190,156 @@ Proof.
     as %Hne.
   eauto.
 Qed.
+
+Definition aligned_nodes
+    (vals : list Z)
+    (locs nexts : list loc)
+    (marks : list bool)
+    (Φ :
+      nat → Z → loc → loc → bool → iProp Σ)
+    : iProp Σ :=
+  [∗ list] k ↦ v ∈ vals,
+    ∃ (l n : loc) (m : bool),
+      ⌜locs !! k = Some l⌝ ∗
+      ⌜nexts !! k = Some n⌝ ∗
+      ⌜marks !! k = Some m⌝ ∗
+      Φ k v l n m.
+
+Definition sweep_nodes_inv
+    (cut : nat)
+    (vals : list Z)
+    (locs nexts : list loc)
+    (orig_marks : list bool)
+    (Φ :
+      nat → Z → loc → loc → bool → iProp Σ)
+    : iProp Σ :=
+  aligned_nodes
+    (keep_marked_suffix cut vals orig_marks)
+    (keep_marked_suffix cut locs orig_marks)
+    (keep_marked_suffix cut nexts orig_marks)
+    (sweep_marks cut orig_marks)
+    Φ.
+
+Lemma sweep_nodes_inv_init
+    vals locs nexts marks Φ :
+  length vals = length marks →
+  length locs = length marks →
+  length nexts = length marks →
+  aligned_nodes vals locs nexts marks Φ -∗
+  sweep_nodes_inv
+    (length marks)
+    vals locs nexts marks Φ.
+
+Proof.
+Admitted.
+
+Lemma sweep_nodes_inv_step
+    (cut : nat)
+    vals locs nexts marks Φ :
+  0 < cut →
+  cut ≤ length marks →
+  length vals = length marks →
+  length locs = length marks →
+  length nexts = length marks →
+
+  sweep_nodes_inv
+    cut vals locs nexts marks Φ
+  -∗
+
+  ∃ (v : Z) (l n : loc) (m : bool),
+
+    ⌜vals !! (cut - 1) = Some v⌝ ∗
+    ⌜locs !! (cut - 1) = Some l⌝ ∗
+    ⌜nexts !! (cut - 1) = Some n⌝ ∗
+    ⌜marks !! (cut - 1) = Some m⌝ ∗
+
+    Φ (cut - 1) v l n m ∗
+
+    match m with
+    | true =>
+        Φ (cut - 1) v l n false -∗
+        sweep_nodes_inv
+          (cut - 1)
+          vals locs nexts marks Φ
+    | false =>
+        sweep_nodes_inv
+          (cut - 1)
+          vals locs nexts marks Φ
+    end.
+
+Proof.
+Admitted.
+
+Lemma sweep_nodes_inv_done
+    vals locs nexts marks Φ :
+  length vals = length marks →
+  length locs = length marks →
+  length nexts = length marks →
+
+  sweep_nodes_inv
+    0 vals locs nexts marks Φ
+  -∗
+
+  aligned_nodes
+    (keep_marked vals marks)
+    (keep_marked locs marks)
+    (keep_marked nexts marks)
+    (replicate
+      (length (keep_marked locs marks))
+      false)
+    Φ.
+
+Proof.
+Admitted.
+
+
+Lemma keep_marked_length_same_mask {A B}
+    (xs : list A)
+    (ys : list B)
+    (marks : list bool) :
+  length xs = length ys →
+  length (keep_marked xs marks) =
+  length (keep_marked ys marks).
+
+Proof.
+Admitted.
+
+
+Lemma keep_marked_NoDup {A}
+    (xs : list A)
+    (marks : list bool) :
+  NoDup xs →
+  NoDup (keep_marked xs marks).
+
+Proof.
+Admitted.
+
+
+
+Lemma keep_marked_Forall {A}
+    (P : A → Prop)
+    (xs : list A)
+    (marks : list bool) :
+  Forall P xs →
+  Forall P (keep_marked xs marks).
+
+Proof.
+Admitted.
+
+
+Lemma marks_closed_keep_marked_next_valid
+    (locs nexts : list loc)
+    (marks : list bool) :
+  length locs = length nexts →
+  marks_closed locs nexts marks →
+  Forall
+    (λ n,
+      n = NULL_loc ∨
+      n ∈ keep_marked locs marks)
+    (keep_marked nexts marks).
+
+Proof.
+Admitted.
+
 
 End heap_lemmas.

@@ -1,6 +1,7 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_sweep.
+From hinata_mikami.extra_proofs.gc Require Import heap_lemmas.
 
 Set Default Proof Using "Type".
 
@@ -65,6 +66,15 @@ Proof.
     iApply ("Ha" with "[$] [$]").
 Qed.
 
+Ltac liRStepUntilBb2 :=
+  repeat lazymatch goal with
+  | |- environments.envs_entails _
+      (typed_stmt _ _ _ (Goto "_bb2") _ _ _) =>
+      fail
+  | _ =>
+      liRStep
+  end;
+  liShow.
 
 
 Lemma Heap_sweep_proof (π : thread_id) :
@@ -72,62 +82,97 @@ Lemma Heap_sweep_proof (π : thread_id) :
 Proof.
   Heap_sweep_prelude.
 
-  rep <-! liRStep; liShow.
+  liRStepUntilBb2.
 
-  -
-    iRename select
-      ([∗ list] i ↦ v ∈ vals,
-        ∃ (l n : loc) (m : bool), _)%I
-      into "Hnodes".
+  set (Φ :=
+  fun (k : nat) (v : Z)
+      (l n : loc) (m : bool) =>
+    (guarded true
+       (l ◁ₗ[π, Owned]
+          # -[#v; #n; #m]
+          @ (◁ struct_t Node_sls
+               +[int i32; alias_ptr_t; bool_t])) ∗
+     freeable_nz l
+       (ly_size (use_layout_alg' Node_sls))
+       1 HeapAlloc)%I).
+  iRename select
+    ([∗ list] i ↦ v ∈ vals,
+      ∃ (l n : loc) (m : bool), _)%I
+    into "Hnodes".
+    iAssert
+    (aligned_nodes vals locs nexts marks Φ)%I
+    with "[Hnodes]"
+    as "Hnodes_aligned".
+  {
+    unfold aligned_nodes.
+    unfold Φ.
+    iExact "Hnodes".
+  }
 
-    set (idx := Z.to_nat (length locs - 1)).
+  assert (Hvals_marks :
+    length vals = length marks).
+  {
+    lia.
+  }
 
-    assert (Hidx_locs : (idx < length locs)%nat).
+  assert (Hlocs_marks :
+    length locs = length marks).
+  {
+    lia.
+  }
+
+  assert (Hnexts_marks :
+    length nexts = length marks).
+  {
+    lia.
+  }
+
+  iPoseProof
+    (sweep_nodes_inv_init
+      vals locs nexts marks Φ
+      Hvals_marks
+      Hlocs_marks
+      Hnexts_marks
+      with "Hnodes_aligned")
+    as "Hsweep".
+
+  let_bind_envs.
+  liRStep.
+  liShow.
+
+  rep liRStep; liShow.
+  assert (Hcut :
+    Z.to_nat (Z.of_nat (length locs)) = length marks).
+  {
+    rewrite Nat2Z.id.
+    exact Hlocs_marks.
+  }
+
+  iApply prove_with_subtype_default.
+
+  iSplitL "Hsweep".
+  {
+    iEval (rewrite /sweep_nodes_inv /aligned_nodes) in "Hsweep".
+    rewrite Hcut.
+
+    assert (Hkeep_vals :
+      keep_marked_suffix (length marks) vals marks =
+      take (length marks) vals).
     {
-      unfold idx.
-      lia.
+      unfold keep_marked_suffix.
+
+      rewrite drop_ge.
+      2: lia.
+
+      rewrite drop_ge.
+      2: lia.
+
+      simpl.
+
+      
     }
+  }
 
-    assert (Hidx_vals : (idx < length vals)%nat).
-    {
-      rewrite <- H9.
-      exact Hidx_locs.
-    }
-
-    destruct
-      (lookup_lt_is_Some_2 vals idx Hidx_vals)
-      as [vi Hvi].
-
-    iDestruct
-      (big_sepL_lookup_acc_impl
-        idx vi Hvi
-        with "Hnodes")
-      as "(HiNode & Hclose)".
-
-    iDestruct "HiNode" as
-      (node_l next_i mark_i)
-      "(%Hloc_i & %Hnext_i & %Hmark_i &
-        Hguard & Hfree)".
-
-    assert (Hloc_total :
-      locs !! idx = Some (locs !!! idx)).
-    {
-      apply list_lookup_lookup_total_lt.
-      exact Hidx_locs.
-    }
-
-    assert (node_l = locs !!! idx) as Heq_node.
-    {
-      rewrite Hloc_i in Hloc_total.
-      injection Hloc_total as Heq_node.
-      exact Heq_node.
-    }
-
-    subst node_l.
-
-    apply_update updateable_strip_guards.
-
-    rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

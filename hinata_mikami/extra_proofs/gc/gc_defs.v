@@ -775,3 +775,81 @@ Proof.
   rewrite app_nil_r.
   done.
 Qed.
+
+
+
+Definition sweep_marks
+    (cut : nat)
+    (marks : list bool) : list bool :=
+  take cut marks ++
+  replicate
+    (length
+      (keep_marked
+        (drop cut marks)
+        (drop cut marks)))
+    false.
+
+Lemma sweep_marks_length
+    (marks : list bool) :
+  sweep_marks (length marks) marks = marks.
+
+Proof.
+Admitted.
+
+Lemma sweep_marks_0
+    (marks : list bool) :
+  sweep_marks 0 marks =
+    replicate
+      (length (keep_marked marks marks))
+      false.
+
+Proof.
+Admitted.
+
+Lemma keep_marked_suffix_step_true {A}
+    (k : nat)
+    (xs : list A)
+    (marks : list bool) :
+  length xs = length marks →
+  marks !! k = Some true →
+  keep_marked_suffix (S k) xs marks =
+  keep_marked_suffix k xs marks.
+
+Proof.
+Admitted.
+
+Lemma sweep_marks_step_true
+    (k : nat)
+    (marks : list bool) :
+  (k < length marks)%nat →
+  marks !! k = Some true →
+  <[k := false]> (sweep_marks (S k) marks) =
+  sweep_marks k marks.
+
+Proof.
+Admitted.
+
+
+Lemma keep_marked_suffix_step_false {A}
+    (k : nat)
+    (xs : list A)
+    (marks : list bool) :
+  length xs = length marks →
+  marks !! k = Some false →
+  delete k
+    (keep_marked_suffix (S k) xs marks) =
+  keep_marked_suffix k xs marks.
+
+Proof.
+Admitted.
+
+Lemma sweep_marks_step_false
+    (k : nat)
+    (marks : list bool) :
+  (k < length marks)%nat →
+  marks !! k = Some false →
+  delete k (sweep_marks (S k) marks) =
+  sweep_marks k marks.
+
+Proof.
+Admitted.

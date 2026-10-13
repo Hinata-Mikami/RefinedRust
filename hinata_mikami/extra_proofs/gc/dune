@@ -3,8 +3,8 @@
   -w -notation-overridden
   -w -redundant-canonical-projection)
 
- (package hinata-mikami-extra-proofs)
 
+ (package hinata-mikami-extra-proofs)
  (name hinata_mikami.extra_proofs.gc)
 
  (generate_project_file)

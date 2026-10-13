@@ -389,166 +389,74 @@ impl Heap {
 
     #[rr::returns("()")]
     unsafe fn sweep(&mut self) {
-
-        // let mut i = self.all_nodes.len();
-        let nodes = &mut self.all_nodes; // 修正
-
+        let nodes = &mut self.all_nodes;
         let mut i = nodes.len();
 
         while i > 0 {
             let _ =
-                // この辺の理解
+                #[rr::params("γnodes" : "gname")]
                 #[rr::exists("ic" : "Z")]
-                #[rr::inv_var("i": "#ic")]
-                #[rr::inv_vars("nodes", "self")]
+                #[rr::inv_var("i" : "#ic")]
+                /*
+                * local_nodes の実際の refinement は概ね
+                *
+                *   # (
+                *       # (<#> <$#> current_locs),
+                *       γnodes
+                *     )
+                *
+                * という形。
+                */
+                #[rr::inv_var("nodes" : "
+                    # (
+                        # (<#> <$#>
+                            (keep_marked_suffix
+                                (Z.to_nat ic)
+                                locs
+                                marks)),
+                        γnodes
+                    )
+                ")]
                 #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]
-                // #[rr::inv("
-                //     self =
-                //     ((-[
-                //         keep_marked_suffix
-                //         (Z.to_nat ic)
-                //         locs
-                //         marks
-                //     ]), γ)
-                // ")]
+                #[rr::inv(#iris "
+                    sweep_nodes_inv
+                        (Z.to_nat ic)
+                        vals
+                        locs
+                        nexts
+                        marks
+                        (λ (k : nat)
+                        (v : Z)
+                        (l n : loc)
+                        (m : bool),
+                            guarded true
+                                (l ◁ₗ[π, Owned]
+                                    # -[#v; #n; #m]
+                                    @ (◁ (Node_ty <INST!>))) ∗
+                            freeable_nz l
+                                (ly_size
+                                    (use_layout_alg' Node_sls))
+                                1 HeapAlloc)
+                ")]
                 #[rr::ignore] || {};
 
             i -= 1;
 
             let node_ptr = *vec_index(nodes, i);
 
-            if !(*node_ptr).marked {
+            if (*node_ptr).marked {
+                /*
+                * 生存ノード。
+                * 後段のループで一括リセットする代わりに、
+                * ここで false に戻す。
+                */
+                Node::set_marked(node_ptr, false);
+            } else {
                 let node_ptr = nodes.remove(i);
                 let _ = Box::from_raw(node_ptr);
             }
         }
-
-        let len = nodes.len();
-        let mut i = 0;
-
-        while i < len {
-            let node_ptr = *vec_index(nodes, i);
-            Node::set_marked(node_ptr, false);
-            i += 1;
-        }
     }
-
-
-    // unsafe fn sweep(&mut self) {
-    //     let mut i = self.all_nodes.len();
-
-    //     while i > 0 {
-
-    //         /* 
-    //            i = length locs に固定されてしまっていたので
-    //            ループ時に動ける i を用意する：ループ不変条件
-    //         */
-    //         /*
-    //            current self.all_nodes
-    //            =
-    //            まだ処理していない部分(先頭i個)
-    //            +
-    //            処理済み部分のうち marked=true のもの（それ以降）
-    //          */
-    //         // keep_marked_suffix :=
-    //         // take i xs ++ keep_marked (drop i xs) (drop i marks).
-    //         let _ =
-    //             #[rr::exists("ic" : "Z")]
-    //             #[rr::inv_var("i": "#ic")]
-    //             // #[rr::inv_vars("self")]
-    //             #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]
-    //             // #[rr::inv("
-    //             //     self =
-    //             //     ((-[
-    //             //         keep_marked_suffix
-    //             //         (Z.to_nat ic)
-    //             //         locs
-    //             //         marks
-    //             //     ]), γ)
-    //             // ")]
-    //             #[rr::ignore] || {};
-
-    //         i -= 1;
-
-    //         let node_ptr = *vec_index(&self.all_nodes, i);
-
-    //         if !(*node_ptr).marked {
-    //             let node_ptr = self.all_nodes.remove(i);
-    //             let _ = Box::from_raw(node_ptr);
-    //         }
-    //     }
-
-    //     let len = self.all_nodes.len();
-    //     let mut i = 0;
-
-    //     while i < len {
-    //         let node_ptr = *vec_index(&self.all_nodes, i);
-    //         Node::set_marked(node_ptr, false);
-    //         i += 1;
-    //     }
-    // }
-    
-
-    // #[rr::params("h")]
-    // #[rr::args("h")]
-    // #[rr::requires("
-    //     let '(vals, locs, nexts, marks) := h.cur in
-    //     marks_closed locs nexts marks
-    // ")]
-    // #[rr::observe("h.ghost" : "
-    //     let '(vals, locs, nexts, marks) := h.cur in
-    //     let vals' := keep_marked vals marks in
-    //     let locs' := keep_marked locs marks in
-    //     let nexts' := keep_marked nexts marks in
-    //     (vals',
-    //     locs',
-    //     nexts',
-    //     replicate (length locs') false)
-    // ")]
-    // #[rr::returns("()")]
-    // /* スイープフェーズ */
-    // unsafe fn sweep(&mut self) {
-    //     // Phase 1:
-    //     // dead node からの辺をすべて切る
-    //     let len = self.all_nodes.len();
-    //     let mut i = 0;
-
-    //     while i < len {
-    //         let node_ptr = *vec_index(&self.all_nodes, i);
-
-    //         if !(*node_ptr).marked {
-    //             Node::set_next(node_ptr, ptr::null_mut());
-    //         }
-
-    //         i += 1;
-    //     }
-
-    //     // Phase 2:
-    //     // dead node を後ろから削除・解放
-    //     let mut i = self.all_nodes.len();
-
-    //     while i > 0 {
-    //         i -= 1;
-
-    //         let node_ptr = *vec_index(&self.all_nodes, i);
-
-    //         if !(*node_ptr).marked {
-    //             let node_ptr = self.all_nodes.remove(i);
-    //             let _ = Box::from_raw(node_ptr);
-    //         }
-    //     }
-
-    //     // Phase 3:
-    //     // survivor の mark を false に戻す
-    //     let len = self.all_nodes.len();
-    //     let mut i = 0;
-
-    //     while i < len {
-    //         let node_ptr = *vec_index(&self.all_nodes, i);
-    //         Node::set_marked(node_ptr, false);
-    //         i += 1;
-    //     }
-    // }
 
 
     /* マークアンドスイープGC */
