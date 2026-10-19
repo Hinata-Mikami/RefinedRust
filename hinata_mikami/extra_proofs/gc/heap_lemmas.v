@@ -191,155 +191,177 @@ Proof.
   eauto.
 Qed.
 
+(* These list properties are independent of the spatial node predicate. *)
+Lemma keep_marked_length_same_mask {A B}
+    (xs : list A) (ys : list B) (marks : list bool) :
+  length xs = length ys →
+  length (keep_marked xs marks) = length (keep_marked ys marks).
+Proof.
+  revert ys marks.
+  induction xs as [|x xs IH]; intros [|y ys] [|[] marks] Hlen;
+    simpl in *; try done; try lia.
+  all: f_equal; apply IH; lia.
+Qed.
+
+Lemma keep_marked_NoDup {A} (xs : list A) (marks : list bool) :
+  NoDup xs → NoDup (keep_marked xs marks).
+Proof.
+  intros Hnd. revert marks.
+  induction Hnd as [|x xs Hnot Hnd IH]; intros marks.
+  - destruct marks; constructor.
+  - destruct marks as [|[] marks]; simpl.
+    + constructor.
+    + constructor; last apply IH.
+      intros Hin. apply Hnot.
+      apply elem_of_keep_marked in Hin as (i & Hi & _).
+      eapply list_elem_of_lookup_2. exact Hi.
+    + apply IH.
+Qed.
+
+Lemma keep_marked_Forall {A} (P : A → Prop) xs marks :
+  Forall P xs → Forall P (keep_marked xs marks).
+Proof.
+  intros HP. revert marks.
+  induction HP; intros [|[] marks]; simpl; auto using Forall_cons, Forall_nil.
+Qed.
+
+Lemma marks_closed_keep_marked_next_valid locs nexts marks :
+  length locs = length nexts →
+  Forall (λ n, n = NULL_loc ∨ n ∈ locs) nexts →
+  Forall (λ l, loc_a l ≠ 0) locs →
+  marks_closed locs nexts marks →
+  Forall (λ n, n = NULL_loc ∨ n ∈ keep_marked locs marks)
+    (keep_marked nexts marks).
+Proof.
+  intros Hlen Hvalid Hnonnull Hclosed.
+  apply Forall_forall. intros n Hin.
+  apply elem_of_keep_marked in Hin as (p & Hnext & Hmark).
+  have Horig : n ∈ nexts by eapply list_elem_of_lookup_2; eauto.
+  apply (proj1 (Forall_forall _ _) Hvalid) in Horig.
+  destruct Horig as [-> | Hin]; first by left.
+  right. apply list_elem_of_lookup_1 in Hin as (q & Hloc).
+  apply elem_of_keep_marked. exists q. split; first done.
+  have Hnz : loc_a n ≠ 0.
+  { apply (proj1 (Forall_forall _ _) Hnonnull).
+    eapply list_elem_of_lookup_2. exact Hloc. }
+  eapply Hclosed; eauto.
+Qed.
+
+(* Node ownership does not depend on the changing position in the Vec. *)
 Definition aligned_nodes
-    (vals : list Z)
-    (locs nexts : list loc)
-    (marks : list bool)
-    (Φ :
-      nat → Z → loc → loc → bool → iProp Σ)
-    : iProp Σ :=
+    (vals : list Z) (locs nexts : list loc) (marks : list bool)
+    (Φ : Z → loc → loc → bool → iProp Σ) : iProp Σ :=
   [∗ list] k ↦ v ∈ vals,
     ∃ (l n : loc) (m : bool),
-      ⌜locs !! k = Some l⌝ ∗
-      ⌜nexts !! k = Some n⌝ ∗
-      ⌜marks !! k = Some m⌝ ∗
-      Φ k v l n m.
+      ⌜locs !! k = Some l⌝ ∗ ⌜nexts !! k = Some n⌝ ∗
+      ⌜marks !! k = Some m⌝ ∗ Φ v l n m.
+
+Lemma aligned_nodes_cons v vals l locs n nexts m marks Φ :
+  aligned_nodes (v :: vals) (l :: locs) (n :: nexts) (m :: marks) Φ
+  ⊣⊢ Φ v l n m ∗ aligned_nodes vals locs nexts marks Φ.
+Proof.
+  rewrite /aligned_nodes big_sepL_cons /=.
+  iSplit.
+  - iIntros "[(%l' & %n' & %m' & %Hl & %Hn & %Hm & Hnode) Htail]".
+    simplify_eq. iFrame.
+  - iIntros "[Hnode Htail]". by iFrame.
+Qed.
 
 Definition sweep_nodes_inv
-    (cut : nat)
-    (vals : list Z)
-    (locs nexts : list loc)
+    (cut : nat) (vals : list Z) (locs nexts : list loc)
     (orig_marks : list bool)
-    (Φ :
-      nat → Z → loc → loc → bool → iProp Σ)
-    : iProp Σ :=
+    (Φ : Z → loc → loc → bool → iProp Σ) : iProp Σ :=
   aligned_nodes
     (keep_marked_suffix cut vals orig_marks)
     (keep_marked_suffix cut locs orig_marks)
     (keep_marked_suffix cut nexts orig_marks)
-    (sweep_marks cut orig_marks)
-    Φ.
+    (sweep_marks cut orig_marks) Φ.
 
-Lemma sweep_nodes_inv_init
-    vals locs nexts marks Φ :
+Lemma sweep_nodes_inv_cons cut v vals l locs n nexts m marks Φ :
+  sweep_nodes_inv (S cut) (v :: vals) (l :: locs) (n :: nexts)
+    (m :: marks) Φ
+  ⊣⊢ Φ v l n m ∗ sweep_nodes_inv cut vals locs nexts marks Φ.
+Proof.
+  by rewrite /sweep_nodes_inv /keep_marked_suffix /sweep_marks /= aligned_nodes_cons.
+Qed.
+
+Lemma sweep_nodes_inv_zero_cons v vals l locs n nexts m marks Φ :
+  sweep_nodes_inv 0 (v :: vals) (l :: locs) (n :: nexts) (m :: marks) Φ
+  ⊣⊢ if m then Φ v l n false ∗ sweep_nodes_inv 0 vals locs nexts marks Φ
+       else sweep_nodes_inv 0 vals locs nexts marks Φ.
+Proof.
+  destruct m; rewrite /sweep_nodes_inv /keep_marked_suffix /sweep_marks /=;
+    first by rewrite aligned_nodes_cons.
+  done.
+Qed.
+
+Lemma sweep_nodes_inv_init vals locs nexts marks Φ :
   length vals = length marks →
   length locs = length marks →
   length nexts = length marks →
   aligned_nodes vals locs nexts marks Φ -∗
-  sweep_nodes_inv
-    (length marks)
-    vals locs nexts marks Φ.
-
+  sweep_nodes_inv (length marks) vals locs nexts marks Φ.
 Proof.
-Admitted.
+  intros Hv Hl Hn. rewrite /sweep_nodes_inv sweep_marks_length.
+  rewrite -{1}Hv keep_marked_suffix_length.
+  rewrite -{1}Hl keep_marked_suffix_length.
+  rewrite -{1}Hn keep_marked_suffix_length. by iIntros "$".
+Qed.
 
-Lemma sweep_nodes_inv_step
-    (cut : nat)
-    vals locs nexts marks Φ :
-  0 < cut →
-  cut ≤ length marks →
+Lemma sweep_nodes_inv_step (cut : nat) vals locs nexts marks Φ :
+  0 < cut → cut ≤ length marks →
   length vals = length marks →
   length locs = length marks →
   length nexts = length marks →
-
-  sweep_nodes_inv
-    cut vals locs nexts marks Φ
-  -∗
-
+  sweep_nodes_inv cut vals locs nexts marks Φ -∗
   ∃ (v : Z) (l n : loc) (m : bool),
-
     ⌜vals !! (cut - 1) = Some v⌝ ∗
     ⌜locs !! (cut - 1) = Some l⌝ ∗
     ⌜nexts !! (cut - 1) = Some n⌝ ∗
-    ⌜marks !! (cut - 1) = Some m⌝ ∗
-
-    Φ (cut - 1) v l n m ∗
-
+    ⌜marks !! (cut - 1) = Some m⌝ ∗ Φ v l n m ∗
     match m with
-    | true =>
-        Φ (cut - 1) v l n false -∗
-        sweep_nodes_inv
-          (cut - 1)
-          vals locs nexts marks Φ
-    | false =>
-        sweep_nodes_inv
-          (cut - 1)
-          vals locs nexts marks Φ
+    | true => Φ v l n false -∗ sweep_nodes_inv (cut - 1) vals locs nexts marks Φ
+    | false => sweep_nodes_inv (cut - 1) vals locs nexts marks Φ
     end.
-
 Proof.
-Admitted.
+  revert vals locs nexts marks.
+  induction cut as [|cut IH]; intros vals locs nexts marks Hpos Hcut Hv Hl Hn;
+    first lia.
+  replace (S cut - 1)%nat with cut by lia.
+  destruct vals as [|v vals], locs as [|l locs], nexts as [|n nexts],
+    marks as [|m marks]; simpl in Hv, Hl, Hn, Hcut; try lia.
+  rewrite sweep_nodes_inv_cons.
+  iIntros "[Hnode Htail]".
+  destruct cut as [|cut].
+  - iExists v, l, n, m. iFrame "Hnode".
+    do 4 (iSplit; first done).
+    destruct m; simpl; rewrite sweep_nodes_inv_zero_cons /=.
+    + iIntros "Hreset". iFrame.
+    + iExact "Htail".
+  - iDestruct (IH vals locs nexts marks with "Htail")
+      as (v' l' n' m') "(%Hv' & %Hl' & %Hn' & %Hm' & Hcurrent & Hclose)";
+      try lia.
+    replace (S cut - 1)%nat with cut in * by lia.
+    iExists v', l', n', m'. iFrame "Hcurrent".
+    do 4 (iSplit; first done).
+    destruct m'; simpl.
+    + iIntros "Hreset". rewrite sweep_nodes_inv_cons.
+      iFrame "Hnode". by iApply "Hclose".
+    + rewrite sweep_nodes_inv_cons. iFrame.
+Qed.
 
-Lemma sweep_nodes_inv_done
-    vals locs nexts marks Φ :
+Lemma sweep_nodes_inv_done vals locs nexts marks Φ :
   length vals = length marks →
   length locs = length marks →
   length nexts = length marks →
-
-  sweep_nodes_inv
-    0 vals locs nexts marks Φ
-  -∗
-
-  aligned_nodes
-    (keep_marked vals marks)
-    (keep_marked locs marks)
+  sweep_nodes_inv 0 vals locs nexts marks Φ -∗
+  aligned_nodes (keep_marked vals marks) (keep_marked locs marks)
     (keep_marked nexts marks)
-    (replicate
-      (length (keep_marked locs marks))
-      false)
-    Φ.
-
+    (replicate (length (keep_marked locs marks)) false) Φ.
 Proof.
-Admitted.
-
-
-Lemma keep_marked_length_same_mask {A B}
-    (xs : list A)
-    (ys : list B)
-    (marks : list bool) :
-  length xs = length ys →
-  length (keep_marked xs marks) =
-  length (keep_marked ys marks).
-
-Proof.
-Admitted.
-
-
-Lemma keep_marked_NoDup {A}
-    (xs : list A)
-    (marks : list bool) :
-  NoDup xs →
-  NoDup (keep_marked xs marks).
-
-Proof.
-Admitted.
-
-
-
-Lemma keep_marked_Forall {A}
-    (P : A → Prop)
-    (xs : list A)
-    (marks : list bool) :
-  Forall P xs →
-  Forall P (keep_marked xs marks).
-
-Proof.
-Admitted.
-
-
-Lemma marks_closed_keep_marked_next_valid
-    (locs nexts : list loc)
-    (marks : list bool) :
-  length locs = length nexts →
-  marks_closed locs nexts marks →
-  Forall
-    (λ n,
-      n = NULL_loc ∨
-      n ∈ keep_marked locs marks)
-    (keep_marked nexts marks).
-
-Proof.
-Admitted.
-
+  intros Hv Hl Hn.
+  rewrite /sweep_nodes_inv !keep_marked_suffix_0 sweep_marks_0.
+  rewrite (keep_marked_length_same_mask marks locs marks); [by iIntros "$"|lia].
+Qed.
 
 End heap_lemmas.

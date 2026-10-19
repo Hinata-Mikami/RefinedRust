@@ -283,6 +283,8 @@ impl Heap {
         self.mark_from(root);
     }
 
+
+    // この辺の苦労はまとめておく
     // 実行時オーバーヘッドがある場合も実行して比較できればベスト（case_study）
     /* sweep annotation */
     #[rr::params(
@@ -379,7 +381,6 @@ impl Heap {
         nexts'
     ")]
 
-
     /* 
         ループ内で毎回 &mut self.all_nodes を借用すると、
         そのたびに新しい一時 lifetime (κ, κ0, …) ができて 
@@ -387,6 +388,9 @@ impl Heap {
         ループの外で一度だけ借用しておく形に変更
     */
 
+    // while ループの書き方は標準的か？確認しておく
+
+    // mark-sweep-GC がスイープする範囲はどこ？all_nodes的なものはあるか
     #[rr::returns("()")]
     unsafe fn sweep(&mut self) {
         let nodes = &mut self.all_nodes;
@@ -425,8 +429,7 @@ impl Heap {
                         locs
                         nexts
                         marks
-                        (λ (k : nat)
-                        (v : Z)
+                        (λ (v : Z)
                         (l n : loc)
                         (m : bool),
                             guarded true
@@ -452,7 +455,8 @@ impl Heap {
                 */
                 Node::set_marked(node_ptr, false);
             } else {
-                let node_ptr = nodes.remove(i);
+                // removeの戻り値の仕様に依存せず、直前に読んだ同じポインタを使う。
+                let _ = nodes.remove(i);
                 let _ = Box::from_raw(node_ptr);
             }
         }

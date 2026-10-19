@@ -794,7 +794,10 @@ Lemma sweep_marks_length
   sweep_marks (length marks) marks = marks.
 
 Proof.
-Admitted.
+  rewrite /sweep_marks take_ge; last lia.
+  rewrite drop_ge; last lia.
+  simpl. apply app_nil_r.
+Qed.
 
 Lemma sweep_marks_0
     (marks : list bool) :
@@ -804,7 +807,8 @@ Lemma sweep_marks_0
       false.
 
 Proof.
-Admitted.
+  done.
+Qed.
 
 Lemma keep_marked_suffix_step_true {A}
     (k : nat)
@@ -816,7 +820,14 @@ Lemma keep_marked_suffix_step_true {A}
   keep_marked_suffix k xs marks.
 
 Proof.
-Admitted.
+  revert xs marks.
+  induction k as [|k IH]; intros [|x xs] [|m marks] Hlen Hm;
+    simpl in Hlen, Hm; try discriminate; try lia.
+  - simplify_eq. done.
+  - change (x :: keep_marked_suffix (S k) xs marks =
+            x :: keep_marked_suffix k xs marks).
+    f_equal. apply IH; [lia|done].
+Qed.
 
 Lemma sweep_marks_step_true
     (k : nat)
@@ -827,7 +838,14 @@ Lemma sweep_marks_step_true
   sweep_marks k marks.
 
 Proof.
-Admitted.
+  revert marks.
+  induction k as [|k IH]; intros [|m marks] Hlt Hm;
+    simpl in Hlt, Hm; try discriminate; try lia.
+  - simplify_eq. done.
+  - change (m :: <[k := false]> (sweep_marks (S k) marks) =
+            m :: sweep_marks k marks).
+    f_equal. apply IH; [lia|done].
+Qed.
 
 
 Lemma keep_marked_suffix_step_false {A}
@@ -841,7 +859,14 @@ Lemma keep_marked_suffix_step_false {A}
   keep_marked_suffix k xs marks.
 
 Proof.
-Admitted.
+  revert xs marks.
+  induction k as [|k IH]; intros [|x xs] [|m marks] Hlen Hm;
+    simpl in Hlen, Hm; try discriminate; try lia.
+  - simplify_eq. done.
+  - change (x :: delete k (keep_marked_suffix (S k) xs marks) =
+            x :: keep_marked_suffix k xs marks).
+    f_equal. apply IH; [lia|done].
+Qed.
 
 Lemma sweep_marks_step_false
     (k : nat)
@@ -852,4 +877,32 @@ Lemma sweep_marks_step_false
   sweep_marks k marks.
 
 Proof.
-Admitted.
+  revert marks.
+  induction k as [|k IH]; intros [|m marks] Hlt Hm;
+    simpl in Hlt, Hm; try discriminate; try lia.
+  - simplify_eq. done.
+  - change (m :: delete k (sweep_marks (S k) marks) =
+            m :: sweep_marks k marks).
+    f_equal. apply IH; [lia|done].
+Qed.
+
+Lemma elem_of_keep_marked {A} (x : A) xs marks :
+  x ∈ keep_marked xs marks ↔
+  ∃ i, xs !! i = Some x ∧ marks !! i = Some true.
+Proof.
+  revert marks.
+  induction xs as [|y ys IH]; intros [|m marks]; cbn [keep_marked].
+  all: try (split; [set_solver|intros ([|i] & Hi & Hm); discriminate]).
+  destruct m.
+  - rewrite elem_of_cons IH.
+    split.
+    + intros [-> | (i & Hi & Hm)].
+      * exists 0%nat. done.
+      * exists (S i). done.
+    + intros ([|i] & Hi & Hm); simpl in *.
+      * left. by simplify_eq.
+      * right. eauto.
+  - rewrite IH. split.
+    + intros (i & Hi & Hm). exists (S i). done.
+    + intros ([|i] & Hi & Hm); simpl in *; [discriminate|eauto].
+Qed.
