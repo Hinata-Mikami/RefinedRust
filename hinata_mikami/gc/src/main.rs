@@ -205,11 +205,6 @@ impl Heap {
         Node::set_marked(node, true);
     }
 
-    // あるノードから reachable であるという rocq 側の述語 (inductive)
-    // marked all_nodes
-    // mark の事後条件 : start_node から reachable == all_nodes の中で marked
-    // Rocq がどう呼ばれているかを理解しなければいけなくなるだろう
-
 
     // mark の再帰呼び出し部分
     #[rr::params("h", "i" : "nat", "l" : "loc")]
@@ -323,13 +318,16 @@ impl Heap {
     #[rr::requires("marks_closed locs nexts marks")]
 
     /* 事後条件 */
-    // keep_marked xs marks ... xs のうち marks が true のものだけを残す 
+    /* keep_marked xs marks ... xs のうち marks が true のものだけを残す */
+    // 終了後の locs' は locs[i] のうち marks[i] が true のもの
     #[rr::observe("γ": "
     let locs' := keep_marked locs marks in
     (-[# (<#> locs')] : plistRT [_])
     ")]
 
-    // 保持される invariant : locs'/nexts' と vals' の長さは同じ
+    /* invariant としていたものの構築 */
+    // vals', nexts' も同様
+    // locs'/nexts' と vals' の長さは同じ
     #[rr::ensures("
     let vals' := keep_marked vals marks in
     let locs' := keep_marked locs marks in
@@ -349,6 +347,7 @@ impl Heap {
     Forall (λ l, l.(loc_a) ≠ 0) locs'
     ")]
     // 更新後の所有権
+    // marks' は false を locs' 分複製
     #[rr::ensures(#iris "
     let vals' := keep_marked vals marks in
     let locs' := keep_marked locs marks in
@@ -388,9 +387,6 @@ impl Heap {
         ループの外で一度だけ借用しておく形に変更
     */
 
-    // while ループの書き方は標準的か？確認しておく
-
-    // mark-sweep-GC がスイープする範囲はどこ？all_nodes的なものはあるか
     #[rr::returns("()")]
     unsafe fn sweep(&mut self) {
         let nodes = &mut self.all_nodes;
