@@ -7,8 +7,10 @@
 use std::collections::BTreeMap;
 
 use radium::code;
+use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
+use crate::error::Message;
 
 /// Scope of consts that are available
 pub(crate) struct Scope<'def> {
@@ -29,15 +31,16 @@ impl<'def> Scope<'def> {
         self.statics.insert(did, meta);
     }
 
-    pub(crate) fn get_static<'tcx>(
+    pub(crate) fn get_static(
         &self,
-        did: OrderedDefId,
-    ) -> Result<&code::StaticMeta<'def>, TranslationError<'tcx>> {
-        self.statics.get(&did).ok_or_else(|| {
-            TranslationError::UnknownError(format!(
+        tcx: ty::TyCtxt<'_>,
+        did: &OrderedDefId,
+    ) -> Result<&code::StaticMeta<'def>, TranslationError> {
+        self.statics.get(did).ok_or_else(|| {
+            TranslationError::ErrorReported(tcx.dcx().err(Message::MissingRegisteredStatic(format!(
                 "Did not find a registered static for did {did:?}; registered: {:?}",
                 self.statics
-            ))
+            ))))
         })
     }
 }

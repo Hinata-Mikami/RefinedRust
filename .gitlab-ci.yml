@@ -1,8 +1,26 @@
 stages: [ nix-cache, build, lint, tests ]
 
+workflow:
+  rules:
+    # No MR pipelines, only branch pipelines
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    # A fast-forward merge updates the default branch as a push.
+    # Do not create that duplicate pipeline in the upstream project.
+    - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" &&
+           $CI_PIPELINE_SOURCE == "push" &&
+           $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: never
+    # Preserve fork, scheduled, trigger, API, tag, and other pipelines.
+    - when: always
+
 .upstream_only: &upstream_only
   rules:
     - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && ($CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "trigger" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE != "api")'
+
+.main_only: &main_only
+  rules:
+    - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && $CI_COMMIT_BRANCH == "main" && ($CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "trigger" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE != "api")'
 
 .nightly_only: &nightly_only
   rules:
@@ -27,10 +45,13 @@ stages: [ nix-cache, build, lint, tests ]
    - echo "trusted-public-keys = ${NIX_CI_CACHE_PUB_KEY} cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.conf
 
    # Since the cache is not guaranteed to be available, it is preferable to build the dependencies for each job (which is no-op if the cache is available)
-   - nix build --print-build-logs ${DEPENDENCIES}
+   - nix build ${NIX_OPTIONS} --print-build-logs ${DEPENDENCIES}
 
   variables:
-    DEPENDENCIES: ".#theories.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
+    DEPENDENCIES: ".#devShells.x86_64-linux.default .#frontend.cargoArtifacts"
+    NIX_OPTIONS: "--override-input rocq-utils gitlab:lgaeher/rocq-utils?host=gitlab.mpi-sws.org"
+    NIX_PATH_INFO_FLAGS: ""
+    NIX_PATH_FILTER_REGEX: ""
     NIX_PLATFORM: "$(eval nix-instantiate --eval --expr 'builtins.currentSystem')"
     NIX_STORE_ARTIFACTS_PATH: ".ci_nix_artifacts"
     NIX_STORE_CACHE_PATH: ".ci_nix_cache"
@@ -41,13 +62,17 @@ stages: [ nix-cache, build, lint, tests ]
     paths: [ "${NIX_STORE_CACHE_PATH}" ]
     policy: pull
 
+.build_to_nix:
+  script:
+  - nix build ${NIX_OPTIONS} --print-build-logs $(eval echo ${NIX_DERIVATION})
+
 .build_to_nix_cache:
   cache:
     <<: *nix_cache
     policy: pull-push
 
   script: &build_drv
-   - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
+   - nix build ${NIX_OPTIONS} --print-build-logs $(eval echo ${NIX_DERIVATION})
    - nix store sign --key-file <(echo "${NIX_CI_CACHE_PRIV_KEY}") --recursive $(eval echo ${NIX_DERIVATION})
    - nix copy --to "file://$(pwd)/${NIX_STORE_CACHE_PATH}" $(eval echo ${NIX_DERIVATION})
 
@@ -65,7 +90,16 @@ stages: [ nix-cache, build, lint, tests ]
    #  1. Using OverlayFS (with `local-overlay` feature), but SYS_ADMIN capability is required
    #  2. Moving files around, which is not the best way to do
    - mkdir -p "${NIX_STORE_ARTIFACTS_PATH}/nar"
-   - nix path-info $(eval echo ${NIX_DERIVATION}) | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
+   - |
+      nix path-info ${NIX_PATH_INFO_FLAGS} $(eval echo ${NIX_DERIVATION}) \
+        | {
+            if [ -n "${NIX_PATH_FILTER_REGEX}" ]; then
+              grep -E -- "${NIX_PATH_FILTER_REGEX}" || true
+            else
+              cat
+            fi
+          } \
+        | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
    - find "${NIX_STORE_ARTIFACTS_PATH}" -name "*.narinfo" -type f -print0 | xargs -r0 grep -oPh "(?<=URL:\ ).*" | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s\0" | xargs -r0 mv -v -t ${NIX_STORE_ARTIFACTS_PATH}/nar || true
 
 nix-cache:
@@ -79,7 +113,7 @@ theories:
   stage: build
   needs: [ nix-cache ]
   variables:
-    NIX_DERIVATION: .#theories
+    NIX_DERIVATION: .#refinedrust .#refinedrust-smtcoq
 
 frontend:
   extends: [ .nix, .build_to_nix_artifacts ]
@@ -94,66 +128,85 @@ stdlib:
   needs: [ theories, frontend ]
   variables:
     NIX_DERIVATION: .#stdlib
+    NIX_PATH_INFO_FLAGS: -r
+    # NOTE: Update this when updating Rocq!
+    NIX_PATH_FILTER_REGEX: '-rocq-core9\.2-refinedrust-stdlib-.*-dev$'
 
 clippy:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.clippy
 
 deny:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.deny
 
 fmt:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
+  script:
+  - nix build ${NIX_OPTIONS} --print-build-logs $(eval echo ${NIX_DERIVATION})
+  - nix fmt ${NIX_OPTIONS} -- . --ci
+
 
 machete:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.machete
 
 unused:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.workspace-unused
 
 case-studies:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: tests
   needs: [ stdlib ]
   variables:
-    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,hillel,minivec,paper-examples,paper-examples-rr20,tests}
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,hillel,minivec,paper-examples,linkedlist,tests,iterators,knights-tour-functional,smtcoq}
 
 ace:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix ]
   stage: tests
   needs: [ stdlib ]
   allow_failure: true
+  script:
+  - nix build ${NIX_OPTIONS} --impure --print-build-logs $(eval echo ${NIX_DERIVATION})
   variables:
-    NIX_DERIVATION: ./case_studies/ace-riscv#
+    NIX_DERIVATION: ./case_studies/ace-riscv#ace-ci
+    ACE_PRUNED_MODULES: >-
+      proof_core_page_allocator_allocator_PageAllocator_add_memory_region
+      proof_core_page_allocator_allocator_PageAllocator_release_pages_closure0
+      proof_core_page_allocator_allocator_PageStorageTreeNode_store_page_token
+      proof_core_page_allocator_allocator_PageStorageTreeNode_acquire_page_token
+      proof_core_page_allocator_allocator_PageStorageTreeNode_divide_page_token_if_necessary
+      proof_core_page_allocator_allocator_PageStorageTreeNode_try_to_merge_page_tokens
+      proof_core_page_allocator_allocator_PageAllocator_find_largest_page_size
+      proof_core_page_allocator_page_Page_core_page_allocator_page_UnAllocated_divide
+      proof_core_page_allocator_page_Page_core_page_allocator_page_UnAllocated_merge
 
 nix-shell:
   extends: [ .nix ]
   stage: tests
   needs: [ stdlib ]
   script:
-   - nix shell -c cargo refinedrust -V
+   - nix shell ${NIX_OPTIONS} -c cargo refinedrust -V
    - cd case_studies/evenint
-   - nix shell -c cargo refinedrust
-   - nix shell -c dune build --display=short -p evenint
+   - nix shell ${NIX_OPTIONS} -c cargo refinedrust
+   - nix shell ${NIX_OPTIONS} -c dune build --display=short -p evenint
 
 
 .opam:
@@ -167,6 +220,7 @@ nix-shell:
     CPU_CORES: "1"
     # DENY_WARNINGS: "1"
     OCAML: "ocaml-variants.4.14.2+options ocaml-option-flambda"
+    MAKE_TARGET: "all_with_examples"
 
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
@@ -174,25 +228,37 @@ nix-shell:
    - source "$HOME/.cargo/env"
    - ci/buildjob
 
-  #cache:
-    #key: "$CI_JOB_NAME"
-    #paths: [ "_opam/" ]
+  cache:
+    key: "$CI_JOB_NAME"
+    paths: [ "_opam/" ]
 
-build-opam-rocq.9.1.0:
+check-generated-files:
+  image: $CI_REGISTRY/gaeher/rust-ci
+  interruptible: true
+  stage: lint
+  needs: []
+
+  script:
+   - git config --global --add safe.directory "$CI_PROJECT_DIR"
+   - source "$HOME/.cargo/env"
+   - make generate_all
+   - git diff -- stdlib
+   - git status --porcelain=v1 --untracked-files=all -- stdlib
+   - test -z "$(git status --porcelain=v1 --untracked-files=all -- stdlib)"
+
+build-opam-rocq.9.2.0:
   <<: *forks_only
   extends: .opam
   tags: [ fp ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
-    MAKE_TARGET: "all_with_examples"
+    OPAM_PINS: "rocq-core version 9.2.0 dune version 3.23.1"
 
-build-opam-rocq.9.1.0-timing:
+build-opam-rocq.9.2.0-timing:
   <<: *upstream_only
   extends: .opam
   tags: [ fp-timing ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
-    MAKE_TARGET: "all_with_examples"
+    OPAM_PINS: "rocq-core version 9.2.0 dune version 3.23.1"
 
 build-opam-iris.dev:
   <<: *nightly_only
@@ -202,8 +268,7 @@ build-opam-iris.dev:
     STDPP_REPO: "iris/stdpp"
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
-    OPAM_PINS: "rocq-core version 9.1.0 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV git+https://gitlab.mpi-sws.org/iris/iris-contrib git+https://gitlab.mpi-sws.org/iris/lambda-rust"
-    MAKE_TARGET: "all_with_examples"
+    OPAM_PINS: "dune version 3.23.1 rocq-core version 9.2.0 rocq-stdlib version 9.1.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  rocq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq rocq-sniper.dev git git+https://github.com/smtcoq/sniper  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace

@@ -13,10 +13,10 @@ use typed_arena::Arena;
 
 use crate::traits::registry::TR;
 use crate::types::{TX, scope};
-use crate::{Environment, base, body, procedures, search};
+use crate::{base, body, environment, procedures, search};
 
 pub(crate) struct ClosureImplGenerator<'tcx, 'def> {
-    env: &'def Environment<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     trait_registry: &'def TR<'tcx, 'def>,
     ty_translator: &'def TX<'def, 'tcx>,
 
@@ -43,21 +43,21 @@ enum ShimRefSelf {
 
 impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
     pub(crate) fn new(
-        env: &'def Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         trait_registry: &'def TR<'tcx, 'def>,
         ty_translator: &'def TX<'def, 'tcx>,
         fn_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
     ) -> Option<Self> {
-        let fnmut_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::FnMut)?;
-        let fn_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::Fn)?;
-        let fnonce_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::FnOnce)?;
+        let fnmut_did = search::get_closure_trait_did(tcx, ty::ClosureKind::FnMut)?;
+        let fn_did = search::get_closure_trait_did(tcx, ty::ClosureKind::Fn)?;
+        let fnonce_did = search::get_closure_trait_did(tcx, ty::ClosureKind::FnOnce)?;
 
         let fnmut_spec = trait_registry.lookup_trait(fnmut_did)?;
         let fn_spec = trait_registry.lookup_trait(fn_did)?;
         let fnonce_spec = trait_registry.lookup_trait(fnonce_did)?;
 
         Some(Self {
-            env,
+            tcx,
             trait_registry,
             ty_translator,
             fn_arena,
@@ -76,7 +76,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_meta: &procedures::Meta,
         closure_spec: &specs::functions::Spec<'def>,
         ref_self: &ShimRefSelf,
-    ) -> Result<(), base::TranslationError<'tcx>> {
+    ) -> Result<(), base::TranslationError> {
         let (tupled_upvars_ty, self_is_ref) = match &info.tl_self_var_ty {
             specs::Type::MutRef(ty, _) | specs::Type::ShrRef(ty, _) => ((**ty).clone(), true),
             _ => (info.tl_self_var_ty.clone(), false),
@@ -92,7 +92,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         //let self_var_st: lang::SynType = info.self_ty.clone().into();
         let self_var_st: lang::SynType = match ref_self {
             ShimRefSelf::NoRef => info.tl_self_var_ty.clone().into(),
-            ShimRefSelf::RefMutToShr => lang::SynType::Ptr,
+            ShimRefSelf::RefMutToShr => lang::SynType::Ref,
             _ => self_st.clone(),
         };
 
@@ -100,7 +100,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
 
         // the syn type that the closure to call expects
         let self_call_st =
-            if matches!(ref_self, ShimRefSelf::NoRef) { self_var_st.clone() } else { lang::SynType::Ptr };
+            if matches!(ref_self, ShimRefSelf::NoRef) { self_var_st.clone() } else { lang::SynType::Ref };
 
         // add arguments: self, args
         builder.code.add_argument("self", self_var_st.clone());
@@ -164,7 +164,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     why: None,
                 });
                 statements.push(code::PrimStmt::Assign {
-                    ot: lang::OpType::Ptr,
+                    ot: lang::OpType::Ref,
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
                     e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
@@ -182,7 +182,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     why: None,
                 });
                 statements.push(code::PrimStmt::Assign {
-                    ot: lang::OpType::Ptr,
+                    ot: lang::OpType::Ref,
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
                     e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
@@ -207,14 +207,14 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     why: None,
                 });
                 statements.push(code::PrimStmt::Assign {
-                    ot: lang::OpType::Ptr,
+                    ot: lang::OpType::Ref,
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
                     e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
                         bk: code::BorKind::Shared,
                         ty: None,
                         e: Box::new(code::Expr::Deref {
-                            ot: lang::OpType::Ptr,
+                            ot: lang::OpType::Ref,
                             e: Box::new(code::Expr::Var("self".to_owned())),
                         }),
                     }),
@@ -256,37 +256,50 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             closure_args.push(expr);
         }
 
-        let call_expr = code::Expr::Call {
-            f: Box::new(code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone()))),
-            lfts: lft_hints,
-            tys: ty_hints,
-            args: closure_args,
-        };
-        statements.push(code::PrimStmt::Assign {
+        let destination = code::CallDestination {
+            order: lang::Order::Na1,
             ot: output_st.clone().into(),
-            e1: Box::new(code::Expr::Var("__0".to_owned())),
-            e2: Box::new(call_expr),
-        });
+            destination: code::Expr::Var("__0".to_owned()),
+        };
 
-        if *ref_self != ShimRefSelf::NoRef {
-            // end the lifetime of the created reference
+        let end_ref_lft = (*ref_self != ShimRefSelf::NoRef).then(|| {
             let annot = code::Annotation::EndLft(coq::Ident::new(ref_lft));
-            statements.push(code::PrimStmt::Annot {
+            code::PrimStmt::Annot {
                 a: vec![annot],
                 why: None,
-            });
+            }
+        });
+
+        let mut normal_stmts = Vec::new();
+        if let Some(stmt) = &end_ref_lft {
+            normal_stmts.push(stmt.clone());
         }
 
         //if !self_is_ref {
         // TODO: insert drop call
         //}
 
-        // return
         let ret_expr = code::Expr::Move {
             ot: output_st.clone().into(),
             e: Box::new(code::Expr::Var("__0".to_owned())),
         };
-        let stmt = code::Stmt::Prim(statements, Box::new(code::Stmt::Return(ret_expr)));
+        let normal = code::Stmt::Prim(normal_stmts, Box::new(code::Stmt::Return(ret_expr)));
+        let closure_unwind = body::panic::closure_unwind(self.tcx);
+        let unwind = if let Some(stmt) = end_ref_lft {
+            code::Stmt::Prim(vec![stmt], Box::new(closure_unwind))
+        } else {
+            closure_unwind
+        };
+        let call = code::Stmt::Call {
+            f: code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone())),
+            lfts: lft_hints,
+            tys: ty_hints,
+            args: closure_args,
+            destination: Box::new(Some(destination)),
+            normal: Box::new(normal),
+            unwind: Box::new(unwind),
+        };
+        let stmt = code::Stmt::Prim(statements, Box::new(call));
 
         builder.code.add_basic_block(0, stmt);
 
@@ -307,31 +320,27 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_did: DefId,
         closure_meta: &procedures::Meta,
         closure_spec: &specs::functions::Spec<'def>,
-    ) -> Result<code::UsedProcedure<'def>, base::TranslationError<'tcx>> {
+    ) -> Result<code::UsedProcedure<'def>, base::TranslationError> {
         // explicit instantiation is needed sometimes
-        let spec_term = code::UsedProcedureSpec::Literal(
-            closure_meta.get_spec_name().to_owned(),
-            closure_meta.get_trait_req_incl_name().to_owned(),
-        );
+        let spec_term = code::UsedProcedureSpec::Literal(closure_meta.get_spec_name().to_owned());
 
         let code_name = closure_meta.get_name();
         let loc_name = format!("{code_name}_loc");
 
         // The scope is the same as the scope of the closure.
-        let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), closure_did);
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx, closure_did);
 
         // Note: this does not include all lifetimes
-        let clos_args = self.env.get_closure_args(closure_did);
+        let clos_args = environment::get_closure_args(self.tcx, closure_did);
         let parent_args = clos_args.parent_args();
-        let mut param_scope =
-            scope::Params::new_from_generics(self.env.tcx(), self.env.tcx().mk_args(parent_args), None);
-        param_scope.add_param_env(closure_did, self.env, self.ty_translator, self.trait_registry)?;
+        let mut param_scope = scope::Params::new_from_generics(self.tcx, self.tcx.mk_args(parent_args), None);
+        param_scope.add_param_env(closure_did, self.tcx, self.ty_translator, self.trait_registry)?;
 
         trace!("closure assumption generation: param_scope={param_scope:?}");
 
         // compute the syntypes of the closure's args
         let syntypes = body::get_arg_syntypes_for_procedure_call(
-            self.env.tcx(),
+            self.tcx,
             self.ty_translator,
             &param_scope,
             &typing_env,
@@ -418,7 +427,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_spec: &specs::functions::Spec<'def>,
         impl_info: &specs::traits::RefInst<'def>,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
-    ) -> Result<code::Function<'def>, base::TranslationError<'tcx>> {
+    ) -> Result<code::Function<'def>, base::TranslationError> {
         // Assemble the inner spec, using the default spec of the closure traits and the impl info
         // we have already assembled before
         let method_name = match to_impl {
@@ -502,6 +511,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             },
         }
 
+        body::panic::add_strategy_link_assumption(self.tcx, &mut builder, info.use_panic_abort);
         let function = builder.into_function(self.fn_arena);
 
         Ok(function)

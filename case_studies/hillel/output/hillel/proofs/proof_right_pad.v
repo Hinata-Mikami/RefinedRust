@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.hillel.generated Require Import generated_code_hillel generated_specs_hillel generated_template_right_pad.
 
@@ -12,7 +12,7 @@ Lemma right_pad_proof (π : thread_id) :
 Proof.
   right_pad_prelude.
 
-  (* !start proof(right_pad) *)
+  (* !start proof(hillel.right_pad) *)
   repeat liRStep.
   liInst Hevar_num 0%nat.
   repeat liRStep.
@@ -23,9 +23,9 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  (* !start proof(right_pad) *)
+  (* !start proof(hillel.right_pad) *)
   - unfold size_of_array_in_bytes in *. nia.
-  - repeat f_equiv. lia.
+  - rewrite list_fmap_compose. repeat f_equiv. lia.
   (* !end proof *)
 
   Unshelve. all: print_remaining_sidecond.

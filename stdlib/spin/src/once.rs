@@ -2,6 +2,7 @@
 #![rr::include("option")]
 
 use crate::relax::*;
+use std::marker::PhantomData;
 
 // Point: how can we make this somewhat ergonomic? 
 // We should ideally automatically include this in the context (of a function) when we instantiate
@@ -10,6 +11,7 @@ use crate::relax::*;
 // We could factor this into a definition that takes the refinement types as argument. 
 // Then we could also include this in the interface definition
 
+#[rr::trust_me(drop_glue)]
 #[rr::refined_by("η" : "gname")]
 #[rr::context("onceG Σ ({xt_of T})")]
 #[rr::export_as(spin::once::Once)]
@@ -17,22 +19,24 @@ use crate::relax::*;
 //#[rr::exists("o" : "option {rt_of T}")]
 //#[rr::invariant(#own "once_status_tok η o")]
 pub struct Once<T = (), R = Spin> {
-    #[rr::field("x")]
-    _r: R,
-    #[rr::field("y")]
-    _d: T,
+    #[rr::field("#(x)")]
+    _r: PhantomData<R>,
+    #[rr::field("#(y)")]
+    _d: PhantomData<T>,
 }
 
 #[rr::only_spec]
 #[rr::export_as(spin::once::Once)]
 #[rr::context("onceG Σ ({xt_of T})")]
 impl<T, R: RelaxStrategy> Once<T, R> {
-    #[rr::requires(#iris "{F::Pre} π f ()")]
+    #[rr::params("p")]
+    #[rr::requires(#iris "{F::Pre} π p f ()")]
     #[rr::requires(#iris "once_status_tok self None")]
     #[rr::exists("x")]
-    #[rr::ensures(#iris "{F::Post} π f () x")]
+    #[rr::ensures(#iris "{F::Post} π p f () x")]
     #[rr::ensures(#iris "once_status_tok self (Some x)")]
     #[rr::returns("x")]
+    #[rr::may_unwind_if("{F::UnwindCondition} f p tt")]
     pub fn call_once<F: FnOnce() -> T>(&self, f: F) -> &T {
         unimplemented!();
     }

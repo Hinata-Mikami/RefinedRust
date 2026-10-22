@@ -11,16 +11,15 @@ use std::collections::{BTreeMap, HashMap};
 use log::{info, trace};
 use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
+use crate::environment::polonius_info;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::{Environment, polonius_info};
-use crate::regions::arg_folder::instantiate_open;
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::regions::region_bi_folder::RegionBiFolder;
-use crate::regions::{EarlyLateRegionMap, LftConstr};
+use crate::regions::{EarlyLateRegionMap, LftConstr, RegionBiFolder, instantiate_open};
 use crate::traits::resolution;
 use crate::types::scope;
 
@@ -30,12 +29,12 @@ use crate::types::scope;
 /// Moreover, returns a `EarlyLateRegionMap` that contains the mapping of indices to Polonius
 /// region variables.
 pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
-    env: &Environment<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     params: &[ty::GenericArg<'tcx>],
     of_did: DefId,
-    num_universal_regions: u32,
-    num_early_bounds: u32,
-    num_late_bounds: u32,
+    num_universal_regions: usize,
+    num_early_bounds: usize,
+    num_late_bounds: usize,
     sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
 ) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
     trace!(
@@ -66,8 +65,8 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     let mut early_count = 0;
     for a in params {
         if let ty::GenericArgKind::Lifetime(r) = a.kind() {
-            let next_id = facts::Region::from_u32(first_early_bound + early_count);
-            let revar = ty::Region::new_var(env.tcx(), next_id.into());
+            let next_id = facts::Region::from_usize(first_early_bound + early_count);
+            let revar = ty::Region::new_var(tcx, next_id.into());
             subst_early_bounds.push(ty::GenericArg::from(revar));
 
             region_substitution_early.push(Some(next_id));
@@ -75,7 +74,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
             match r.kind() {
                 ty::RegionKind::ReEarlyParam(r) => {
                     let mut name = strip_coq_ident(r.name.as_str());
-                    let origin = scope::determine_origin_of_lft_param(of_did, env.tcx(), r);
+                    let origin = scope::determine_origin_of_lft_param(of_did, tcx, r);
 
                     if name == "_" {
                         name = format!("{}", next_id.index());
@@ -96,25 +95,37 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
             region_substitution_early.push(None);
         }
     }
-    let subst_early_bounds = env.tcx().mk_args(&subst_early_bounds);
+    let subst_early_bounds = tcx.mk_args(&subst_early_bounds);
 
     trace!("Computed early region map {region_substitution_early:?}");
 
-    // add names for late bound region variables
-    let mut late_count = 0;
-    let mut region_substitution_late = Vec::new();
-    for b in sig.bound_vars() {
-        let next_id = facts::Region::from_u32(first_late_bound + late_count);
+    // Replace late-bound region variables by re-enumerating them in the same way as the MIR type
+    // checker does. Record which inference variable was allocated for each bound variable: the
+    // allocation order follows occurrences in the signature and can differ from binder order.
+    let mut next_index = first_late_bound;
+    let mut late_regions_by_bound_var = BTreeMap::new();
+    let mut folder = |bound: ty::BoundRegion<'tcx>| {
+        let cur_index = next_index;
+        next_index += 1;
+        let region = facts::Region::from_usize(cur_index);
+        late_regions_by_bound_var.insert(bound.var.index(), region);
+        ty::Region::new_var(tcx, ty::RegionVid::from_usize(cur_index))
+    };
+    let (late_sig, _) = tcx.instantiate_bound_regions(sig, &mut folder);
 
+    // Add names for late-bound region variables.
+    let mut region_substitution_late = Vec::new();
+    for (bound_var, b) in sig.bound_vars().iter().enumerate() {
         let ty::BoundVariableKind::Region(r) = b else {
             continue;
         };
+        let next_id = late_regions_by_bound_var[&bound_var];
 
         region_substitution_late.push(next_id);
 
         match r {
             ty::BoundRegionKind::Named(did) => {
-                if let Some(name) = env.tcx().opt_item_name(did) {
+                if let Some(name) = tcx.opt_item_name(did) {
                     let mut region_name = strip_coq_ident(name.as_str());
                     if region_name == "_" {
                         region_name = next_id.as_usize().to_string();
@@ -156,29 +167,16 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
             },
             _ => (),
         }
-
-        late_count += 1;
     }
-
-    // replace late-bound region variables by re-enumerating them in the same way as the MIR
-    // type checker does (that this happens in the same way is important to make the names
-    // line up!)
-    let mut next_index = first_late_bound;
-    let mut folder = |_| {
-        let cur_index = next_index;
-        next_index += 1;
-        ty::Region::new_var(env.tcx(), ty::RegionVid::from_u32(cur_index))
-    };
-    let (late_sig, _late_region_map) = env.tcx().instantiate_bound_regions(sig, &mut folder);
 
     // replace early bound variables
     let inputs: Vec<_> = late_sig
         .inputs()
         .iter()
-        .map(|ty| instantiate_open(*ty, env.tcx(), subst_early_bounds))
+        .map(|ty| instantiate_open(*ty, tcx, subst_early_bounds))
         .collect();
 
-    let output = instantiate_open(late_sig.output(), env.tcx(), subst_early_bounds);
+    let output = instantiate_open(late_sig.output(), tcx, subst_early_bounds);
 
     trace!("Computed late region map {region_substitution_late:?}");
 
@@ -196,6 +194,29 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     (inputs, output, region_map)
 }
 
+pub(crate) fn replace_body_fnsig_args_with_polonius_vars<'def, 'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    params: &[ty::GenericArg<'tcx>],
+    of_did: DefId,
+    sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
+    info: &PoloniusInfo<'_, 'tcx>,
+    num_late_bounds: usize,
+) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
+    let num_universal_regions = info.universal_region_count();
+    let num_early_bounds =
+        params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
+
+    replace_fnsig_args_with_polonius_vars(
+        tcx,
+        params,
+        of_did,
+        num_universal_regions,
+        num_early_bounds,
+        num_late_bounds,
+        sig,
+    )
+}
+
 /// At the start of the function, there's a universal (placeholder) region for reference argument.
 /// These get subsequently relabeled by Polonius.
 /// Given the relabeled region, find the original placeholder region.
@@ -203,20 +224,13 @@ pub(crate) fn find_placeholder_region_for(
     r: facts::Region,
     info: &PoloniusInfo<'_, '_>,
 ) -> Option<facts::Region> {
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_u32(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Start,
-    });
+    let root_point = info.root_point(facts::PointType::Start);
 
-    for (r1, r2, p) in &info.borrowck_in_facts.subset_base {
-        let k1 = info.get_region_kind(*r1);
-        if *p == root_point && *r2 == r && matches!(k1, polonius_info::RegionKind::Universal(_)) {
+    for (r1, r2) in info.subset_base_at(root_point) {
+        let k1 = info.get_region_kind(r1);
+        if r2 == r && matches!(k1, polonius_info::RegionKind::Universal(_)) {
             info!("find placeholder region for: {:?} ⊑ {:?} = r", r1, r2);
-            return Some(*r1);
+            return Some(r1);
         }
     }
     None
@@ -229,25 +243,17 @@ pub(crate) fn initialize_inclusion_tracker<'a, 'tcx>(
 ) -> InclusionTracker<'a, 'tcx> {
     let mut inclusion_tracker = InclusionTracker::new(info);
 
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_u32(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Start,
-    });
-    for cstr in &lifetime_scope.constraints {
+    for (cstr, _) in &lifetime_scope.constraints {
         match cstr {
             LftConstr::RegionOutlives(r1, r2) => {
-                inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+                inclusion_tracker.add_entry_static_inclusion(*r1, *r2);
             },
             LftConstr::TypeOutlives(_, _) => (),
         }
     }
 
-    for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
-        inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+    for (r1, r2) in info.known_placeholder_subsets() {
+        inclusion_tracker.add_entry_static_inclusion(r1, r2);
     }
 
     inclusion_tracker
@@ -259,27 +265,18 @@ pub(crate) fn get_initial_closure_constraints<'a>(
     info: &'a PoloniusInfo<'a, '_>,
     inclusion_tracker: &mut InclusionTracker<'a, '_>,
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-    let input_facts = &info.borrowck_in_facts;
-
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_u32(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Mid,
-    });
+    let root_point = info.root_point(facts::PointType::Mid);
 
     let mut closure_constraints = Vec::new();
 
-    for (r1, r2, p) in &input_facts.subset_base {
-        if *p == root_point && input_facts.subset_base.contains(&(*r2, *r1, *p)) {
-            let lft1 = info.mk_atomic_region(*r1);
-            let lft2 = info.mk_atomic_region(*r2);
+    for (r1, r2) in info.subset_base_at(root_point) {
+        if info.has_subset_base_at(r2, r1, root_point) {
+            let lft1 = info.mk_atomic_region(r1);
+            let lft2 = info.mk_atomic_region(r2);
 
             if lft1.is_place() && lft2.is_value() {
-                inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
-                inclusion_tracker.add_static_inclusion(*r2, *r1, root_point);
+                inclusion_tracker.add_static_inclusion(r1, r2, root_point);
+                inclusion_tracker.add_static_inclusion(r2, r1, root_point);
 
                 closure_constraints.push((lft1, lft2));
             }
@@ -305,7 +302,7 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
     // Polonius generates a base subset constraint uregion ⊑ pregion.
     // We turn that into pregion = uregion, as we do strong updates at the top-level.
-    assert!(sig_args.len() == local_args.len());
+    assert_eq!(sig_args.len(), local_args.len());
 
     // compute the mapping
     let mut unifier = InitialPoloniusUnifier::new(tcx, typing_env);
@@ -317,22 +314,13 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
     // add the inclusions to the inclusion tracker
 
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_u32(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Start,
-    });
-
     let mut initial_arg_mapping = Vec::new();
     for (l, s) in unifier.get_result() {
         if l == s {
             continue;
         }
-        inclusion_tracker.add_static_inclusion(s, l, root_point);
-        inclusion_tracker.add_static_inclusion(l, s, root_point);
+        inclusion_tracker.add_entry_static_inclusion(s, l);
+        inclusion_tracker.add_entry_static_inclusion(l, s);
 
         let lft1 = info.mk_atomic_region(l);
         let lft2 = info.mk_atomic_region(s);

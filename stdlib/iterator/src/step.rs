@@ -70,7 +70,7 @@ macro_rules! step_integer_narrow_impls {
             impl Step for $u_narrower {
                 #[rr::default_spec]
                 #[rr::trust_me]
-                //#[rr::tactics("all: apply wrap_to_it_id; split; unsafe_unfold_common_caesium_defs; solve_goal.")]
+                //#[rr::tactics("all: apply wrap_to_it_id; split; unsafe_unfold_common_radium_defs; solve_goal.")]
                 fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
                     if *start <= *end {
                         // This relies on $u_narrower <= usize
@@ -381,10 +381,11 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
 }
 */
 
-#[rr::instantiate("Next" := "λ π s1 e s2, ⌜s1.2 = s2.2 ∧ 
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Next" := "λ π _ s1 e s2, ⌜s1.2 = s2.2 ∧ 
     if_None e (s1 = s2 ∧ s1.1 = s1.2) ∧ 
     if_Some e (λ e, s1.1 = e ∧ Some s2.1 = ({A::Forward} s1.1 1)%nat ∧ {A::POrd} s1.1 s1.2 = Some Less)⌝%I")]
-#[rr::instantiate("Inv" := "λ π s, True%I")]
+#[rr::instantiate("Inv" := "λ π _ s, True%I")]
 impl<A: Step> Iterator for std::ops::Range<A> {
     type Item = A;
 

@@ -3,6 +3,18 @@ use derive_more::Display;
 use crate::coq;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
+pub enum Order {
+    #[display("ScOrd")]
+    Sc,
+
+    #[display("Na1Ord")]
+    Na1,
+
+    #[display("Na2Ord")]
+    Na2,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 pub enum IntType {
     #[display("I8")]
     I8,
@@ -65,6 +77,9 @@ pub enum SynType {
     #[display("PtrSynType")]
     Ptr,
 
+    #[display("RefSynType")]
+    Ref,
+
     #[display("FnPtrSynType")]
     FnPtr,
 
@@ -74,7 +89,7 @@ pub enum SynType {
     #[display("UnitSynType")]
     Unit,
 
-    #[display("UnitSynType")]
+    #[display("NeverSynType")]
     Never,
 
     #[display("(ArraySynType {} {})", _0, _1)]
@@ -91,7 +106,7 @@ pub enum SynType {
 /// Representation of Caesium's optypes.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum OpType {
-    #[display("IntOp {}", _0)]
+    #[display("(IntOp {})", _0)]
     Int(IntType),
 
     #[display("BoolOp")]
@@ -103,11 +118,19 @@ pub enum OpType {
     #[display("PtrOp")]
     Ptr,
 
-    // a term for the struct_layout, and optypes for the individual fields
-    #[display("StructOp unit_sl []")]
-    Struct,
+    #[display("RefOp")]
+    Ref,
 
-    #[display("UntypedOp ({})", _0)]
+    #[display("(StructOp unit_sl [])")]
+    Unit,
+
+    #[display("NeverOp")]
+    Never,
+
+    #[display("(ArrayOp {} {})", _0, _1)]
+    Array(Box<Self>, u128),
+
+    #[display("(UntypedOp {})", _0)]
     Untyped(Layout),
 
     #[display("(use_op_alg' {})", _0)]
@@ -137,6 +160,9 @@ pub enum Layout {
     #[display("(layout_of unit_sl)")]
     Unit,
 
+    #[display("zst_layout")]
+    Never,
+
     /// used for variable layout terms, e.g. for struct layouts or generics
     #[display("(use_layout_alg' {})", _0)]
     UseLayoutAlg(coq::term::Term),
@@ -164,11 +190,12 @@ impl From<&SynType> for Layout {
             SynType::Char => Self::Char,
             SynType::Int(it) => Self::Int(*it),
 
-            SynType::Ptr | SynType::FnPtr => Self::Ptr,
+            SynType::Ref | SynType::Ptr | SynType::FnPtr => Self::Ptr,
 
             SynType::Array(st, len) => Self::Array(Box::new(st.as_ref().to_owned().into()), *len),
             SynType::Untyped(ly) => ly.clone(),
-            SynType::Unit | SynType::Never => Self::Unit,
+            SynType::Unit => Self::Unit,
+            SynType::Never => Self::Never,
 
             SynType::Literal(rhs) => Self::UseLayoutAlg(coq::term::Term::Literal(rhs.clone())),
         }
@@ -192,12 +219,13 @@ impl From<&SynType> for OpType {
             SynType::Int(it) => Self::Int(*it),
 
             SynType::Ptr | SynType::FnPtr => Self::Ptr,
+            SynType::Ref => Self::Ref,
 
             SynType::Untyped(ly) => Self::Untyped(ly.clone()),
-            SynType::Unit => Self::Struct,
-            SynType::Never => Self::Untyped(Layout::Unit),
+            SynType::Unit => Self::Unit,
+            SynType::Never => Self::Never,
 
-            SynType::Array(_, _) => Self::Untyped(x.to_owned().into()),
+            SynType::Array(st, len) => Self::Array(Box::new((&**st).into()), *len),
 
             SynType::Literal(rhs) => Self::UseOpAlg(coq::term::Term::Literal(rhs.clone())),
         }

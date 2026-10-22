@@ -9,12 +9,13 @@
 use log::info;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 use rr_rustc_interface::{ast, span};
 use serde::{Deserialize, Serialize};
 use span::symbol::Symbol;
 
 use crate::spec_parsers::{ExportAs, RustPath, get_export_as_attr};
-use crate::{Environment, attrs, search};
+use crate::{attrs, environment, search};
 
 /// An item path that receives generic arguments.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -50,16 +51,16 @@ impl PathWithArgs {
 
     /// `args` should be normalized already.
     pub(crate) fn from_item<'tcx>(
-        env: &Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         did: DefId,
         args: &[ty::GenericArg<'tcx>],
     ) -> Option<Self> {
-        let path = get_export_path_for_did(env, did);
+        let path = get_export_path_for_did(tcx, did);
         let mut flattened_args = Vec::new();
         info!("flattening args {args:?} for did {did:?}");
         for arg in args {
             if let Some(ty) = arg.as_type() {
-                let flattened_ty = convert_ty_to_flat_type(env, ty)?;
+                let flattened_ty = convert_ty_to_flat_type(tcx, ty)?;
                 flattened_args.push(Some(flattened_ty));
             } else {
                 flattened_args.push(None);
@@ -114,7 +115,9 @@ pub(crate) enum Type {
     Uint(ty::UintTy),
     Char,
     Bool,
+    Never,
     Param(u32),
+    Tuple(Vec<Self>),
     Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
     RawPtr(#[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
     // TODO: more cases
@@ -150,17 +153,22 @@ impl Type {
                 // substitute
                 info!("substituting {:?} with {:?}", ty, substs);
                 let subst_ty = if substs.is_empty() {
-                    ty.instantiate_identity()
+                    ty.instantiate_identity().skip_norm_wip()
                 } else {
-                    ty.instantiate(tcx, substs.as_slice())
+                    ty.instantiate(tcx, substs.as_slice()).skip_norm_wip()
                 };
 
                 Some(subst_ty)
             },
             Self::Bool => Some(tcx.mk_ty_from_kind(ty::TyKind::Bool)),
             Self::Char => Some(tcx.mk_ty_from_kind(ty::TyKind::Char)),
+            Self::Never => Some(tcx.mk_ty_from_kind(ty::TyKind::Never)),
             Self::Int(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Int(it.to_owned()))),
             Self::Uint(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Uint(it.to_owned()))),
+            Self::Tuple(args) => {
+                let tys = args.iter().map(|arg| arg.to_type(tcx)).collect::<Option<Vec<_>>>()?;
+                Some(tcx.mk_ty_from_kind(ty::TyKind::Tuple(tcx.mk_type_list(&tys))))
+            },
             Self::RawPtr(m, ty) => {
                 let translated_ty = ty.to_type(tcx)?;
                 let kind = ty::TyKind::RawPtr(translated_ty, *m);
@@ -188,25 +196,30 @@ impl Type {
 }
 
 /// Try to convert a type to a flat type. Assumes the type has been normalized already.
-pub(crate) fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> Option<Type> {
+pub(crate) fn convert_ty_to_flat_type<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> Option<Type> {
     match ty.kind() {
         ty::TyKind::Adt(def, args) => {
             let did = def.did();
             // TODO: if this is downcast to a variant, this might not work
-            let path_with_args = PathWithArgs::from_item(env, did, args.as_slice())?;
+            let path_with_args = PathWithArgs::from_item(tcx, did, args.as_slice())?;
             Some(Type::Adt(path_with_args))
         },
         ty::TyKind::Bool => Some(Type::Bool),
         ty::TyKind::Char => Some(Type::Char),
+        ty::TyKind::Never => Some(Type::Never),
         ty::TyKind::Int(it) => Some(Type::Int(it.to_owned())),
         ty::TyKind::Uint(it) => Some(Type::Uint(it.to_owned())),
         ty::TyKind::Param(p) => Some(Type::Param(p.index)),
+        ty::TyKind::Tuple(args) => {
+            let args = args.iter().map(|ty| convert_ty_to_flat_type(tcx, ty)).collect::<Option<Vec<_>>>()?;
+            Some(Type::Tuple(args))
+        },
         ty::TyKind::RawPtr(ty, m) => {
-            let converted_ty = convert_ty_to_flat_type(env, *ty)?;
+            let converted_ty = convert_ty_to_flat_type(tcx, *ty)?;
             Some(Type::RawPtr(*m, Box::new(converted_ty)))
         },
         ty::TyKind::Ref(r, ty, m) => {
-            let converted_ty = convert_ty_to_flat_type(env, *ty)?;
+            let converted_ty = convert_ty_to_flat_type(tcx, *ty)?;
 
             let idx = match r.kind() {
                 ty::RegionKind::ReEarlyParam(r) => r.index,
@@ -237,39 +250,39 @@ pub(crate) fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<Strin
 }
 
 /// Get the optionally annotated "external" path an item should be exported as.
-pub(crate) fn get_external_export_path_for_did(env: &Environment<'_>, did: DefId) -> Option<ExportAs> {
-    let attrs = env.get_attributes(did);
+pub(crate) fn get_external_export_path_for_did(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<ExportAs> {
+    let attrs = environment::get_attributes(tcx, did);
     if attrs::has_tool_attr(attrs, "export_as") {
         let filtered_attrs = attrs::filter_for_tool(attrs);
 
         return get_export_as_attr(filtered_attrs.as_slice()).ok();
     }
 
-    let surrounding_did = if let Some(impl_did) = env.tcx().impl_of_assoc(did) {
+    let surrounding_did = if let Some(impl_did) = tcx.impl_of_assoc(did) {
         // Check for an annotation on the surrounding impl
         Some(impl_did)
-    } else if let Some(trait_did) = env.tcx().trait_of_assoc(did) {
+    } else if let Some(trait_did) = tcx.trait_of_assoc(did) {
         // Check for an annotation on the surrounding trait
         Some(trait_did)
     } else {
         // ADT variants
-        env.tcx().opt_parent(did)
+        tcx.opt_parent(did)
     };
 
     if let Some(surrounding_did) = surrounding_did {
-        let attrs = env.get_attributes(surrounding_did);
+        let attrs = environment::get_attributes(tcx, surrounding_did);
 
         if attrs::has_tool_attr(attrs, "export_as") {
             let filtered_attrs = attrs::filter_for_tool(attrs);
             let mut path_prefix = get_export_as_attr(filtered_attrs.as_slice()).unwrap();
 
             // push the last component of this path
-            //let def_path = env.tcx().def_path(did);
-            let mut this_path = get_cleaned_def_path(env.tcx(), did);
+            //let def_path = tcx.def_path(did);
+            let mut this_path = get_cleaned_def_path(tcx, did);
             path_prefix.path.path.push(this_path.pop().unwrap());
 
             // this is a method (not in a trait decl, though)
-            path_prefix.as_method = env.tcx().impl_of_assoc(did).is_some();
+            path_prefix.as_method = tcx.impl_of_assoc(did).is_some();
 
             return Some(path_prefix);
         }
@@ -278,30 +291,19 @@ pub(crate) fn get_external_export_path_for_did(env: &Environment<'_>, did: DefId
     None
 }
 
-/// If this item should be exported as a different item, get that item's `DefId`.
-pub(crate) fn get_external_did_for_did(env: &Environment<'_>, did: DefId) -> Option<DefId> {
-    let path = get_external_export_path_for_did(env, did)?;
-
-    if env.is_method_did(did) || path.as_method {
-        search::try_resolve_method_did(env.tcx(), path.path.path)
-    } else {
-        search::try_resolve_did(env.tcx(), &path.path.path)
-    }
-}
-
 /// Get the path we should export an item at.
-pub(crate) fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> ExportAs {
-    if let Some(path) = get_external_export_path_for_did(env, did) {
+pub(crate) fn get_export_path_for_did(tcx: ty::TyCtxt<'_>, did: DefId) -> ExportAs {
+    if let Some(path) = get_external_export_path_for_did(tcx, did) {
         return path;
     }
 
-    let mut basic_path = get_cleaned_def_path(env.tcx(), did);
+    let mut basic_path = get_cleaned_def_path(tcx, did);
     // lets check if this is in the current crate, in that case add the current crate prefix
     if did.as_local().is_some() {
-        let crate_name = env.tcx().crate_name(span::def_id::LOCAL_CRATE);
+        let crate_name = tcx.crate_name(span::def_id::LOCAL_CRATE);
         basic_path.insert(0, crate_name.as_str().to_owned());
     }
-    let as_method = env.tcx().impl_of_assoc(did).is_some();
+    let as_method = tcx.impl_of_assoc(did).is_some();
     ExportAs {
         path: RustPath { path: basic_path },
         as_method,

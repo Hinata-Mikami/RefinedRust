@@ -13,8 +13,9 @@ use std::marker::PhantomData;
 
 use derive_more::{Constructor, Display};
 
-use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list, write_list};
+use crate::{coq, fmt_list, lang, model, push_str_list, write_list};
 
+pub mod bundles;
 pub mod enums;
 pub mod functions;
 pub mod invariants;
@@ -76,6 +77,10 @@ pub enum Type<'def> {
     /// dummy type that should be overridden by an annotation
     #[display("alias_ptr_t")]
     RawPtr,
+
+    /// non-null pointer used for compiler-generated references without a lifetime
+    #[display("alias_ref_t")]
+    AliasRef,
 }
 
 impl<'def> From<Type<'def>> for lang::SynType {
@@ -92,7 +97,9 @@ impl<'def> From<&Type<'def>> for lang::SynType {
             Type::Char => Self::Char,
             Type::Int(it) => Self::Int(*it),
 
-            Type::MutRef(..) | Type::ShrRef(..) | Type::RawPtr => Self::Ptr,
+            Type::MutRef(..) | Type::ShrRef(..) | Type::AliasRef => Self::Ref,
+
+            Type::RawPtr => Self::Ptr,
 
             Type::Struct(s) => s.generate_syn_type_term(),
             Type::Enum(s) => s.generate_syn_type_term(),
@@ -115,7 +122,8 @@ impl Type<'_> {
     pub fn make_raw(&mut self) {
         match self {
             Self::Struct(su) => su.make_raw(),
-            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) => ty.make_raw(),
+            Self::Literal(lit) => lit.make_raw(),
+            Self::MutRef(deref!(ty), _) | Self::ShrRef(deref!(ty), _) => ty.make_raw(),
             _ => (),
         }
     }
@@ -127,14 +135,14 @@ impl Type<'_> {
             Self::Bool => coq::term::Type::Bool,
             Self::Char | Self::Int(_) => coq::term::Type::Z,
 
-            Self::MutRef(box ty, _) => coq::term::Type::Prod(vec![
+            Self::MutRef(deref!(ty), _) => coq::term::Type::Prod(vec![
                 model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
                 model::Type::Gname.into(),
             ]),
 
-            Self::ShrRef(box ty, _) => model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
+            Self::ShrRef(deref!(ty), _) => model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
 
-            Self::RawPtr => model::Type::Loc.into(),
+            Self::RawPtr | Self::AliasRef => model::Type::Loc.into(),
 
             Self::LiteralParam(lit) => coq::term::Type::Literal(lit.refinement_type()),
             Self::Literal(lit) => coq::term::Type::Literal(lit.get_rfn_type()),
@@ -156,6 +164,17 @@ impl Type<'_> {
                 coq::term::Type::Unit
             },
         }
+    }
+
+    /// Determines the surface refinement type.
+    #[must_use]
+    pub fn get_xt_type(&self) -> coq::term::Type {
+        let app =
+            coq::term::App::new(coq::term::Term::Literal("RT_xt".to_owned()), vec![coq::term::Term::Type(
+                Box::new(self.get_rfn_type()),
+            )]);
+        let app = coq::term::Term::App(Box::new(app));
+        coq::term::Type::Term(Box::new(app))
     }
 }
 
@@ -262,40 +281,6 @@ impl TypeAnnotMeta {
     }
 }
 
-fn format_extra_context_items<F>(
-    items: &[coq::binder::Binder],
-    f: &mut F,
-) -> Result<(Vec<String>, Vec<String>), fmt::Error>
-where
-    F: fmt::Write,
-{
-    let mut context_names = Vec::new();
-    let mut context_names_without_sigma = Vec::new();
-    let mut counter = 0;
-
-    // write coq parameters
-    if !items.is_empty() {
-        write!(f, "{} (* Additional parameters *)\n", BASE_INDENT)?;
-        write!(f, "{}Context ", BASE_INDENT)?;
-
-        for it in items {
-            let name = format!("_CTX{}", counter);
-            counter += 1;
-
-            write!(f, "{}", it.clone().set_name(name.clone()))?;
-
-            if !it.is_dependent_on_sigma() {
-                context_names_without_sigma.push(name.clone());
-            }
-            context_names.push(name);
-        }
-        write!(f, ".\n")?;
-    }
-    write!(f, "\n")?;
-
-    Ok((context_names, context_names_without_sigma))
-}
-
 /// The origin of a type parameter.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub enum TyParamOrigin {
@@ -307,6 +292,13 @@ pub enum TyParamOrigin {
     Direct,
     /// An associated type in the trait being declared.
     AssocInDecl,
+}
+
+impl TyParamOrigin {
+    #[must_use]
+    pub const fn is_surrounding(self) -> bool {
+        matches!(self, Self::SurroundingTrait | Self::SurroundingImpl)
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -389,6 +381,10 @@ pub struct TyOwnSpec {
 }
 
 impl TyOwnSpec {
+    pub const fn set_later(&mut self, with_later: bool) {
+        self.with_later = with_later;
+    }
+
     #[must_use]
     pub fn fmt_owned(&self, tid: &str) -> String {
         if self.with_later {
@@ -531,6 +527,67 @@ impl<'def> GenericScopeInst<'def> {
         self.lfts.push(lft);
     }
 
+    /// Replace only the lifetime instantiation, preserving types and trait requirements.
+    #[must_use]
+    pub fn with_lfts(mut self, lfts: Vec<Lft>) -> Self {
+        self.lfts = lfts;
+        self
+    }
+
+    /// Select the surrounding implementation context and make it direct in the nested realization.
+    #[must_use]
+    pub fn realization_context(&self, lfts: Vec<Lft>) -> Self {
+        Self {
+            direct_tys: self.surrounding_tys.clone(),
+            surrounding_tys: Vec::new(),
+            direct_trait_requirements: self.surrounding_trait_requirements.clone(),
+            surrounding_trait_requirements: Vec::new(),
+            lfts,
+        }
+    }
+
+    /// Treat the complete generic instantiation as one realization context.
+    #[must_use]
+    pub fn all_as_realization_context(&self, lfts: Vec<Lft>) -> Self {
+        let mut direct_tys = self.surrounding_tys.clone();
+        direct_tys.extend(self.direct_tys.iter().cloned());
+        let mut direct_trait_requirements = self.surrounding_trait_requirements.clone();
+        direct_trait_requirements.extend(self.direct_trait_requirements.iter().cloned());
+        Self {
+            direct_tys,
+            surrounding_tys: Vec::new(),
+            direct_trait_requirements,
+            surrounding_trait_requirements: Vec::new(),
+            lfts,
+        }
+    }
+
+    /// Select the generics introduced directly by a method.
+    #[must_use]
+    pub fn method_context(&self, lfts: Vec<Lft>) -> Self {
+        Self {
+            direct_tys: self.direct_tys.clone(),
+            surrounding_tys: Vec::new(),
+            direct_trait_requirements: self.direct_trait_requirements.clone(),
+            surrounding_trait_requirements: Vec::new(),
+            lfts,
+        }
+    }
+
+    /// Compose an implementation realization context with the method nested inside it.
+    #[must_use]
+    pub fn nest(realization: &Self, method: &Self) -> Self {
+        let mut lfts = realization.lfts.clone();
+        lfts.extend(method.lfts.iter().cloned());
+        Self {
+            direct_tys: method.direct_tys.clone(),
+            surrounding_tys: realization.direct_tys.clone(),
+            direct_trait_requirements: method.direct_trait_requirements.clone(),
+            surrounding_trait_requirements: realization.direct_trait_requirements.clone(),
+            lfts,
+        }
+    }
+
     /// Add a trait requirement.
     pub fn add_trait_requirement(&mut self, req: traits::ReqInst<'def, Type<'def>>) {
         if req.get_origin() == TyParamOrigin::Direct {
@@ -538,6 +595,12 @@ impl<'def> GenericScopeInst<'def> {
         } else {
             self.surrounding_trait_requirements.push(req);
         }
+    }
+
+    /// Reclassify all direct instantiations as belonging to a surrounding implementation.
+    pub fn make_direct_params_surrounding(&mut self) {
+        self.surrounding_tys.append(&mut self.direct_tys);
+        self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
     }
 
     #[must_use]
@@ -551,7 +614,7 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
+    pub(crate) fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
         let ty_params = self.direct_trait_requirements.iter().map(|x| x.get_assoc_ty_inst().to_vec());
 
         ty_params.flatten().collect()
@@ -568,6 +631,17 @@ impl<'def> GenericScopeInst<'def> {
     pub fn get_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
         let mut direct = self.get_direct_ty_params().to_vec();
         direct.append(&mut self.get_direct_assoc_ty_params());
+        direct
+    }
+
+    #[must_use]
+    pub(crate) fn get_attr_value_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
+        let mut direct = self.get_direct_ty_params().to_vec();
+        for requirement in &self.direct_trait_requirements {
+            if requirement.attr_dependency.in_attr_value() {
+                direct.extend(requirement.get_assoc_ty_inst().iter().cloned());
+            }
+        }
         direct
     }
 
@@ -589,24 +663,18 @@ impl<'def> GenericScopeInst<'def> {
     /// Generate an instantiation of a term with the identity
     #[must_use]
     pub(crate) fn instantiation(&self, include_surrounding_reqs: bool, fully: bool) -> String {
-        let mut out = String::new();
+        let tys = if include_surrounding_reqs {
+            self.get_all_ty_params_with_assocs()
+        } else {
+            self.get_direct_ty_params_with_assocs()
+        };
+        let lfts = self.get_lfts();
 
-        if include_surrounding_reqs {
-            for ty in self.get_surrounding_ty_params_with_assocs() {
-                out.push_str(&format!(" <TY> {}", ty));
-            }
-        }
-        for ty in self.get_direct_ty_params_with_assocs() {
-            out.push_str(&format!(" <TY> {}", ty));
-        }
-        for lft in self.get_lfts() {
-            out.push_str(&format!(" <LFT> {}", lft));
-        }
         if fully {
-            out.push_str(" <INST!>");
+            Self::format_full_instantiation(&tys, lfts)
+        } else {
+            Self::format_instantiation(&tys, lfts)
         }
-
-        out
     }
 
     #[must_use]
@@ -622,6 +690,33 @@ impl<'def> GenericScopeInst<'def> {
     #[must_use]
     pub(crate) fn get_surrounding_trait_requirements(&self) -> &[traits::ReqInst<'def, Type<'def>>] {
         &self.surrounding_trait_requirements
+    }
+
+    pub(crate) fn format_full_instantiation(typarams: &[Type<'def>], lfts: &[Lft]) -> String {
+        format!("{} {}", Self::format_lft_instantiation(lfts), Self::format_ty_instantiation(typarams))
+    }
+
+    pub(crate) fn format_lft_instantiation(lfts: &[Lft]) -> String {
+        let mut out = String::from("-[");
+        push_str_list!(out, lfts, "; ");
+        out.push(']');
+        out
+    }
+
+    pub(crate) fn format_ty_instantiation(typarams: &[Type<'def>]) -> String {
+        let mut out = String::from("-[");
+        push_str_list!(out, typarams, "; ");
+        out.push(']');
+        out
+    }
+
+    pub(crate) fn format_instantiation(typarams: &[Type<'def>], lfts: &[Lft]) -> String {
+        let mut out = String::new();
+
+        push_str_list!(out, typarams, "", |x| format!(" <TY> {x}"));
+        push_str_list!(out, lfts, "", |x| format!(" <LFT> {x}"));
+
+        out
     }
 }
 
@@ -654,10 +749,63 @@ pub enum LftConstr<'def> {
     TypeOutlives(Type<'def>, UniversalLft),
 }
 
+#[derive(Constructor, Clone, Debug, Eq, PartialEq)]
+pub struct LftConstrWithOrigin<'def> {
+    constr: LftConstr<'def>,
+    origin: TyParamOrigin,
+}
+
 /// A context of lifetime constraints
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct Elctx<'def> {
-    constrs: Vec<LftConstr<'def>>,
+    constrs: Vec<LftConstrWithOrigin<'def>>,
+}
+
+impl<'def> Elctx<'def> {
+    fn format(
+        &self,
+        f: &mut impl fmt::Write,
+        extra_lfts: &[LftParam],
+        extra_types: &[Type<'def>],
+    ) -> fmt::Result {
+        write!(f, "λ ϝ, [")?;
+
+        // implied bounds on inputs/outputs
+        let lft_outlives: Vec<_> = self
+            .constrs
+            .iter()
+            .filter_map(|constr| match &constr.constr {
+                LftConstr::LftOutlives(lft1, lft2) => Some(format!("({lft1}, {lft2})")),
+                LftConstr::TypeOutlives(_, _) => None,
+            })
+            .collect();
+        write_list!(f, &lft_outlives, "; ")?;
+
+        // all lifetime parameters outlive this function
+        if !lft_outlives.is_empty() && !extra_lfts.is_empty() {
+            write!(f, "; ")?;
+        }
+        write_list!(f, &extra_lfts, "; ", |lft| format!("(ϝ, {lft})"))?;
+
+        write!(f, "]")?;
+
+        // type outlives constraints
+        let ty_outlives: Vec<_> = self
+            .constrs
+            .iter()
+            .filter_map(|constr| match &constr.constr {
+                LftConstr::TypeOutlives(ty, lft) => Some(format!("ty_outlives_E ({ty}) {lft}")),
+                _ => None,
+            })
+            .chain(extra_types.iter().map(|x| format!("ty_outlives_E ({x}) ϝ")))
+            .chain(extra_types.iter().map(|x| format!("ty_wf_E ({x})")))
+            .collect();
+        if !ty_outlives.is_empty() {
+            write!(f, " ++ ")?;
+            write_list!(f, ty_outlives, " ++ ")?;
+        }
+        Ok(())
+    }
 }
 
 /// A scope of generics.
@@ -698,43 +846,7 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
 
     fn format_elctx(&self) -> String {
         let mut out = String::with_capacity(100);
-
-        out.push_str("λ ϝ, [");
-
-        // implied bounds on inputs/outputs
-        let lft_outlives: Vec<_> = self
-            .lft_constraints
-            .constrs
-            .iter()
-            .filter_map(|constr| match constr {
-                LftConstr::LftOutlives(lft1, lft2) => Some(format!("({lft1}, {lft2})")),
-                LftConstr::TypeOutlives(_, _) => None,
-            })
-            .collect();
-        push_str_list!(out, &lft_outlives, "; ");
-
-        // all lifetime parameters outlive this function
-        if !lft_outlives.is_empty() && !self.lfts.is_empty() {
-            out.push_str("; ");
-        }
-        push_str_list!(out, &self.lfts, "; ", |lft| format!("(ϝ, {lft})"));
-
-        out.push(']');
-
-        // type outlives constraints
-        let ty_outlives: Vec<_> = self
-            .lft_constraints
-            .constrs
-            .iter()
-            .filter_map(|constr| match constr {
-                LftConstr::TypeOutlives(ty, lft) => Some(format!("ty_outlives_E ({ty}) {lft}")),
-                _ => None,
-            })
-            .collect();
-        if !ty_outlives.is_empty() {
-            out.push_str(" ++ ");
-            push_str_list!(out, ty_outlives, " ++ ");
-        }
+        self.lft_constraints.format(&mut out, &self.lfts, &[]).unwrap();
 
         out
     }
@@ -746,6 +858,16 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         for ty in self.get_all_ty_params_with_assocs().params {
             props.push(Self::generate_validity_term_for_typaram(&ty));
         }
+        coq::iris::IProp::Sep(props)
+    }
+
+    /// Get the validity term for generics introduced directly by a function or method.
+    #[must_use]
+    pub(crate) fn generate_validity_term_for_direct_generics(&self) -> coq::iris::IProp {
+        let mut params = self.get_direct_ty_params().clone();
+        params.append(self.get_direct_assoc_ty_params().params);
+
+        let props = params.params.iter().map(Self::generate_validity_term_for_typaram).collect();
         coq::iris::IProp::Sep(props)
     }
 
@@ -811,17 +933,14 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     /// Generate an instantiation of a term with the identity
     #[must_use]
     pub(crate) fn identity_instantiation_term(&self) -> String {
-        let mut out = String::new();
-
-        for ty in self.get_all_ty_params_with_assocs().params {
-            out.push_str(&format!(" <TY> {}", ty.type_term()));
-        }
-        for lft in self.get_lfts() {
-            out.push_str(&format!(" <LFT> {}", lft));
-        }
-        out.push_str(" <INST!>");
-
-        out
+        let tys: Vec<_> = self
+            .get_all_ty_params_with_assocs()
+            .params
+            .iter()
+            .map(|x| Type::LiteralParam(x.to_owned()))
+            .collect();
+        let lfts: Vec<_> = self.get_lfts().iter().map(|x| x.lft().to_owned()).collect();
+        GenericScopeInst::format_full_instantiation(&tys, &lfts)
     }
 
     #[must_use]
@@ -834,19 +953,6 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
             params.params.iter().map(|x| coq::term::Type::Literal(x.refinement_type())).collect(),
             spec,
         ))
-    }
-
-    #[must_use]
-    #[deprecated(note = "Use `get_spec_all_type_term` instead")]
-    fn get_all_type_term(&self) -> String {
-        let mut out = String::new();
-
-        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
-        let tys = self.get_all_ty_params_with_assocs();
-        push_str_list!(out, &tys.params, "; ", LiteralTyParam::refinement_type);
-        out.push(']');
-
-        out
     }
 
     #[must_use]
@@ -878,7 +984,7 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         self.lfts.push(lft);
     }
 
-    pub fn add_lft_constr(&mut self, constr: LftConstr<'def>) {
+    pub fn add_lft_constr(&mut self, constr: LftConstrWithOrigin<'def>) {
         self.lft_constraints.constrs.push(constr);
     }
 
@@ -890,11 +996,46 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
 
     /// Add a trait requirement.
     pub fn add_trait_requirement(&mut self, req: T) {
-        if req.get_origin() == TyParamOrigin::Direct {
-            self.direct_trait_requirements.push(req);
-        } else {
+        if req.get_origin().is_surrounding() {
             self.surrounding_trait_requirements.push(req);
+        } else {
+            self.direct_trait_requirements.push(req);
         }
+    }
+
+    pub fn make_direct_params_surrounding(&mut self) {
+        self.surrounding_tys.merge(self.direct_tys.clone());
+        self.direct_tys = TyParamList::empty();
+        for lft in &mut self.lfts {
+            if matches!(
+                lft.origin,
+                LftParamOrigin::LocalEarlyBound | LftParamOrigin::LocalLateBound | LftParamOrigin::ForBinder
+            ) {
+                lft.origin = LftParamOrigin::SurroundingImpl;
+            }
+        }
+        for constr in &mut self.lft_constraints.constrs {
+            if constr.origin == TyParamOrigin::Direct {
+                constr.origin = TyParamOrigin::SurroundingImpl;
+            }
+        }
+        self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
+    }
+
+    /// Reclassify selected direct type parameters as belonging to a surrounding implementation.
+    pub fn make_ty_params_surrounding(&mut self, names: &BTreeSet<String>) {
+        let mut direct = Vec::new();
+        let mut surrounding = Vec::new();
+        for mut ty in self.direct_tys.params.drain(..) {
+            if names.contains(&ty.rust_name) {
+                ty.set_origin(TyParamOrigin::SurroundingImpl);
+                surrounding.push(ty);
+            } else {
+                direct.push(ty);
+            }
+        }
+        self.direct_tys.params = direct;
+        self.surrounding_tys.append(surrounding);
     }
 
     #[must_use]
@@ -989,6 +1130,31 @@ impl<T: traits::ReqInfo> fmt::Display for GenericScope<'_, T> {
 
 impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
     #[must_use]
+    fn get_attr_type_direct_assoc_ty_params(&self) -> TyParamList {
+        let params = self.direct_trait_requirements.iter().filter_map(|trait_use| {
+            let trait_use = trait_use.borrow();
+            let trait_use = trait_use.as_ref().unwrap();
+            trait_use.attr_dependency.in_attr_type().then(|| trait_use.get_assoc_ty_params())
+        });
+        TyParamList::new(params.flatten().collect())
+    }
+
+    #[must_use]
+    fn get_attr_value_ty_params_with_assocs(&self) -> TyParamList {
+        let mut params = self.surrounding_tys.clone();
+        params.merge(self.direct_tys.clone());
+
+        for trait_use in self.surrounding_trait_requirements.iter().chain(&self.direct_trait_requirements) {
+            let trait_use = trait_use.borrow();
+            let trait_use = trait_use.as_ref().unwrap();
+            if trait_use.attr_dependency.in_attr_value() {
+                params.append(trait_use.get_assoc_ty_params());
+            }
+        }
+        params
+    }
+
+    #[must_use]
     fn get_direct_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(false, true, include_self, false)
     }
@@ -999,10 +1165,49 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
     }
 
     #[must_use]
+    fn get_all_trait_incl_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
+        self.get_trait_req_parameters(true, true, include_self, true)
+    }
+
+    #[must_use]
     fn get_all_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, false)
     }
 
+    #[must_use]
+    fn get_attr_type_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
+        self.get_attr_dependency_parameters(include_self, traits::AttrDependency::in_attr_type)
+    }
+
+    #[must_use]
+    fn get_attr_value_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
+        self.get_attr_dependency_parameters(include_self, traits::AttrDependency::in_attr_value)
+    }
+
+    fn get_attr_dependency_parameters(
+        &self,
+        include_self: IncludeSelfReq,
+        include: impl Fn(traits::AttrDependency) -> bool,
+    ) -> coq::binder::BinderList {
+        let mut params = Vec::new();
+        for trait_use in self
+            .get_surrounding_trait_requirements()
+            .iter()
+            .chain(self.get_direct_trait_requirements())
+        {
+            let trait_use = trait_use.borrow();
+            let trait_use = trait_use.as_ref().unwrap();
+            if include(trait_use.attr_dependency)
+                && (!trait_use.is_used_in_self_trait || include_self.include_attrs())
+                && let Some(attr_param) = trait_use.get_attr_param()
+            {
+                params.push(attr_param);
+            }
+        }
+        coq::binder::BinderList::new(params)
+    }
+
+    #[must_use]
     fn get_trait_req_parameters(
         &self,
         include_surrounding: bool,
@@ -1026,13 +1231,15 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
 
-            if !trait_use.is_used_in_self_trait || include_self.include_attrs() {
-                params.push(trait_use.get_attr_param());
+            if (!trait_use.is_used_in_self_trait || include_self.include_attrs())
+                && let Some(attr_param) = trait_use.get_attr_param()
+            {
+                params.push(attr_param);
             }
 
             // if we're not in the same trait declaration, add the spec
             if include_spec && (!trait_use.is_used_in_self_trait || include_self.include_spec()) {
-                params.push(trait_use.get_spec_param());
+                params.extend(trait_use.get_spec_params());
             }
         }
 
@@ -1064,5 +1271,51 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
             surrounding_trait_requirements,
             lfts: self.lfts.iter().map(|x| x.lft().to_owned()).collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selected_type_parameters_become_surrounding() {
+        let mut scope: GenericScope<'_> = GenericScope::empty();
+        scope.add_ty_param(LiteralTyParam::new("ImplT"));
+        scope.add_ty_param(LiteralTyParam::new("MethodT"));
+
+        scope.make_ty_params_surrounding(&BTreeSet::from(["ImplT".to_owned()]));
+
+        assert_eq!(scope.get_surrounding_ty_params().params[0].rust_name, "ImplT");
+        assert_eq!(scope.get_surrounding_ty_params().params[0].origin, TyParamOrigin::SurroundingImpl);
+        assert_eq!(scope.get_direct_ty_params().params[0].rust_name, "MethodT");
+    }
+
+    #[test]
+    fn direct_instantiations_become_surrounding() {
+        let mut inst = GenericScopeInst::empty();
+        inst.add_direct_ty_param(Type::Bool);
+
+        inst.make_direct_params_surrounding();
+
+        assert!(inst.get_direct_ty_params().is_empty());
+        assert_eq!(inst.get_surrounding_ty_params(), &[Type::Bool]);
+    }
+
+    #[test]
+    fn nested_contexts_separate_realization_and_method_generics() {
+        let mut full = GenericScopeInst::empty();
+        full.add_surrounding_ty_param(Type::Bool);
+        full.add_direct_ty_param(Type::Int(lang::IntType::I32));
+
+        let realization = full.realization_context(vec![coq::Ident::new("impl_lft")]);
+        let method = full.method_context(vec![coq::Ident::new("method_lft")]);
+        let nested = GenericScopeInst::nest(&realization, &method);
+
+        assert_eq!(realization.get_direct_ty_params(), &[Type::Bool]);
+        assert_eq!(method.get_direct_ty_params(), &[Type::Int(lang::IntType::I32)]);
+        assert_eq!(nested.get_surrounding_ty_params(), &[Type::Bool]);
+        assert_eq!(nested.get_direct_ty_params(), &[Type::Int(lang::IntType::I32)]);
+        assert_eq!(nested.get_lfts(), &[coq::Ident::new("impl_lft"), coq::Ident::new("method_lft")]);
     }
 }

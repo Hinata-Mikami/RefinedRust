@@ -68,7 +68,10 @@ impl PartialEq for DefinitelyInitializedState<'_, '_> {
 impl Eq for DefinitelyInitializedState<'_, '_> {}
 
 impl Serialize for DefinitelyInitializedState<'_, '_> {
-    fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
+    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+    where
+        Se: Serializer,
+    {
         let mut seq = serializer.serialize_seq(Some(self.def_init_places.len()))?;
 
         let mut ordered_places: Vec<_> = self.def_init_places.iter().collect();
@@ -190,15 +193,15 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
         let statement = &self.mir[location.block].statements[location.statement_index];
 
         match &statement.kind {
-            mir::StatementKind::Assign(box (target, source)) => {
+            mir::StatementKind::Assign(deref!((target, source))) => {
                 match source {
                     mir::Rvalue::Repeat(operand, _)
                     | mir::Rvalue::Cast(_, operand, _)
                     | mir::Rvalue::UnaryOp(_, operand)
-                    | mir::Rvalue::Use(operand) => {
+                    | mir::Rvalue::Use(operand, _) => {
                         self.apply_operand_effect(operand);
                     },
-                    mir::Rvalue::BinaryOp(_, box (operand1, operand2)) => {
+                    mir::Rvalue::BinaryOp(_, deref!((operand1, operand2))) => {
                         self.apply_operand_effect(operand1);
                         self.apply_operand_effect(operand2);
                     },

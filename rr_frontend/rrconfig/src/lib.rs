@@ -13,6 +13,16 @@ use std::{env, fmt, path};
 
 use serde::{Deserialize, Serialize, de};
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PanicAbortMode {
+    /// Require an explicit per-function or per-closure opt-in to exploit aborting panics.
+    #[default]
+    Conservative,
+    /// Allow every function translated with aborting panic MIR to exploit terminal abort.
+    Permissive,
+}
+
 fn vec_or_split_colon<'de, D>(d: D) -> Result<Vec<String>, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -72,15 +82,22 @@ struct Config {
     no_verify: bool,
     no_assumption: bool,
     admit_proofs: bool,
+    generate_linking_requirements: bool,
     generate_dune_project: bool,
     #[serde(deserialize_with = "vec_or_split_colon")]
     lib_load_paths: Vec<String>,
+    #[serde(deserialize_with = "vec_or_split_colon")]
+    extra_dependencies: Vec<String>,
+    enable_smtcoq: bool,
     work_dir: String,
     output_dir: Option<String>,
     post_generation_hook: Option<String>,
     extra_specs: Option<String>,
+    extra_proofs: Vec<String>,
     trust_debug: bool,
     find_stdlib: bool,
+    register_all_adts: bool,
+    panic_abort_mode: PanicAbortMode,
 }
 
 impl Default for Config {
@@ -99,14 +116,20 @@ impl Default for Config {
             no_verify: false,
             no_assumption: false,
             admit_proofs: false,
+            generate_linking_requirements: false,
             generate_dune_project: true,
             lib_load_paths: vec![],
+            extra_dependencies: vec![],
+            enable_smtcoq: false,
             work_dir: ".".to_owned(),
             output_dir: None,
             post_generation_hook: None,
             extra_specs: None,
+            extra_proofs: vec![],
             trust_debug: false,
             find_stdlib: true,
+            register_all_adts: true,
+            panic_abort_mode: PanicAbortMode::Conservative,
         }
     }
 }
@@ -188,7 +211,10 @@ pub fn register_stdlib_paths() {
     });
 }
 
-fn access_config<'a, T, C: FnOnce(RwLockWriteGuard<'a, Config>) -> T>(callback: C) -> T {
+fn access_config<'a, T, C>(callback: C) -> T
+where
+    C: FnOnce(RwLockWriteGuard<'a, Config>) -> T,
+{
     callback(SETTINGS.write().unwrap())
 }
 
@@ -213,6 +239,12 @@ pub fn log_dir() -> Result<PathBuf, NormalizeError> {
 #[must_use]
 pub fn check_overflows() -> bool {
     access_config(|c| c.check_overflows)
+}
+
+/// Where proofs may exploit an aborting Rust panic runtime.
+#[must_use]
+pub fn panic_abort_mode() -> PanicAbortMode {
+    access_config(|c| c.panic_abort_mode)
 }
 
 /// Should we dump debug files?
@@ -279,6 +311,12 @@ pub fn admit_proofs() -> bool {
     access_config(|c| c.admit_proofs)
 }
 
+/// Thread callee obligations through function lemmas for adequacy linking.
+#[must_use]
+pub fn generate_linking_requirements() -> bool {
+    access_config(|c| c.generate_linking_requirements)
+}
+
 /// Whether to generate a dune-project file for this project
 #[must_use]
 pub fn generate_dune_project() -> bool {
@@ -293,6 +331,18 @@ pub fn lib_load_paths() -> Vec<PathBuf> {
         .map(make_path_absolute)
         .filter_map(Result::ok)
         .collect()
+}
+
+/// Append user-dependencies to the generated list of dependencies in `dune` files.
+#[must_use]
+pub fn extra_dependencies() -> Vec<String> {
+    access_config(|c| c.extra_dependencies.clone()).into_iter().collect()
+}
+
+/// Enable `SMTCoq` support.
+#[must_use]
+pub fn enable_smtcoq() -> bool {
+    access_config(|c| c.enable_smtcoq)
 }
 
 #[must_use]
@@ -322,14 +372,26 @@ pub fn extra_specs_file() -> Option<PathBuf> {
     access_config(|c| c.extra_specs.clone()).map(make_path_absolute).and_then(Result::ok)
 }
 
+/// Which extra proof modules should be build? (manually added files in proofs/)
+#[must_use]
+pub fn extra_proof_modules() -> Vec<String> {
+    access_config(|c| c.extra_proofs.clone())
+}
+
 /// Should we automatically trust `fmt::Debug` trait impls?
 #[must_use]
 pub fn trust_debug() -> bool {
     access_config(|c| c.trust_debug)
 }
 
+/// Should we register all ADTs, even if they are not annotated?
+#[must_use]
+pub fn register_all_adts() -> bool {
+    access_config(|c| c.register_all_adts)
+}
+
 #[cfg(test)]
-#[expect(clippy::bool_assert_comparison)]
+#[expect(clippy::bool_assert_comparison, clippy::inline_modules)]
 mod tests {
     use std::sync::Once;
 
@@ -341,7 +403,10 @@ mod tests {
     // There is a race between `std::env::set_var()` and `SETTINGS`.
     static SETUP_ENV: Once = Once::new();
 
-    fn setup<F: FnOnce(RwLockWriteGuard<'_, Config>)>(test: F) {
+    fn setup<F>(test: F)
+    where
+        F: FnOnce(RwLockWriteGuard<'_, Config>),
+    {
         SETUP_ENV.call_once(|| {
             // Safety: This block is single-threaded
             #[expect(clippy::multiple_unsafe_ops_per_block)]
@@ -358,6 +423,14 @@ mod tests {
     #[test]
     fn read_default() {
         setup(|c| assert_eq!(c.be_rustc, false));
+    }
+
+    #[test]
+    fn linking_requirements_are_opt_in() {
+        let default: Config = toml::from_str("").unwrap();
+        assert!(!default.generate_linking_requirements);
+        let enabled: Config = toml::from_str("generate_linking_requirements = true").unwrap();
+        assert!(enabled.generate_linking_requirements);
     }
 
     #[test]

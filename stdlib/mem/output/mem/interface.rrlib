@@ -1,0 +1,55 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "kind": "function",
+      "name": "mem_align_of",
+      "path": [
+        "core",
+        "mem",
+        "align_of"
+      ],
+      "spec": "type_of_mem_align_of",
+      "trait_req_incl": "trait_incl_of_mem_align_of"
+    },
+    {
+      "kind": "function",
+      "name": "drop",
+      "path": [
+        "core",
+        "mem",
+        "drop"
+      ],
+      "spec": "type_of_drop",
+      "trait_req_incl": "trait_incl_of_drop"
+    },
+    {
+      "kind": "function",
+      "name": "forget",
+      "path": [
+        "core",
+        "mem",
+        "forget"
+      ],
+      "spec": "type_of_forget",
+      "trait_req_incl": "trait_incl_of_forget"
+    },
+    {
+      "kind": "function",
+      "name": "mem_size_of",
+      "path": [
+        "core",
+        "mem",
+        "size_of"
+      ],
+      "spec": "type_of_mem_size_of",
+      "trait_req_incl": "trait_incl_of_mem_size_of"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.mem.theories"
+  ],
+  "refinedrust_module": "generated_specs_mem",
+  "refinedrust_name": "mem",
+  "refinedrust_path": "rrstd.mem.mem.generated"
+}

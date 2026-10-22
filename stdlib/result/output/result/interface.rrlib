@@ -1,0 +1,291 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "fmt",
+        "Error"
+      ],
+      "raw_type": {
+        "rtype": "(Error_rt)",
+        "semtype": "Error_ty"
+      },
+      "rtype": "(Error_rt)",
+      "semtype": "Error_ty",
+      "syntype": "Error_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "fmt",
+        "Formatter"
+      ],
+      "raw_type": {
+        "rtype": "(Formatter_rt)",
+        "semtype": "Formatter_ty"
+      },
+      "rtype": "(Formatter_inv_t_rt)",
+      "semtype": "Formatter_inv_t",
+      "syntype": "Formatter_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "Err"
+      ],
+      "raw_type": {
+        "rtype": "(Result_Err_rt)",
+        "semtype": "Result_Err_ty"
+      },
+      "rtype": "(Result_Err_rt)",
+      "semtype": "Result_Err_ty",
+      "syntype": "Result_Err_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "Ok"
+      ],
+      "raw_type": {
+        "rtype": "(Result_Ok_rt)",
+        "semtype": "Result_Ok_ty"
+      },
+      "rtype": "(Result_Ok_rt)",
+      "semtype": "Result_Ok_ty",
+      "syntype": "Result_Ok_sls"
+    },
+    {
+      "info": {
+        "enum_name": "Result_enum",
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "result",
+        "Result"
+      ],
+      "raw_type": {
+        "rtype": "(Result_rt)",
+        "semtype": "Result_ty"
+      },
+      "rtype": "(Result_rt)",
+      "semtype": "Result_ty",
+      "syntype": "Result_els"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_is_err",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "is_err"
+      ],
+      "spec": "type_of_Result_TE_is_err",
+      "trait_req_incl": "trait_incl_of_Result_TE_is_err"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_is_ok",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "is_ok"
+      ],
+      "spec": "type_of_Result_TE_is_ok",
+      "trait_req_incl": "trait_incl_of_Result_TE_is_ok"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_map",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "map"
+      ],
+      "spec": "type_of_Result_TE_map",
+      "trait_req_incl": "trait_incl_of_Result_TE_map"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_map_err",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "map_err"
+      ],
+      "spec": "type_of_Result_TE_map_err",
+      "trait_req_incl": "trait_incl_of_Result_TE_map_err"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_unwrap",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "unwrap"
+      ],
+      "spec": "type_of_Result_TE_unwrap",
+      "trait_req_incl": "trait_incl_of_Result_TE_unwrap"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_unwrap_unchecked",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "unwrap_unchecked"
+      ],
+      "spec": "type_of_Result_TE_unwrap_unchecked",
+      "trait_req_incl": "trait_incl_of_Result_TE_unwrap_unchecked"
+    },
+    {
+      "allowed_attrs": [],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "fmt": "trait_incl_of_Debug_fmt"
+      },
+      "name": "Debug",
+      "path": [
+        "core",
+        "fmt",
+        "Debug"
+      ]
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "core",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": {
+          "name": "ResultTEasstd_clone_Clone_clone",
+          "spec": "type_of_ResultTEasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_ResultTEasstd_clone_Clone_clone"
+        }
+      },
+      "name": "ResultTEasstd_clone_Clone",
+      "realization": "ResultTEasstd_clone_Clone_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "core",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "ResultTEasstd_marker_Copy",
+      "realization": "ResultTEasstd_marker_Copy_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_Result",
+          "spec": "type_of_drop_glue_Result",
+          "trait_req_incl": "trait_incl_of_drop_glue_Result"
+        }
+      },
+      "name": "drop_glue_Result",
+      "path": [
+        "core",
+        "result",
+        "Result"
+      ],
+      "realization": "drop_glue_Result_realization"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_result",
+  "refinedrust_name": "result",
+  "refinedrust_path": "rrstd.result.result.generated"
+}

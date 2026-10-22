@@ -17,9 +17,6 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  Unshelve.
-  rename select ((Z.abs _ = 2 ∧ Z.abs _ = 1) ∨ _) into Hk.
-  cbn in Hk. lia.
-  all: print_remaining_sidecond.
+  Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

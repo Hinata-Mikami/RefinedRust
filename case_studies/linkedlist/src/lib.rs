@@ -6,16 +6,21 @@
 #![allow(unused)]
 
 #![rr::package("linkedlist")]
+#![rr::import("refinedrust.extra_proofs.linkedlist", "linkedlist")]
 #![rr::include("stdlib")]
+#![rr::include("mem")]
+#![rr::include("sized")]
 
 use std::marker::PhantomData;
 
 mod examples;
 mod demo;
 
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 struct Link<T> {
     value: T,
     next: *const Link<T>,
+    prev: *const Link<T>,
 }
 
 #[rr::refined_by("xs" : "listRT {rt_of T}")]
@@ -30,16 +35,16 @@ struct Link<T> {
 #[rr::inv("Hnot_null": "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 // Ownership of the Link pointer for every element.
 #[rr::inv(#iris "([∗ list] i ↦ x ∈ xs,
-    ∃ l lnext : loc, ⌜locs !! i = Some l⌝ ∗ ⌜(locs ++ [NULL_loc]) !! S i = Some lnext⌝ ∗
-    guarded true (l ◁ₗ[π, Owned] #( *[#x; #lnext]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
-    freeable_nz l (ly_size (use_struct_layout_alg' (Link_sls {st_of T}))) 1 HeapAlloc
+    linkedlist_node π {T} (Link_sls {st_of T}) locs i x
     )")]
+#[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π x")]
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct List<T> {
-    #[rr::field("hd_ptr")]
+    #[rr::field("#(hd_ptr)")]
     first: *const Link<T>,
-    #[rr::field("tl_ptr")]
+    #[rr::field("#(tl_ptr)")]
     last: *const Link<T>,
 }
 
@@ -51,7 +56,7 @@ impl<T> List<T> {
 
     #[rr::observe("self.ghost": "<$#> (self.cur ++ [value])")]
     pub fn push_back(&mut self, value: T) {
-        let link = Box::new(Link { value, next: std::ptr::null() });
+        let link = Box::new(Link { value, next: std::ptr::null(), prev: self.last });
         let link_ptr = Box::into_raw(link);
 
         if self.last.is_null() {
@@ -66,13 +71,16 @@ impl<T> List<T> {
 
     #[rr::observe("self.ghost": "<$#> (value :: self.cur)")]
     pub fn push_front(&mut self, value: T) {
-        let link = Box::new(Link { value, next: self.first });
+        let link = Box::new(Link { value, next: self.first, prev: std::ptr::null() });
         let link_ptr = Box::into_raw(link);
 
-        self.first = link_ptr;
-        if self.last.is_null() {
+        if self.first.is_null() {
             self.last = link_ptr;
+        } else {
+            let old_first = self.first as *mut Link<T>;
+            unsafe { (*old_first).prev = link_ptr; }
         }
+        self.first = link_ptr;
     }
 
     #[rr::returns("head self.cur")]
@@ -88,6 +96,28 @@ impl<T> List<T> {
         self.first = link.next;
         if self.first.is_null() {
             self.last = std::ptr::null_mut();
+        } else {
+            let new_first = self.first as *mut Link<T>;
+            unsafe { (*new_first).prev = std::ptr::null(); }
+        }
+        Some(link.value)
+    }
+
+    #[rr::returns("last self.cur")]
+    #[rr::observe("self.ghost": "<$#> (removelast self.cur)")]
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.last.is_null() {
+            return None;
+        }
+        let link = self.last as *mut Link<T>;
+        let link = *unsafe { Box::from_raw(link) };
+
+        self.last = link.prev;
+        if self.last.is_null() {
+            self.first = std::ptr::null_mut();
+        } else {
+            let new_last = self.last as *mut Link<T>;
+            unsafe { (*new_last).next = std::ptr::null(); }
         }
         Some(link.value)
     }
@@ -106,6 +136,9 @@ impl<T> List<T> {
         };
         if self.first.is_null() {
             self.last = std::ptr::null_mut();
+        } else {
+            let new_first = self.first as *mut Link<T>;
+            unsafe { (*new_first).prev = std::ptr::null(); }
         }
         // TODO free memory via alloc API.
         Some(val)
@@ -120,10 +153,37 @@ impl<T> List<T> {
     }
 }
 
+impl<T> Drop for List<T> {
 
-#[rr::refined_by("xs" : "listRT {rt_of T}")]
+    // Add a lifetime wellformedness constraint for &'a self;
+    // this is not added automatically via RefinedRust's usual mechanism as 
+    // we override the semantic type.
+    #[rr::unsafe_elctx("ty_outlives_E {T} ulft_1")]
+    #[rr::params("l", "xs")]
+    #[rr::args("l" @ "alias_ref_t")]
+    #[rr::requires(#type "l" : "$# xs" @ "List_inv_t T_rt -[] -[T_ty]")]
+    #[rr::ensures(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π ($# x)")]
+    #[rr::ensures(#type "l" : "$# []" @ "List_inv_t T_rt -[] -[T_ty]")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+    #[rr::ensures_on_unwind(#iris "∃ remaining, l ◁ₗ[π, Owned] #($# remaining) @ (◁ List_inv_t T_rt -[] -[T_ty])")]
+    fn drop(&mut self) {
+        while let Some(value) = self.pop_front() {
+            let _ =
+            #[rr::exists("dropped", "remaining")]
+            #[rr::inv(#type "l" : "$# remaining" @ "List_inv_t T_rt -[] -[T_ty]")]
+            #[rr::inv(#iris "[∗ list] x ∈ dropped, ty_ghost_drop {T} π ($# x)")]
+            #[rr::inv("xs = dropped ++ remaining")]
+            #[rr::ignore] || {};
+
+            std::mem::drop(value);
+        }
+    }
+}
+
+
+#[rr::refined_by("xs" : "listRT (directRT {xt_of T})")]
 #[rr::depends_on(Link)]
-#[rr::exists("locs" : "list loc", "hd_ptr" : "loc")]
+#[rr::exists("locs" : "list loc", "hd_ptr" : "loc", "prev_ptr" : "loc")]
 #[rr::inv("Hlocs" : "if decide (hd_ptr.(loc_a) = 0)
     then xs = [] ∧ hd_ptr = NULL_loc
     else length xs > 0 ∧ head locs = Some hd_ptr")]
@@ -131,17 +191,15 @@ impl<T> List<T> {
 #[rr::inv("Hnot_null": "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 // Ownership of the Link pointer for every element.
 #[rr::inv(#iris "([∗ list] i ↦ x ∈ xs,
-    ∃ l lnext : loc, ⌜locs !! i = Some l⌝ ∗ ⌜(locs ++ [NULL_loc]) !! S i = Some lnext⌝ ∗
-    guarded false (l ◁ₗ[π, Shared {'a}] #( *[#x; #lnext]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
-    True
+    linkedlist_node_shared π {'a} {T} (Link_sls {st_of T}) locs prev_ptr i ($# x)
     )")]
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
 #[derive(Copy, Clone)]
 pub struct ListIter<'a, T> {
-    #[rr::field("hd_ptr")]
+    #[rr::field("#(hd_ptr)")]
     current_link: *const Link<T>,
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     phantom: PhantomData<&'a T>,
 }
 

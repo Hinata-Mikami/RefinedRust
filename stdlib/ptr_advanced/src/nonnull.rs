@@ -9,7 +9,7 @@ use core::ptr;
 pub struct NonNull<T: ?Sized> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.
-    #[rr::field("l")]
+    #[rr::field("#(l)")]
     pointer: *const T,
 }
 
@@ -67,6 +67,29 @@ impl<T: ?Sized> NonNull<T> {
         self.pointer as *mut T
     }
 
+    #[rr::params("x" : "{xt_of T}")]
+    #[rr::requires(#iris "self ◁ₗ[π, Owned] # ($# x) @ ◁ {ty_of T}")]
+    #[rr::ensures(#iris "self ◁ₗ[π, Owned] # ($# x) @ ShrBlockedLtype {ty_of T} {'a}")]
+    #[rr::returns("x")]
+    pub const unsafe fn as_ref<'a>(&self) -> &'a T {
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a reference.
+        // `cast_const` avoids a mutable raw pointer deref.
+        unsafe { &*self.as_ptr().cast_const() }
+    }
+
+    #[rr::params("x" : "{xt_of T}")]
+    #[rr::requires(#iris "self.cur ◁ₗ[π, Owned] # ($# x) @ ◁ {ty_of T}")]
+    #[rr::exists("γ")]
+    #[rr::ensures(#iris "self.cur ◁ₗ[π, Owned] PlaceGhost γ @ BlockedLtype {ty_of T} {'a}")]
+    #[rr::observe("self.ghost" : "self.cur")] 
+    #[rr::returns("(x, γ)")]
+    pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
+        unsafe {
+            &mut *self.as_ptr()
+        }
+    }
+
     #[rr::returns("self")]
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
@@ -80,8 +103,7 @@ impl<T: ?Sized> NonNull<T> {
     #[rr::params("k", "ty" : "xtype")]
     #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
     #[rr::requires(#iris "self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-    #[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-    #[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+    #[rr::requires("ty_allows_ops ty.(xtype_ty)")]
     // (`read` does a typed Copy at the syntype of T)
     #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
     #[rr::requires("Copyable ty.(xtype_ty)")]
@@ -98,8 +120,7 @@ impl<T: ?Sized> NonNull<T> {
     #[rr::params("k", "ty" : "xtype")]
     #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
     #[rr::requires(#iris "self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-    #[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-    #[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+    #[rr::requires("ty_allows_ops ty.(xtype_ty)")]
     #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
     #[rr::requires("Copyable ty.(xtype_ty)")]
     #[rr::ensures(#iris "self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
@@ -140,7 +161,7 @@ impl<T: ?Sized> NonNull<T> {
         self.as_ptr().is_aligned()
     }
 
-    #[rr::requires("(∃ align_log, align = 2^align_log)")]
+    #[rr::requires("is_power_of_two (Z.to_nat align)")]
     #[rr::returns("bool_decide (self `aligned_to` Z.to_nat align)")]
     pub fn is_aligned_to(self, align: usize) -> bool {
         self.as_ptr().is_aligned_to(align)

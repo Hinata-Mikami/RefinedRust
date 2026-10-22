@@ -1,8 +1,8 @@
 From Sniper Require Import Sniper.
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From refinedrust.examples.smtcoq.generated Require Import generated_code_smtcoq generated_specs_smtcoq generated_template_EvenInt_add_even.
 From refinedrust_smtcoq Require Import smtcoq.
+From refinedrust.examples.smtcoq.generated Require Import generated_code_smtcoq generated_specs_smtcoq generated_template_EvenInt_add_even.
 
 Set Default Proof Using "Type".
 
@@ -15,7 +15,7 @@ Context `{!refinedrustGS Σ}.
 (* As this is too complicated, let's instead use a witness *)
 Lemma Zeven_div2_equiv (z: Z) : Zeven z ↔ z = 2 * (Z.div2 z).
 Proof.
-  by induction z; [| split; destruct p.. ].
+  by induction z; [ | split; destruct p.. ].
 Qed.
 
 Lemma Zeven_div2_linearity: ∀ (x y: Z),
@@ -69,8 +69,11 @@ Proof.
     | H : JCACHED _ |- _ => clear H
     | H : CACHED _ |- _ => clear H
     | H : bb_inv_map_marker _ |- _ => clear H
+    | H : rr_config_strict_resolution |- _ => clear H
     end.
-    all: snipe.
+    1: snipe.
+    (* TODO: hmm, the negated elem_of seems to be a problem for the current normalization of snipe *)
+    1: sidecond_hammer.
 
   Unshelve. all: print_remaining_sidecond.
 Qed.

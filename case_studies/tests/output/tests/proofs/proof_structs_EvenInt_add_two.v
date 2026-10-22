@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.tests.generated Require Import generated_code_tests generated_specs_tests generated_template_structs_EvenInt_add_two.
 
@@ -13,12 +13,6 @@ Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
   structs_EvenInt_add_two_prelude.
 
-  rep <-! liRStep; liShow.
-  liRStepUntil interpret_typing_hint.
-  iApply interpret_typing_hint_ignore.
-  rep <-! liRStep; liShow.
-  liRStepUntil interpret_typing_hint.
-  iApply interpret_typing_hint_ignore.
   rep <-! liRStep; liShow.
 
   all: print_remaining_goal.

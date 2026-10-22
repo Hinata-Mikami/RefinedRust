@@ -1,0 +1,11 @@
+Mapping for function lowered_discriminant_value:
+summary: total=8 mapped=8 unmapped=0
+
+bb0[0] StorageLive(_2) -> Source(bb0[0] StorageLive(_2))
+bb0[1] StorageLive(_3) -> Source(bb0[1] StorageLive(_3))
+bb0[2] _3 = &_1 -> Source(bb0[2] _3 = &_1)
+bb0[3] _2 = &(*_3) -> Source(bb0[3] _2 = &(*_3))
+bb0[4] _0 = discriminant((*_2)) -> Source(bb0[4] _0 = std::intrinsics::discriminant_value::<Ordering>(move _2) -> [return: bb1, unwind: bb2])
+bb0[5] StorageDead(_3) -> FoldedFrom(bb1[0] StorageDead(_3))
+bb0[6] StorageDead(_2) -> FoldedFrom(bb1[1] StorageDead(_2))
+bb0[7] return -> FoldedFrom(bb1[2] return)

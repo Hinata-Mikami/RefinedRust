@@ -1,3 +1,4 @@
+BoxMaterializationUseValidator::visit_place
 CollectClosureDefsVisitor::maybe_tcx
 CollectClosureDefsVisitor::visit_expr
 OrderedDefId::partial_cmp

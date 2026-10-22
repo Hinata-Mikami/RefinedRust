@@ -4,12 +4,12 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(fn_traits)]
 #![feature(rustc_private)]
-#![feature(iter_order_by)]
 #![feature(stmt_expr_attributes)]
 #![feature(anonymous_lifetime_in_impl_trait)]
+#![recursion_limit = "256"]
 // This is useful to clearly state lifetimes of the global interners.
 #![allow(clippy::needless_lifetimes)]
 #![allow(clippy::elidable_lifetime_names)]
@@ -32,32 +32,40 @@ mod types;
 mod unification;
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::fs::File;
-use std::io::{Read as _, Write as _};
+use std::io::{self, Read as _, Write as _};
 use std::path::{Path, PathBuf};
-use std::{fs, io, process};
 
-use log::{info, trace, warn};
+use log::{error, info, trace, warn};
+use radium::specs::bundles::BundleableType as _;
 use radium::{code, coq, lang, specs};
-use rr_rustc_interface::borrowck::consumers::BodyWithBorrowckFacts;
+use rr_rustc_interface::errors::ErrorGuaranteed;
+use rr_rustc_interface::hir::attrs::lang_items::LangItem;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
-use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::{mir, queries, ty};
+use rr_rustc_interface::span::Span;
 use rr_rustc_interface::{hir, span};
+use topological_sort::TopologicalSort;
 use typed_arena::Arena;
 
 use crate::base::OrderedDefId;
-use crate::body::signature;
+use crate::body::{drop_glue_translation, signature};
 use crate::closure_impl_generator::ClosureImplGenerator;
-use crate::environment::Environment;
+pub use crate::environment::mir_mapper::{
+    BoxDerefAlias, MappingResult, Origin, SourceLoc, SyntheticDropBorrow, TargetLoc,
+    format_inserted_terminator_point_mappings, format_mapping, map_drop_elaborated_to_borrow_checked,
+};
 use crate::shims::registry as shim_registry;
-use crate::spec_parsers::const_attr_parser::{ConstAttrParser as _, VerboseConstAttrParser};
+use crate::spec_parsers::adt_attr_parser::AdtDropGlueMode;
+use crate::spec_parsers::const_attr_parser::{CONST_ATTRS, ConstAttrParser as _, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser as _, VerboseCrateAttrParser};
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser as _, ModuleAttrs, VerboseModuleAttrParser};
 use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
 pub struct VerificationCtxt<'tcx, 'rcx> {
-    env: &'rcx Environment<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     procedure_registry: procedures::Scope<'tcx, 'rcx>,
     const_registry: consts::Scope<'rcx>,
     type_translator: &'rcx types::TX<'rcx, 'tcx>,
@@ -65,6 +73,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
 
     functions: &'rcx [LocalDefId],
     closures: &'rcx [LocalDefId],
+    adts: &'rcx [LocalDefId],
 
     fn_arena: &'rcx Arena<specs::functions::Spec<'rcx, specs::functions::InnerSpec<'rcx>>>,
 
@@ -82,13 +91,29 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
-    trait_impls: BTreeMap<OrderedDefId, specs::traits::ImplSpec<'rcx>>,
-    trait_impl_deps: BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+    trait_impls: BTreeMap<registry::ImplKey, specs::traits::ImplSpec<'rcx>>,
+    trait_impl_deps: BTreeMap<registry::ImplKey, BTreeSet<OrderedDefId>>,
+}
+
+#[derive(Debug)]
+pub enum PipelineError {
+    Io(io::Error),
+    Reported(ErrorGuaranteed),
+}
+
+impl From<io::Error> for PipelineError {
+    fn from(err: io::Error) -> Self {
+        Self::Io(err)
+    }
+}
+
+fn recover_or_fail(err: ErrorGuaranteed) -> Result<(), PipelineError> {
+    if rrconfig::skip_unsupported_features() { Ok(()) } else { Err(PipelineError::Reported(err)) }
 }
 
 impl<'rcx> VerificationCtxt<'_, 'rcx> {
     fn get_path_for_shim(&self, did: DefId) -> (Vec<&str>, bool) {
-        let path = shims::flat::get_export_path_for_did(self.env, did);
+        let path = shims::flat::get_export_path_for_did(self.tcx, did);
         let interned_path = self.shim_registry.intern_path(path.path.path);
         (interned_path, path.as_method)
     }
@@ -105,7 +130,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             return None;
         }
 
-        if self.env.tcx().visibility(did) != ty::Visibility::Public {
+        if !is_public_local_item(self.tcx, did) {
             // don't export
             return None;
         }
@@ -114,7 +139,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         let (interned_path, as_method) = self.get_path_for_shim(did);
         let is_method = as_method;
 
-        let name = base::strip_coq_ident(&self.env.get_item_name(did));
+        let name = base::strip_coq_ident(&environment::get_item_name(self.tcx, did));
         info!("Found function path {:?} for did {:?} with name {:?}", interned_path, did, name);
 
         Some(shim_registry::FunctionShim {
@@ -133,9 +158,9 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         decl: &specs::traits::ImplSpec<'rcx>,
     ) -> Option<shim_registry::TraitImplShim> {
         info!("making shim entry for impl {did:?}");
-        let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = self.env.tcx().impl_trait_ref(did);
+        let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = self.tcx.impl_trait_ref(did);
 
-        let impl_ref = normalize_in_function(did, self.env.tcx(), impl_ref.skip_binder()).unwrap();
+        let impl_ref = normalize_in_function(did, self.tcx, impl_ref.skip_binder()).unwrap();
         trace!("normalized impl_ref: {impl_ref:?}");
 
         let args = impl_ref.args;
@@ -147,11 +172,11 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         let impl_for = args[0].expect_ty();
 
         // flatten the trait reference
-        let trait_path = shims::flat::PathWithArgs::from_item(self.env, trait_did, trait_args)?;
+        let trait_path = shims::flat::PathWithArgs::from_item(self.tcx, trait_did, trait_args)?;
         trace!("got trait path: {:?}", trait_path);
 
         // flatten the self type.
-        let Some(for_type) = shims::flat::convert_ty_to_flat_type(self.env, impl_for) else {
+        let Some(for_type) = shims::flat::convert_ty_to_flat_type(self.tcx, impl_for) else {
             trace!("leave make_impl_shim_entry (failed transating self type)");
             return None;
         };
@@ -161,23 +186,69 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         let mut method_specs = BTreeMap::new();
         for (name, spec) in &decl.methods.methods {
             if let specs::traits::InstanceMethodSpec::Defined(spec) = spec {
-                method_specs.insert(
-                    name.to_owned(),
-                    (spec.function_name.clone(), spec.spec_name.clone(), spec.trait_req_incl_name.clone()),
-                );
+                method_specs.insert(name.to_owned(), shim_registry::MethodShimSpec {
+                    name: spec.function_name.clone(),
+                    spec_name: spec.spec_name.clone(),
+                    trait_req_incl_name: spec.trait_req_incl_name.clone(),
+                });
             }
             // otherwise (for default specs), we don't have to store anything, as this function
             // does not exist for Rust either
         }
 
         let a = shim_registry::TraitImplShim {
-            trait_path,
-            for_type,
+            impl_kind: shim_registry::TraitImplShimKind::Rust {
+                trait_path,
+                for_type,
+            },
             method_specs,
             specs: decl.trait_ref.impl_ref.clone(),
         };
 
         Some(a)
+    }
+
+    fn make_drop_glue_trait_impl_shim_entry(
+        &self,
+        key: &procedures::DropGlueKey,
+    ) -> Option<shim_registry::TraitImplShim> {
+        let meta = self.procedure_registry.lookup_drop_glue(key)?;
+        let mode = meta.get_mode();
+
+        if mode != procedures::Mode::Prove
+            && mode != procedures::Mode::OnlySpec
+            && mode != procedures::Mode::TrustMe
+            && mode != procedures::Mode::CodeShim
+        {
+            return None;
+        }
+
+        let procedures::DropGlueKey::Adt(did) = key else {
+            return None;
+        };
+        let (interned_path, _) = self.get_path_for_shim(did.def_id);
+        let Some(impl_lit) = self
+            .trait_registry
+            .lookup_virtual_impl(registry::VirtualImpl::DropGlueForAdt(did.clone()))
+        else {
+            warn!("missing virtual DropGlue impl literal for drop-glue shim {:?}", did);
+            return None;
+        };
+
+        let mut method_specs = BTreeMap::new();
+        method_specs.insert("drop_glue".to_owned(), shim_registry::MethodShimSpec {
+            name: meta.get_name().to_owned(),
+            spec_name: meta.get_spec_name().to_owned(),
+            trait_req_incl_name: meta.get_trait_req_incl_name().to_owned(),
+        });
+
+        Some(shim_registry::TraitImplShim {
+            impl_kind: shim_registry::TraitImplShimKind::VirtualDropGlueForAdt {
+                path: interned_path.iter().map(|x| (*x).to_owned()).collect(),
+            },
+            method_specs,
+            specs: (*impl_lit).clone(),
+        })
     }
 
     /// Make a shim entry for a trait.
@@ -187,13 +258,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         decl: specs::traits::LiteralSpecRef<'rcx>,
     ) -> Option<shim_registry::TraitShim<'_>> {
         info!("making shim entry for {did:?}");
-        if ty::Visibility::Public == self.env.tcx().visibility(did.to_def_id()) {
+        if is_public_local_item(self.tcx, did.to_def_id()) {
             let (interned_path, _) = self.get_path_for_shim(did.into());
             let a = shim_registry::TraitShim {
                 path: interned_path,
                 name: decl.name.clone(),
                 has_semantic_interp: decl.has_semantic_interp,
                 attrs_dependent: decl.attrs_dependent,
+                assoc_tys: decl.assoc_tys.clone(),
                 allowed_attrs: decl.declared_attrs.clone(),
                 method_trait_incl_decls: decl.method_trait_incl_decls.clone(),
             };
@@ -208,10 +280,10 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         lit: specs::types::Literal,
     ) -> Option<shim_registry::AdtShim<'_>> {
         info!("making shim entry for {did:?}");
-        if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
+        if is_public_local_item(self.tcx, did) {
             // only export public items
             let (interned_path, _) = self.get_path_for_shim(did);
-            let name = base::strip_coq_ident(&self.env.get_item_name(did));
+            let name = base::strip_coq_ident(&environment::get_item_name(self.tcx, did));
 
             info!("Found adt path {:?} for did {:?} with name {:?}", interned_path, did, name);
 
@@ -220,6 +292,13 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 refinement_type: lit.refinement_type.to_string(),
                 syn_type: lit.syn_type.to_string(),
                 sem_type: lit.type_term,
+                raw_type: {
+                    let raw_type = lit.raw_type.expect("exported ADT literal should have a raw type");
+                    shim_registry::RawAdtType {
+                        rtype: raw_type.refinement_type.to_string(),
+                        semtype: raw_type.type_term,
+                    }
+                },
                 info: lit.info,
             };
             return Some(a);
@@ -243,11 +322,26 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
 
         // trait impls
-        for (did, decl) in &self.trait_impls {
-            if let Some(entry) = self.make_trait_impl_shim_entry(did.def_id, decl) {
-                trait_impl_shims.push(entry);
-            } else {
-                info!("Creating trait impl shim entry failed for {did:?}");
+        for (key, decl) in &self.trait_impls {
+            match key {
+                registry::ImplKey::Rust(did) => {
+                    if let Some(entry) = self.make_trait_impl_shim_entry(did.def_id, decl) {
+                        trait_impl_shims.push(entry);
+                    } else {
+                        info!("Creating trait impl shim entry failed for {did:?}");
+                    }
+                },
+                registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did)) => {
+                    let key = procedures::DropGlueKey::Adt(did.clone());
+                    if let Some(entry) = self.make_drop_glue_trait_impl_shim_entry(&key) {
+                        trait_impl_shims.push(entry);
+                    } else {
+                        info!("Creating virtual drop-glue trait impl shim entry failed for {did:?}");
+                    }
+                },
+                registry::ImplKey::Virtual(
+                    registry::VirtualImpl::DropGlueTrivial | registry::VirtualImpl::DropGlueForTuple(_),
+                ) => {},
             }
         }
 
@@ -272,30 +366,22 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             }
         }
 
-        // functions and methods
-        for (did, _) in self.procedure_registry.iter_code() {
-            if let Some(impl_did) = self.env.tcx().impl_of_assoc(did.def_id) {
-                info!("found impl method: {:?}", did);
-                if self.env.tcx().impl_is_of_trait(impl_did) {
-                    info!("found trait method: {:?}", did);
-                    continue;
-                }
-            }
-            if let Some(shim) = self.make_shim_function_entry(did.def_id) {
-                function_shims.push(shim);
-            }
-        }
-
-        for (did, _) in self.procedure_registry.iter_only_spec() {
-            if let Some(impl_did) = self.env.tcx().impl_of_assoc(did.def_id) {
-                info!("found impl method: {:?}", did);
-                if self.env.tcx().impl_is_of_trait(impl_did) {
-                    info!("found trait method: {:?}", did);
-                    continue;
-                }
-            }
-            if let Some(shim) = self.make_shim_function_entry(did.def_id) {
-                function_shims.push(shim);
+        // procedures
+        for (key, _) in self.procedure_registry.iter_procedure_meta() {
+            match key {
+                procedures::ProcedureKey::Function(did) => {
+                    if let Some(impl_did) = self.tcx.impl_of_assoc(did.def_id) {
+                        info!("found impl method: {:?}", did);
+                        if self.tcx.impl_is_of_trait(impl_did) {
+                            info!("found trait method: {:?}", did);
+                            continue;
+                        }
+                    }
+                    if let Some(shim) = self.make_shim_function_entry(did.def_id) {
+                        function_shims.push(shim);
+                    }
+                },
+                procedures::ProcedureKey::DropGlue(_) => {},
             }
         }
 
@@ -325,7 +411,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
     /// Write specifications of a verification unit.
     fn write_specifications(&self, spec_path: &Path, code_path: &Path, stem: &str) {
         let common_imports = vec![
-            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
+            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["radium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
@@ -333,11 +419,12 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         let mut code_file = io::BufWriter::new(File::create(code_path).unwrap());
 
         {
-            let mut spec_exports = vec![
+            let mut spec_exports = Vec::new();
+            spec_exports.append(&mut self.extra_exports.iter().map(|(export, _)| export.clone()).collect());
+            spec_exports.push(
                 coq::module::Export::new(vec![format!("generated_code_{stem}")])
                     .from(vec![&self.coq_path_prefix, stem]),
-            ];
-            spec_exports.append(&mut self.extra_exports.iter().map(|(export, _)| export.clone()).collect());
+            );
 
             write!(spec_file, "{}", coq::module::ImportList(&common_imports)).unwrap();
             write!(spec_file, "{}", coq::module::ExportList(&spec_exports)).unwrap();
@@ -359,18 +446,18 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write trait attrs
         let trait_deps = self.trait_registry.get_registered_trait_deps();
-        let dep_order = base::order_defs_with_deps(self.env.tcx(), &trait_deps);
+        let dep_order = base::order_defs_with_deps(self.tcx, &trait_deps);
         let trait_decls = self.trait_registry.get_trait_decls();
 
         for did in &dep_order {
-            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let ordered_did = OrderedDefId::new(self.tcx, *did);
             let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{}\n", decl.make_attr_record_decl()).unwrap();
         }
 
         // write semantic interps
         for did in &dep_order {
-            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let ordered_did = OrderedDefId::new(self.tcx, *did);
             let decl = &trait_decls[&ordered_did];
             if let Some(decl) = decl.make_semantic_decl() {
                 write!(spec_file, "{decl}\n").unwrap();
@@ -384,44 +471,172 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             let enum_defs = self.type_translator.get_enum_defs();
             let mut adt_deps = self.type_translator.get_adt_deps();
 
-            adt_deps.append(&mut self.trait_impl_deps.clone());
+            let mut rust_trait_impl_deps = BTreeMap::new();
+            for (key, deps) in &self.trait_impl_deps {
+                if let registry::ImplKey::Rust(did) = key {
+                    rust_trait_impl_deps.insert(did.clone(), deps.clone());
+                }
+            }
+            adt_deps.append(&mut rust_trait_impl_deps);
 
-            let ordered = base::order_defs_with_deps(self.env.tcx(), &adt_deps);
-            info!("ordered ADT defns: {:?}", ordered);
+            let ordered = base::order_def_sccs_with_deps(self.tcx, &adt_deps);
+            info!("ordered ADT defn groups: {:?}", ordered);
 
-            for did in &ordered {
-                let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
-                if let Some(su_ref) = struct_defs.get(&ordered_did) {
-                    let su_ref = su_ref.borrow();
-                    info!("writing struct {:?}, {:?}", did, su_ref);
-                    let su = su_ref.as_ref().unwrap();
+            for group in &ordered {
+                let is_recursive_singleton = if let [did] = group.as_slice() {
+                    let ordered_did = OrderedDefId::new(self.tcx, *did);
+                    adt_deps.get(&ordered_did).is_some_and(|deps| deps.contains(&ordered_did))
+                } else {
+                    false
+                };
 
-                    // layout specs
-                    writeln!(code_file, "{}", su.generate_coq_sls_def()).unwrap();
+                if let [did] = group.as_slice()
+                    && !is_recursive_singleton
+                {
+                    let ordered_did = OrderedDefId::new(self.tcx, *did);
+                    if let Some(su_ref) = struct_defs.get(&ordered_did) {
+                        let su_ref = su_ref.borrow();
+                        info!("writing struct {:?}, {:?}", did, su_ref);
+                        let su = su_ref.as_ref().unwrap();
 
-                    // type aliases
-                    writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
-                } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
-                    let eu = eu_ref.borrow();
-                    let eu = eu.as_ref().unwrap();
-                    info!("writing enum {:?}, {:?}", did, eu);
+                        // layout specs
+                        writeln!(code_file, "{}", su.generate_coq_sls_def()).unwrap();
 
-                    // layout specs
-                    writeln!(code_file, "{}", eu.generate_coq_els_def()).unwrap();
+                        // type aliases
+                        writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
+                    } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
+                        let eu = eu_ref.borrow();
+                        let eu = eu.as_ref().unwrap();
+                        info!("writing enum {:?}, {:?}", did, eu);
 
-                    // type definition
-                    writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
-                } else if let Some(impl_ref) = self.trait_impls.get(&ordered_did) {
-                    writeln!(spec_file, "Section attrs.").unwrap();
-                    writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-                    writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
-                    writeln!(spec_file, "End attrs.\n").unwrap();
+                        // layout specs
+                        writeln!(code_file, "{}", eu.generate_coq_els_def()).unwrap();
+
+                        // type definition
+                        writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
+                    } else if let Some(impl_ref) = self.trait_impls.get(&registry::ImplKey::Rust(ordered_did))
+                    {
+                        writeln!(spec_file, "Section attrs.").unwrap();
+                        writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+                        writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
+                        writeln!(spec_file, "End attrs.\n").unwrap();
+                    }
+                } else {
+                    // assemble a recursive type bundle
+                    let group_members =
+                        group.iter().map(|did| OrderedDefId::new(self.tcx, *did)).collect::<BTreeSet<_>>();
+                    for ordered_did in &group_members {
+                        if struct_defs.contains_key(ordered_did) || enum_defs.contains_key(ordered_did) {
+                            continue;
+                        }
+                        if self.trait_impls.contains_key(&registry::ImplKey::Rust(ordered_did.clone())) {
+                            panic!(
+                                "RefinedRust does not currently support recursive type bundles involving trait impl attrs"
+                            );
+                        }
+                        panic!(
+                            "internal error: unknown definition in recursive type bundle: {:?}",
+                            ordered_did.def_id
+                        );
+                    }
+
+                    // compute layout dependencies/ determine which of the type actually have
+                    // a guard
+                    let mut layout_deps = BTreeMap::new();
+                    for did in group {
+                        let ordered_did = OrderedDefId::new(self.tcx, *did);
+                        let relevant_deps = types::layout_deps::collect_adt_layout_deps(self.tcx, *did)
+                            .intersection(&group_members)
+                            .cloned()
+                            .collect::<BTreeSet<_>>();
+                        layout_deps.insert(ordered_did, relevant_deps);
+                    }
+
+                    // emit bundle components by layout dependency order
+                    let mut layout_topo: TopologicalSort<OrderedDefId> = TopologicalSort::new();
+                    for did in &group_members {
+                        layout_topo.insert(did.clone());
+                    }
+                    for (did, deps) in &layout_deps {
+                        for dep in deps {
+                            layout_topo.add_dependency(dep.clone(), did.clone());
+                        }
+                    }
+
+                    let mut ordered_group = Vec::new();
+                    while !layout_topo.is_empty() {
+                        let mut next = layout_topo.pop_all();
+                        if next.is_empty() {
+                            panic!(
+                                "RefinedRust does not currently support recursive type bundles with unguarded layout cycles: {group:?}"
+                            );
+                        }
+                        next.sort();
+                        ordered_group.extend(next);
+                    }
+
+                    let mut st_names = BTreeMap::new();
+                    let mut components = Vec::new();
+                    for ordered_did in &ordered_group {
+                        if let Some(su_ref) = struct_defs.get(ordered_did) {
+                            let su = su_ref.borrow();
+                            info!("writing bundled struct {:?}, {:?}", ordered_did.def_id, su);
+                            let component = specs::bundles::BundleType::Struct(su_ref);
+                            st_names.insert(ordered_did.clone(), component.bundle_st_def_name());
+                            components.push(component);
+                        } else if let Some(eu_ref) = enum_defs.get(ordered_did) {
+                            let eu = eu_ref.borrow();
+                            info!("writing bundled enum {:?}, {:?}", ordered_did.def_id, eu);
+                            let component = specs::bundles::BundleType::Enum(eu_ref);
+                            st_names.insert(ordered_did.clone(), component.bundle_st_def_name());
+                            components.push(component);
+                        } else if self.trait_impls.contains_key(&registry::ImplKey::Rust(ordered_did.clone()))
+                        {
+                            panic!(
+                                "RefinedRust does not currently support recursive type bundles involving trait impl attrs"
+                            );
+                        } else {
+                            panic!(
+                                "internal error: unknown definition in recursive type bundle: {:?}",
+                                ordered_did.def_id
+                            );
+                        }
+                    }
+
+                    let mut layout_unshadowed_st_names = BTreeMap::new();
+                    for ordered_did in &ordered_group {
+                        let st_name = st_names[ordered_did].clone();
+                        let unshadowed_st_names = layout_deps[ordered_did]
+                            .iter()
+                            .filter_map(|dep| st_names.get(dep).cloned())
+                            .collect::<BTreeSet<_>>();
+                        layout_unshadowed_st_names.insert(st_name, unshadowed_st_names);
+                    }
+
+                    let bundle = specs::bundles::Bundle::new_with_layout_unshadowed(
+                        components,
+                        layout_unshadowed_st_names,
+                    );
+                    writeln!(code_file, "{}", bundle.generate_layout_defs()).unwrap();
+                    writeln!(spec_file, "{}", bundle.generate()).unwrap();
                 }
             }
         }
 
         // write tuples up to the necessary size
         // TODO
+
+        // Drop-glue impl attributes depend on the ADT type definitions emitted above.
+        {
+            writeln!(spec_file, "Section drop_glue_attrs.").unwrap();
+            writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+            for (key, spec) in &self.trait_impls {
+                if matches!(key, registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(_))) {
+                    writeln!(spec_file, "{}\n", spec.generate_attr_decl()).unwrap();
+                }
+            }
+            writeln!(spec_file, "End drop_glue_attrs.\n").unwrap();
+        }
 
         // write the attribute spec declarations of closure trait impls
         {
@@ -438,10 +653,16 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // Include extra specs
         {
             if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
+                let displayed_extra_specs_path = rrconfig::absolute_work_dir()
+                    .ok()
+                    .and_then(|project_dir| extra_specs_path.strip_prefix(project_dir).ok())
+                    .unwrap_or(&extra_specs_path)
+                    .to_path_buf();
+
                 writeln!(
                     spec_file,
                     "(* Included specifications from configured file {} *)",
-                    extra_specs_path.display()
+                    displayed_extra_specs_path.display()
                 )
                 .unwrap();
 
@@ -455,21 +676,21 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write trait specs
         for did in &dep_order {
-            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let ordered_did = OrderedDefId::new(self.tcx, *did);
             let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{}\n", decl.make_spec_record_decl()).unwrap();
         }
 
         // write remaining trait things
         for did in &dep_order {
-            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let ordered_did = OrderedDefId::new(self.tcx, *did);
             let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{decl}\n").unwrap();
         }
 
         // write trait req incls
         for did in &dep_order {
-            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let ordered_did = OrderedDefId::new(self.tcx, *did);
             let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{}\n", decl.make_trait_req_incls()).unwrap();
         }
@@ -477,13 +698,13 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         {
             // write translated source code of functions
             writeln!(code_file, "Section code.").unwrap();
-            writeln!(code_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+            writeln!(code_file, "Context `{{!LayoutAlg}}.").unwrap();
             writeln!(code_file, "Open Scope printing_sugar.").unwrap();
             writeln!(code_file).unwrap();
 
             let mut ordered_by_name = BTreeMap::new();
-            for (did, fun) in self.procedure_registry.iter_code() {
-                if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_def() {
+            for (key, fun) in self.procedure_registry.iter_procedure_code() {
+                if self.procedure_registry.lookup_procedure(key).unwrap().get_mode().needs_def() {
                     ordered_by_name.insert(fun.name().to_owned(), fun);
                 }
             }
@@ -494,10 +715,12 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             // generate the code for closure trait shims
             writeln!(code_file, "(* closure shims *)").unwrap();
-            for info in self.procedure_registry.closure_info.values() {
-                for def in &info.generated_functions {
-                    writeln!(code_file, "{}", def.code).unwrap();
-                    writeln!(code_file).unwrap();
+            for (did, info) in &self.procedure_registry.closure_info {
+                if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_def() {
+                    for def in &info.generated_functions {
+                        writeln!(code_file, "{}", def.code).unwrap();
+                        writeln!(code_file).unwrap();
+                    }
                 }
             }
             write!(code_file, "End code.").unwrap();
@@ -509,9 +732,9 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
             writeln!(spec_file).unwrap();
 
-            for (did, fun) in self.procedure_registry.iter_code() {
-                let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
-                if !meta.is_trait_default() {
+            for (key, fun) in self.procedure_registry.iter_procedure_code() {
+                let meta = self.procedure_registry.lookup_procedure(key).unwrap();
+                if meta.get_mode().needs_spec() && !meta.is_trait_default() {
                     if fun.spec.is_complete() {
                         //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
                         //warn!("Function specification for {} is missing arguments", fun.name());
@@ -519,7 +742,18 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         writeln!(spec_file, "{}", fun.spec.generate_trait_req_incl_def()).unwrap();
                         writeln!(spec_file, "{}", fun.spec).unwrap();
                     } else {
-                        warn!("No specification for {}", fun.name());
+                        match key {
+                            procedures::ProcedureKey::Function(did) => self.tcx.dcx().span_warn(
+                                self.tcx.def_span(did.def_id),
+                                error::Message::AttributeError(format!(
+                                    "no specification provided for {}",
+                                    fun.name()
+                                )),
+                            ),
+                            procedures::ProcedureKey::DropGlue(_) => {
+                                warn!("no specification provided for drop-glue function {}", fun.name());
+                            },
+                        }
 
                         writeln!(spec_file, "(* No specification provided for {} *)", fun.name()).unwrap();
                     }
@@ -530,8 +764,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // also write only-spec functions specs
         {
-            for (did, spec) in self.procedure_registry.iter_only_spec() {
-                let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
+            for (key, spec) in self.procedure_registry.iter_procedure_only_spec() {
+                let meta = self.procedure_registry.lookup_procedure(key).unwrap();
                 if !meta.is_trait_default() {
                     if spec.is_complete() {
                         writeln!(spec_file, "{}", spec.generate_trait_req_incl_def()).unwrap();
@@ -581,56 +815,67 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         F: Fn(&str) -> PathBuf,
     {
         let common_imports = vec![
-            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
+            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["radium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
         // This closure does the core part of writing the template
-        let write_template =
-            |file: &mut io::BufWriter<File>, fun: &code::Function<'_>, is_trait_default: bool| {
-                let mut imports = common_imports.clone();
+        let write_template = |file: &mut io::BufWriter<File>,
+                              fun: &code::Function<'_>,
+                              is_trait_default: bool,
+                              do_strict_resolution: bool| {
+            let imports = common_imports.clone();
 
-                imports.append(&mut vec![
-                    coq::module::Import::new(vec![
-                        &format!("generated_code_{stem}"),
-                        &format!("generated_specs_{stem}"),
-                    ])
-                    .from(vec![&self.coq_path_prefix, stem]),
-                ]);
+            let mut exports: Vec<_> = self.extra_exports.iter().map(|(export, _)| export.clone()).collect();
+            exports.push(
+                coq::module::Export::new(vec![
+                    &format!("generated_code_{stem}"),
+                    &format!("generated_specs_{stem}"),
+                ])
+                .from(vec![&self.coq_path_prefix, stem]),
+            );
 
-                let exports: Vec<_> = self.extra_exports.iter().map(|(export, _)| export.clone()).collect();
+            write!(file, "{}", coq::module::ImportList(&imports)).unwrap();
+            write!(file, "{}", coq::module::ExportList(&exports)).unwrap();
+            write!(file, "\n").unwrap();
 
-                write!(file, "{}", coq::module::ImportList(&imports)).unwrap();
-                write!(file, "{}", coq::module::ExportList(&exports)).unwrap();
-                write!(file, "\n").unwrap();
-
-                write!(file, "Set Default Proof Using \"Type\".\n\n").unwrap();
-                write!(
-                    file,
-                    "\
+            write!(file, "Set Default Proof Using \"Type\".\n\n").unwrap();
+            write!(
+                file,
+                "\
                 Section proof.\n\
                 Context `{{RRGS : !refinedrustGS Σ}}.\n"
-                )
+            )
+            .unwrap();
+
+            fun.generate_lemma_statement(file, is_trait_default, rrconfig::generate_linking_requirements())
                 .unwrap();
 
-                fun.generate_lemma_statement(file, is_trait_default).unwrap();
+            write!(file, "End proof.\n\n").unwrap();
 
-                write!(file, "End proof.\n\n").unwrap();
-
-                fun.generate_proof_prelude(file, is_trait_default).unwrap();
-            };
+            fun.generate_proof_prelude(file, is_trait_default, do_strict_resolution).unwrap();
+        };
 
         // write templates
         // each function gets a separate file in order to parallelize
-        for (did, fun) in self.procedure_registry.iter_code() {
+        for (key, fun) in self.procedure_registry.iter_procedure_code() {
+            let meta = self.procedure_registry.lookup_procedure(key).unwrap();
+            let mode = meta.get_mode();
+            if mode.is_inline() {
+                continue;
+            }
+
             let path = file_path(fun.name());
             let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
-
-            let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
-            let mode = meta.get_mode();
+            let do_strict_resolution = match key {
+                procedures::ProcedureKey::Function(did) => {
+                    signature::function_has_nontrivial_annotations(self.tcx, did.def_id)
+                },
+                procedures::ProcedureKey::DropGlue(_) => false,
+            };
 
             if fun.spec.is_complete() && mode.needs_proof() {
-                write_template(&mut template_file, fun, meta.is_trait_default());
+                write_template(&mut template_file, fun, meta.is_trait_default(), do_strict_resolution);
             } else if !fun.spec.is_complete() {
                 write!(template_file, "(* No specification provided *)").unwrap();
             } else {
@@ -640,18 +885,22 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // also write templates for the closure shim proofs
         {
-            for info in self.procedure_registry.closure_info.values() {
-                for fun in &info.generated_functions {
-                    let path = file_path(fun.name());
-                    let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
-                    write_template(&mut template_file, fun, false);
+            for (did, info) in &self.procedure_registry.closure_info {
+                if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_proof() {
+                    let do_strict_resolution =
+                        signature::function_has_nontrivial_annotations(self.tcx, did.def_id);
+                    for fun in &info.generated_functions {
+                        let path = file_path(fun.name());
+                        let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
+                        write_template(&mut template_file, fun, false, do_strict_resolution);
+                    }
                 }
             }
         }
     }
 
-    fn check_function_needs_proof(&self, did: DefId, fun: &code::Function<'_>) -> bool {
-        let mode = self.procedure_registry.lookup_function_mode(did).unwrap();
+    fn check_procedure_needs_proof(&self, key: &procedures::ProcedureKey, fun: &code::Function<'_>) -> bool {
+        let mode = self.procedure_registry.lookup_procedure(key).unwrap().get_mode();
         fun.spec.is_complete() && mode.needs_proof()
     }
 
@@ -668,11 +917,11 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         G: Fn(&str) -> String,
     {
         let common_imports = vec![
-            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
+            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["radium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
-        let mut proof_modules = Vec::new();
+        let mut proof_modules = rrconfig::extra_proof_modules();
 
         // write proofs
         // each function gets a separate file in order to parallelize
@@ -720,17 +969,20 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             writeln!(proof_file, "End proof.").unwrap();
         };
 
-        for (did, fun) in self.procedure_registry.iter_code() {
-            if !self.check_function_needs_proof(did.def_id, fun) {
+        for (key, fun) in self.procedure_registry.iter_procedure_code() {
+            if !self.check_procedure_needs_proof(key, fun) {
                 continue;
             }
             write_proof(fun);
         }
 
         // also write proofs for closure shims
-        for info in self.procedure_registry.closure_info.values() {
+        for (did, info) in &self.procedure_registry.closure_info {
             for fun in &info.generated_functions {
-                write_proof(fun);
+                let mode = self.procedure_registry.lookup_function_mode(did.def_id).unwrap();
+                if mode.needs_proof() {
+                    write_proof(fun);
+                }
             }
         }
 
@@ -754,7 +1006,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             imports.append(&mut vec![
                 coq::module::Import::new(vec![&format!("generated_specs_{stem}")]).from(vec![
-                    &self.coq_path_prefix,
+                    self.coq_path_prefix.as_str(),
                     stem,
                     "generated",
                 ]),
@@ -793,10 +1045,46 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         proof_modules
     }
 
+    fn get_dune_dep_modules(extra_deps: &[String]) -> Vec<String> {
+        let base_deps = [
+            "stdpp",
+            "iris",
+            "iris_contrib",
+            "Ltac2",
+            "Equations",
+            "lrust",
+            "radium",
+            "lithium",
+            "refinedrust",
+            "Stdlib",
+        ];
+        let smtcoq_deps = [
+            "elpi",
+            "elpi_elpi",
+            "MetaRocq.Common",
+            "MetaRocq.Utils",
+            "MetaRocq.Template",
+            "ExtLib",
+            "Trakt",
+            "SMTCoq",
+            "Sniper",
+            "refinedrust_smtcoq",
+        ];
+
+        let mut deps: Vec<_> = base_deps.iter().map(ToString::to_string).collect();
+        if rrconfig::enable_smtcoq() {
+            deps.extend_from_slice(&smtcoq_deps.iter().map(ToString::to_string).collect::<Vec<_>>());
+        }
+        deps.extend_from_slice(&rrconfig::extra_dependencies());
+        deps.extend_from_slice(extra_deps);
+
+        deps
+    }
+
     /// Write Coq files for this verification unit.
     pub fn write_coq_files(&self) {
         // use the crate_name for naming
-        let crate_name: span::symbol::Symbol = self.env.tcx().crate_name(span::def_id::LOCAL_CRATE);
+        let crate_name: span::symbol::Symbol = self.tcx.crate_name(span::def_id::LOCAL_CRATE);
         let stem = crate_name.as_str();
 
         // create output directory
@@ -808,7 +1096,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         base_dir_path.push(stem);
 
         if fs::read_dir(base_dir_path.as_path()).is_err() {
-            warn!("Output directory {:?} does not exist, creating directory", base_dir_path.display());
+            info!("Output directory {:?} does not exist, creating directory", base_dir_path.display());
             fs::create_dir_all(base_dir_path.as_path()).unwrap();
         }
 
@@ -885,7 +1173,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write generated (subdirectory "generated")
         info!("outputting generated code to {}", generated_dir_path.to_str().unwrap());
         if fs::read_dir(generated_dir_path).is_err() {
-            warn!("Output directory {} does not exist, creating directory", generated_dir_path.display());
+            info!("Output directory {} does not exist, creating directory", generated_dir_path.display());
         } else {
             // purge contents
             info!("Removing the contents of the generated directory");
@@ -927,45 +1215,15 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
              (flags -w -notation-overridden -w -redundant-canonical-projection)\n{dune_package}\
              (name {generated_module_path})\n\
              (generate_project_file)\n\
-             (theories stdpp iris iris_contrib Ltac2 Equations lrust caesium lithium refinedrust Stdlib {}))",
-            extra_theories.join(" ")
+             (theories {}))",
+            Self::get_dune_dep_modules(&extra_theories).join(" "),
         )
         .unwrap();
 
         // write proofs (subdirectory "proofs")
-        let make_proof_file_name = |name| format!("proof_{}.v", name);
-
         info!("using {} as proof directory", proof_dir_path.to_str().unwrap());
-        if let Ok(read) = fs::read_dir(proof_dir_path) {
-            // directory already exists, we want to check if there are any stale proof files and
-            // issue a warning in that case
-
-            // build the set of proof files we are going to expect
-            let mut proof_files_to_generate = BTreeSet::new();
-            for (did, fun) in self.procedure_registry.iter_code() {
-                if self.check_function_needs_proof(did.def_id, fun) {
-                    proof_files_to_generate.insert(make_proof_file_name(fun.name()));
-                }
-            }
-
-            for file in read.flatten() {
-                // check if the file name is okay
-                let filename = file.file_name();
-                let Some(filename) = filename.to_str() else {
-                    continue;
-                };
-
-                if filename == "dune" {
-                    continue;
-                }
-                if proof_files_to_generate.contains(filename) {
-                    continue;
-                }
-
-                println!("Warning: Proof file {filename} does not have a matching Rust function to verify.");
-            }
-        } else {
-            warn!("Output directory {} does not exist, creating directory", proof_dir_path.display());
+        if fs::read_dir(proof_dir_path).is_err() {
+            info!("Output directory {} does not exist, creating directory", proof_dir_path.display());
             fs::create_dir_all(proof_dir_path).unwrap();
         }
 
@@ -978,31 +1236,84 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             stem,
         );
 
+        // Check for extra proof files which we did not create/expect
+        if let Ok(read) = fs::read_dir(proof_dir_path) {
+            for file in read.flatten() {
+                // check if the file name is okay
+                let filename = file.file_name();
+                let Some(filename) = filename.to_str() else {
+                    continue;
+                };
+
+                if filename == "dune" {
+                    continue;
+                }
+                if filename == "_RocqProject" {
+                    continue;
+                }
+                if Path::new(filename).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("v")) {
+                    let name = filename.split('.').next().unwrap();
+                    if proof_modules.contains(&name.to_owned()) {
+                        continue;
+                    }
+                }
+
+                info!("Proof file {filename} does not have a matching Rust function to verify");
+            }
+        }
+
         // write proof dune file
         let proof_dune_path = proof_dir_path.join("dune");
         let mut dune_file = io::BufWriter::new(File::create(proof_dune_path.as_path()).unwrap());
-        write!(dune_file, "\
+        write!(
+            dune_file,
+            "\
             ; Generated by [refinedrust], do not edit.\n\
             (rocq.theory\n\
              (flags -w -notation-overridden -w -redundant-canonical-projection)\n{dune_package}\
              (name {proof_module_path})\n\
              (modules {})\n\
              (generate_project_file)\n\
-             (theories stdpp iris Ltac2 Equations lrust caesium lithium refinedrust Stdlib {} {}.{}.generated))",
-             proof_modules.join(" "), extra_theories.join(" "), self.coq_path_prefix, stem).unwrap();
+             (theories {} {}.{stem}.generated))",
+            proof_modules.join(" "),
+            Self::get_dune_dep_modules(&extra_theories).join(" "),
+            self.coq_path_prefix
+        )
+        .unwrap();
     }
 }
 
 fn resolve_shim(vcx: &VerificationCtxt<'_, '_>, path: &[&str], is_method: bool) -> Option<DefId> {
     if is_method {
-        search::try_resolve_method_did(vcx.env.tcx(), path.iter().map(ToString::to_string).collect())
+        search::try_resolve_method_did(vcx.tcx, path.iter().map(ToString::to_string).collect())
     } else {
-        search::try_resolve_did(vcx.env.tcx(), path)
+        search::try_resolve_did(vcx.tcx, path)
     }
 }
 
+fn find_tool_attr_span(tcx: ty::TyCtxt<'_>, did: DefId, name: &str) -> Option<Span> {
+    attrs::filter_for_tool(environment::get_attributes(tcx, did))
+        .into_iter()
+        .find(|attr| attrs::get_tool_attr_name(attr) == Some(name))
+        .map(|attr| attr.span)
+}
+
+fn find_external_export_attr_span(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<Span> {
+    find_tool_attr_span(tcx, did, "export_as").or_else(|| {
+        let surrounding_did = tcx
+            .impl_of_assoc(did)
+            .or_else(|| tcx.trait_of_assoc(did))
+            .or_else(|| tcx.opt_parent(did))?;
+        find_tool_attr_span(tcx, surrounding_did, "export_as")
+    })
+}
+
+fn is_public_local_item(tcx: ty::TyCtxt<'_>, did: DefId) -> bool {
+    did.is_local() && tcx.visibility(did) == ty::Visibility::Public
+}
+
 /// Register shims in the procedure registry.
-fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base::TranslationError<'tcx>> {
+fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for shim in vcx.shim_registry.get_function_shims() {
         let did = resolve_shim(vcx, &shim.path, shim.is_method);
 
@@ -1019,17 +1330,17 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     false,
                     false,
                 );
-                vcx.procedure_registry.register_function(did, meta)?;
+                vcx.procedure_registry.register_function(did, meta);
             },
             _ => {
-                println!("Warning: cannot find defid for shim {:?}, skipping", shim.path);
+                warn!("cannot find defid for shim {:?}, skipping", shim.path);
             },
         }
     }
 
     for shim in vcx.shim_registry.get_adt_shims() {
-        let Some(did) = search::try_resolve_did(vcx.env.tcx(), &shim.path) else {
-            println!("Warning: cannot find defid for shim {:?}, skipping", shim.path);
+        let Some(did) = search::try_resolve_did(vcx.tcx, &shim.path) else {
+            warn!("cannot find defid for shim {:?}, skipping", shim.path);
             continue;
         };
 
@@ -1038,93 +1349,144 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             type_term: shim.sem_type.clone(),
             syn_type: lang::SynType::Literal(shim.syn_type.clone()),
             refinement_type: coq::term::Type::Literal(shim.refinement_type.clone()),
+            raw_type: Some(specs::types::RawLiteralType {
+                type_term: shim.raw_type.semtype.clone(),
+                refinement_type: coq::term::Type::Literal(shim.raw_type.rtype.clone()),
+            }),
             info: shim.info.clone(),
         };
 
-        if let Err(e) = vcx.type_translator.register_adt_shim(did, &lit) {
-            println!("Warning: {}", e);
+        match vcx.type_translator.register_adt_shim(did, &lit) {
+            Ok(()) => (),
+            Err(base::TranslationError::ErrorReported(err) | base::TranslationError::Tainted(err)) => {
+                return Err(PipelineError::Reported(err));
+            },
         }
 
         info!("Resolved ADT shim {:?} as {:?} did", shim, did);
     }
 
     for shim in vcx.shim_registry.get_trait_shims() {
-        if let Some(did) = search::try_resolve_did(vcx.env.tcx(), &shim.path) {
-            let assoc_tys = vcx.trait_registry.get_associated_type_names(did);
+        if let Some(did) = search::try_resolve_did(vcx.tcx, &shim.path) {
             let spec = specs::traits::LiteralSpec {
-                assoc_tys,
+                assoc_tys: shim.assoc_tys.clone(),
                 name: shim.name.clone(),
                 has_semantic_interp: shim.has_semantic_interp,
                 attrs_dependent: shim.attrs_dependent,
+                has_spec_attrs: true,
                 declared_attrs: shim.allowed_attrs.clone(),
                 method_trait_incl_decls: shim.method_trait_incl_decls.clone(),
             };
 
-            vcx.trait_registry.register_shim(did, spec)?;
+            vcx.trait_registry.register_shim(did, spec);
         } else {
-            println!("Warning: cannot find defid for shim {:?}, skipping", shim.path);
+            warn!("cannot find defid for shim {:?}, skipping", shim.path);
         }
     }
 
     for shim in vcx.shim_registry.get_trait_impl_shims() {
-        // resolve the trait
-        let Some((trait_did, args)) = shim.trait_path.to_item(vcx.env.tcx()) else {
-            println!("Warning: cannot resolve {:?} as a trait, skipping shim", shim.trait_path);
-            continue;
-        };
+        match &shim.impl_kind {
+            shim_registry::TraitImplShimKind::Rust {
+                trait_path,
+                for_type,
+            } => {
+                // resolve the trait
+                let Some((trait_did, args)) = trait_path.to_item(vcx.tcx) else {
+                    warn!("cannot resolve {:?} as a trait, skipping shim", trait_path);
+                    continue;
+                };
 
-        if !vcx.env.tcx().is_trait(trait_did) {
-            println!("Warning: This is not a trait: {:?}", shim.trait_path);
-            continue;
-        }
+                if !vcx.tcx.is_trait(trait_did) {
+                    warn!("This is not a trait: {:?}", trait_path);
+                    continue;
+                }
 
-        // resolve the type
-        let Some(for_type) = shim.for_type.to_type(vcx.env.tcx()) else {
-            println!("Warning: cannot resolve {:?} as a type, skipping shim", shim.for_type);
-            continue;
-        };
+                // resolve the type
+                let Some(for_type) = for_type.to_type(vcx.tcx) else {
+                    warn!("cannot resolve {:?} as a type, skipping shim", for_type);
+                    continue;
+                };
 
-        let trait_impl_did = search::try_resolve_trait_impl_did(vcx.env.tcx(), trait_did, &args, for_type);
+                let trait_impl_did = search::try_resolve_trait_impl_did(vcx.tcx, trait_did, &args, for_type);
 
-        let Some(did) = trait_impl_did else {
-            println!(
-                "Warning: cannot find defid for implementation of {:?} for {:?}",
-                shim.trait_path, for_type
-            );
-            continue;
-        };
+                let Some(did) = trait_impl_did else {
+                    warn!(
+                        "cannot find implementation of {:?} for {:?} required by included shim library",
+                        trait_path, for_type
+                    );
+                    continue;
+                };
 
-        vcx.trait_registry.register_impl_shim(did, shim.specs.clone())?;
+                vcx.trait_registry.register_impl_shim(did, shim.specs.clone());
 
-        // now register all the method shims
-        let impl_assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
-        for (method_name, (name, spec_name, trait_req_incl_name)) in &shim.method_specs {
-            // find the right item
-            if let Some(item) = impl_assoc_items.find_by_ident_and_kind(
-                vcx.env.tcx(),
-                span::symbol::Ident::from_str(method_name),
-                ty::AssocTag::Fn,
-                trait_did,
-            ) {
-                let method_did = item.def_id;
-                // register as usual in the procedure registry
-                info!(
-                    "registering shim for implementation of {:?}::{:?} for {:?}, using method {:?}",
-                    shim.trait_path, method_name, for_type, method_did
-                );
+                // now register all the method shims
+                let impl_assoc_items: &ty::AssocItems = vcx.tcx.associated_items(did);
+                for (method_name, method_spec) in &shim.method_specs {
+                    // find the right item
+                    if let Some(item) = impl_assoc_items.find_by_ident_and_kind(
+                        vcx.tcx,
+                        span::symbol::Ident::from_str(method_name),
+                        ty::AssocTag::Fn,
+                        trait_did,
+                    ) {
+                        let method_did = item.def_id;
+                        // register as usual in the procedure registry
+                        info!(
+                            "registering shim for implementation of {:?}::{:?} for {:?}, using method {:?}",
+                            trait_path, method_name, for_type, method_did
+                        );
+
+                        let meta = procedures::Meta::new(
+                            method_spec.spec_name.clone(),
+                            "dummy".to_owned(),
+                            method_spec.trait_req_incl_name.clone(),
+                            method_spec.name.clone(),
+                            procedures::Mode::Shim,
+                            false,
+                            false,
+                        );
+
+                        vcx.procedure_registry.register_function(method_did, meta);
+                    }
+                }
+            },
+            shim_registry::TraitImplShimKind::VirtualDropGlueForAdt { path } => {
+                let Some(did) = search::try_resolve_did(vcx.tcx, path) else {
+                    warn!("cannot resolve {:?} as an ADT, skipping virtual drop-glue shim", path);
+                    continue;
+                };
+
+                if !matches!(
+                    vcx.tcx.def_kind(did),
+                    hir::def::DefKind::Struct | hir::def::DefKind::Enum | hir::def::DefKind::Union
+                ) {
+                    warn!("resolved {:?} as non-ADT {:?}, skipping virtual drop-glue shim", path, did);
+                    continue;
+                }
+
+                let Some(method_spec) = shim.method_specs.get("drop_glue") else {
+                    warn!("missing drop_glue method spec for virtual drop-glue shim {:?}", path);
+                    continue;
+                };
+
+                let ordered_did = OrderedDefId::new(vcx.tcx, did);
+                let virtual_impl = registry::VirtualImpl::DropGlueForAdt(ordered_did.clone());
+                let key = procedures::DropGlueKey::Adt(ordered_did);
+
+                vcx.trait_registry.register_virtual_impl(virtual_impl, shim.specs.clone());
 
                 let meta = procedures::Meta::new(
-                    spec_name.clone(),
+                    method_spec.spec_name.clone(),
                     "dummy".to_owned(),
-                    trait_req_incl_name.clone(),
-                    name.clone(),
+                    method_spec.trait_req_incl_name.clone(),
+                    method_spec.name.clone(),
                     procedures::Mode::Shim,
                     false,
                     false,
                 );
-
-                vcx.procedure_registry.register_function(method_did, meta)?;
-            }
+                vcx.procedure_registry.register_drop_glue(&key, meta);
+                info!("Resolved virtual drop-glue shim {:?} for {:?}", shim, key);
+            },
         }
     }
 
@@ -1144,12 +1506,17 @@ fn is_only_spec_function(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> bool {
     // Check if `did` is an impl of `Debug::fmt`. These impls use unsupported features like strings
     // and trait objects, but don't do anything functionally interesting.
 
-    if let Some(impl_did) = vcx.env.trait_impl_of_method(did) {
-        let subject = vcx.env.tcx().impl_trait_header(impl_did);
+    if let Some(impl_did) = environment::trait_impl_of_method(vcx.tcx, did) {
+        let subject = vcx.tcx.impl_trait_header(impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
-        let debug_did = search::try_resolve_did(vcx.env.tcx(), &["core", "fmt", "Debug"]);
+        let debug_did = search::try_resolve_did(vcx.tcx, &["core", "fmt", "Debug"]);
         if rrconfig::trust_debug() && debug_did == Some(trait_ref.def_id) {
-            println!("Warning: automatically trusting implementation of `Debug::fmt`: {did:?}");
+            vcx.tcx.dcx().span_warn(
+                vcx.tcx.def_span(did),
+                error::Message::UnsupportedFeature(
+                    "automatically trusting implementation of `Debug::fmt`".to_owned(),
+                ),
+            );
             return true;
         }
     }
@@ -1159,7 +1526,8 @@ fn is_only_spec_function(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> bool {
 
 /// Get the most restrictive function mode arising from annotations on a function.
 fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> procedures::Mode {
-    let attrs = vcx.env.get_attributes_of_function(did, &spec_parsers::propagate_method_attr_from_impl);
+    let attrs =
+        environment::get_attributes_of_function(vcx.tcx, did, &spec_parsers::propagate_method_attr_from_impl);
 
     // check if this is a purely spec function; if so, skip.
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "shim") {
@@ -1168,6 +1536,10 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "trust_me") {
         return procedures::Mode::TrustMe;
+    }
+
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "inline") {
+        return procedures::Mode::Inline;
     }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "code_shim") {
@@ -1187,37 +1559,123 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 }
 
 /// Register functions of the crate in the procedure registry.
-fn register_functions<'tcx>(
-    vcx: &mut VerificationCtxt<'tcx, '_>,
-) -> Result<(), base::TranslationError<'tcx>> {
+fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for (f, is_closure) in vcx
         .functions
         .iter()
         .map(|did| (did, false))
         .chain(vcx.closures.iter().map(|did| (did, true)))
     {
-        if !check_consider_function(&*vcx, *f)? {
+        let should_register = match check_consider_function(&*vcx, *f) {
+            Ok(should_register) => should_register,
+            Err(base::TranslationError::ErrorReported(_)) => false,
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        };
+        if !should_register {
             continue;
         }
 
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
+        let did = f.to_def_id();
+        let item_attrs = environment::get_attributes(vcx.tcx, did);
+        let mut has_raw_mut_self = false;
 
-        let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
+        if attrs::has_tool_attr(item_attrs, "raw_mut_self") {
+            let attr_span =
+                find_tool_attr_span(vcx.tcx, did, "raw_mut_self").unwrap_or_else(|| vcx.tcx.def_span(did));
+            let impl_did = vcx.tcx.impl_of_assoc(did);
+            let is_inherent_method = impl_did.is_some_and(|impl_did| !vcx.tcx.impl_is_of_trait(impl_did));
+            let has_self_parameter = match vcx.tcx.hir_node_by_def_id(*f) {
+                hir::Node::ImplItem(item) => match item.kind {
+                    hir::ImplItemKind::Fn(sig, _) => sig.decl.implicit_self() != hir::ImplicitSelfKind::None,
+                    _ => false,
+                },
+                _ => false,
+            };
+            let sig = vcx.tcx.fn_sig(did).instantiate_identity().skip_binder();
+            let has_mut_ref_receiver = has_self_parameter
+                && matches!(
+                    sig.inputs().first().map(|ty| ty.kind()),
+                    Some(ty::TyKind::Ref(_, _, hir::Mutability::Mut))
+                );
+            let is_unsafe = sig.safety() == hir::Safety::Unsafe;
+
+            let error = if !attrs::has_bare_tool_attr(item_attrs, "raw_mut_self") {
+                Some("rr::raw_mut_self does not accept arguments")
+            } else if is_closure {
+                Some("rr::raw_mut_self is not allowed on closures")
+            } else if !is_inherent_method {
+                Some("rr::raw_mut_self is only allowed on inherent methods")
+            } else if !has_mut_ref_receiver {
+                Some("rr::raw_mut_self requires a &mut self receiver")
+            } else if !is_unsafe {
+                Some("rr::raw_mut_self requires an unsafe method")
+            } else if mode == procedures::Mode::Inline {
+                Some("rr::raw_mut_self cannot be combined with rr::inline")
+            } else {
+                None
+            };
+
+            if let Some(error) = error {
+                vcx.tcx.dcx().span_err(attr_span, error::Message::AttributeError(error.to_owned()));
+                mode = procedures::Mode::Ignore;
+            } else {
+                has_raw_mut_self = true;
+            }
+        }
+
+        if attrs::has_tool_attr(item_attrs, "inline") {
+            let inline_span =
+                find_tool_attr_span(vcx.tcx, did, "inline").unwrap_or_else(|| vcx.tcx.def_span(did));
+            let is_trait_method = vcx.tcx.trait_of_assoc(did).is_some()
+                || vcx.tcx.impl_of_assoc(did).is_some_and(|impl_did| vcx.tcx.impl_is_of_trait(impl_did));
+            let conflicting_mode = ["shim", "trust_me", "code_shim", "only_spec", "ignore"]
+                .iter()
+                .any(|name| attrs::has_tool_attr(item_attrs, name));
+
+            let error = if !attrs::has_bare_tool_attr(item_attrs, "inline") {
+                Some("rr::inline does not accept arguments")
+            } else if is_closure {
+                Some("rr::inline is not allowed on closures")
+            } else if is_trait_method {
+                Some("rr::inline is not allowed on trait methods")
+            } else if conflicting_mode {
+                Some("rr::inline cannot be combined with another function mode")
+            } else {
+                None
+            };
+
+            if let Some(error) = error {
+                vcx.tcx.dcx().span_err(inline_span, error::Message::AttributeError(error.to_owned()));
+                mode = procedures::Mode::Ignore;
+            } else {
+                mode = procedures::Mode::Inline;
+            }
+        }
+
+        let fname = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, f.to_def_id()));
         //let fname = format!("{stem}_{fname}");
         let spec_name = format!("type_of_{}", fname);
         let code_name = format!("{}_def", fname);
         let trait_req_incl_name = format!("trait_incl_of_{}", fname);
 
         // check whether this is part of a trait decl
-        let is_default_trait_impl = vcx.env.tcx().trait_of_assoc(f.to_def_id()).is_some();
+        let is_default_trait_impl = vcx.tcx.trait_of_assoc(f.to_def_id()).is_some();
 
         if mode == procedures::Mode::Shim && is_default_trait_impl {
-            warn!("ignoring rr::shim attribute on default trait impl");
+            let span = find_tool_attr_span(vcx.tcx, f.to_def_id(), "shim")
+                .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(
+                    "ignoring rr::shim attribute on default trait item".to_owned(),
+                ),
+            );
             mode = procedures::Mode::Prove;
         }
         if mode == procedures::Mode::Shim {
             // TODO better error message
-            let attrs = vcx.env.get_attributes(f.to_def_id());
+            let attrs = environment::get_attributes(vcx.tcx, f.to_def_id());
             let v = attrs::filter_for_tool(attrs);
             let annot = spec_parsers::get_shim_attrs(v.as_slice()).unwrap();
 
@@ -1236,13 +1694,16 @@ fn register_functions<'tcx>(
                 is_default_trait_impl,
                 is_closure,
             );
-            vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+            vcx.procedure_registry.register_function(f.to_def_id(), meta);
+            if has_raw_mut_self {
+                vcx.procedure_registry.register_raw_mut_self(*f);
+            }
 
             continue;
         }
         if mode == procedures::Mode::CodeShim {
             // TODO better error message
-            let attrs = vcx.env.get_attributes(f.to_def_id());
+            let attrs = environment::get_attributes(vcx.tcx, f.to_def_id());
             let v = attrs::filter_for_tool(attrs);
             let annot = spec_parsers::get_code_shim_attrs(v.as_slice()).unwrap();
 
@@ -1256,40 +1717,32 @@ fn register_functions<'tcx>(
                 is_default_trait_impl,
                 is_closure,
             );
-            vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+            vcx.procedure_registry.register_function(f.to_def_id(), meta);
+            if has_raw_mut_self {
+                vcx.procedure_registry.register_raw_mut_self(*f);
+            }
 
             continue;
         }
 
         if mode == procedures::Mode::Prove
-            && let Some(impl_did) = vcx.env.tcx().impl_of_assoc(f.to_def_id())
+            && let Some(impl_did) = vcx.tcx.impl_of_assoc(f.to_def_id())
         {
             mode = get_most_restrictive_function_mode(vcx, impl_did);
         }
 
         if mode.is_shim() || mode.is_code_shim() {
-            warn!("Nonsensical shim attribute on impl; ignoring");
+            let impl_did = vcx.tcx.impl_of_assoc(f.to_def_id()).unwrap();
+            let span = find_tool_attr_span(vcx.tcx, impl_did, "shim")
+                .or_else(|| find_tool_attr_span(vcx.tcx, impl_did, "code_shim"))
+                .unwrap_or_else(|| vcx.tcx.def_span(impl_did));
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(
+                    "ignoring rr::shim/rr::code_shim attribute on impl".to_owned(),
+                ),
+            );
             mode = procedures::Mode::Prove;
-        }
-
-        // also register it under the export path, if annotated.
-        if let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.env, f.to_def_id()) {
-            let interned_path = vcx.shim_registry.intern_path(export_path.path.path);
-            info!("Looking up annotated shim {interned_path:?} for is_method={:?}", export_path.as_method);
-            if let Some(export_did) = resolve_shim(vcx, &interned_path, export_path.as_method) {
-                let meta = procedures::Meta::new(
-                    spec_name.clone(),
-                    code_name.clone(),
-                    trait_req_incl_name.clone(),
-                    fname.clone(),
-                    procedures::Mode::Shim,
-                    is_default_trait_impl,
-                    is_closure,
-                );
-                vcx.procedure_registry.register_function(export_did, meta)?;
-            } else {
-                warn!("Could not resolve annotated export path {interned_path:?}");
-            }
         }
 
         //info!("Registering function {f:?} with is_default_trait_impl={is_default_trait_impl}");
@@ -1303,48 +1756,388 @@ fn register_functions<'tcx>(
             is_closure,
         );
 
-        vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+        vcx.procedure_registry.register_function(f.to_def_id(), meta);
+        if has_raw_mut_self {
+            vcx.procedure_registry.register_raw_mut_self(*f);
+        }
     }
 
     Ok(())
 }
 
-/// Translate functions of the crate, assuming they were previously registered.
-fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) {
-    // First translate closures, then functions: the function translation assumes that closures
-    // they contain have been translated already.
-    for &f in vcx.closures.iter().chain(vcx.functions.iter()) {
-        if vcx.procedure_registry.lookup_function(f.to_def_id()).is_some() && !translate_function(vcx, f) {
-            break;
+fn get_adt_drop_glue_mode(
+    vcx: &VerificationCtxt<'_, '_>,
+    did: DefId,
+) -> Result<AdtDropGlueMode, ErrorGuaranteed> {
+    let attrs = attrs::filter_for_tool(environment::get_attributes(vcx.tcx, did));
+    spec_parsers::adt_attr_parser::get_adt_drop_glue_mode(&attrs)
+        .map_err(|err| vcx.tcx.dcx().span_err(err.span, error::Message::AttributeError(err.err.to_string())))
+}
+
+fn register_tuple_drop_glue_shims(vcx: &mut VerificationCtxt<'_, '_>) {
+    for arity in 1..=5 {
+        let key = procedures::DropGlueKey::Tuple(arity);
+        if vcx.procedure_registry.lookup_drop_glue(&key).is_some() {
+            info!("Tuple drop glue for {:?} is already registered", key);
+            continue;
         }
+
+        let name = format!("drop_glue_tuple{arity}");
+        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false, format!("{name}_realization"));
+        let meta = procedures::Meta::new(
+            format!("type_of_{name}"),
+            format!("{name}_def"),
+            format!("trait_incl_of_{name}"),
+            name,
+            procedures::Mode::CodeShim,
+            false,
+            false,
+        );
+
+        vcx.procedure_registry.register_drop_glue(&key, meta);
+        vcx.trait_registry
+            .register_virtual_impl(registry::VirtualImpl::DropGlueForTuple(arity), impl_lit);
     }
 }
 
-fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId) -> bool {
-    let proc = vcx.env.get_procedure(f.to_def_id());
-    let fname = vcx.env.get_item_name(f.to_def_id());
+/// Eagerly register all non-skipped ADTs in the current crate.
+fn register_adts(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    if !rrconfig::register_all_adts() {
+        return Ok(());
+    }
+
+    for adt in vcx.adts {
+        let did = adt.to_def_id();
+        if environment::has_bare_tool_attribute(vcx.tcx, did, "skip") {
+            info!("Skipping ADT registration for {:?} due to rr::skip", did);
+            continue;
+        }
+        if vcx.type_translator.is_registered_adt(did) {
+            info!("ADT {:?} is already registered", did);
+            continue;
+        }
+
+        match vcx.type_translator.register_local_adt(did) {
+            Ok(()) => (),
+            Err(base::TranslationError::ErrorReported(err) | base::TranslationError::Tainted(err)) => {
+                return Err(PipelineError::Reported(err));
+            },
+        }
+    }
+
+    Ok(())
+}
+
+/// Register drop glue for non-trivial ADTs in the current crate.
+fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    for adt in vcx.adts {
+        let did = adt.to_def_id();
+        if environment::has_bare_tool_attribute(vcx.tcx, did, "skip") {
+            info!("Skipping drop glue for {:?} due to rr::skip", did);
+            continue;
+        }
+
+        let drop_glue_mode = get_adt_drop_glue_mode(vcx, did).map_err(PipelineError::Reported)?;
+        if drop_glue_mode == AdtDropGlueMode::Skip {
+            info!("Skipping drop glue for {:?} due to rr::skip(drop_glue)", did);
+            continue;
+        }
+        if drop_glue_mode == AdtDropGlueMode::TrustMe {
+            info!("Trusting drop glue for {:?} due to rr::trust_me(drop_glue)", did);
+        }
+        if drop_glue_mode == AdtDropGlueMode::OnlySpec {
+            info!("Generating only drop-glue spec for {:?} due to rr::only_spec(drop_glue)", did);
+        }
+
+        let adt_ty = vcx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
+        let typing_env = ty::TypingEnv::post_analysis(vcx.tcx, did);
+        if !vcx.tcx.needs_drop_raw(typing_env.as_query_input(adt_ty)) {
+            continue;
+        }
+
+        let ordered_did = OrderedDefId::new(vcx.tcx, did);
+        let key = procedures::DropGlueKey::Adt(ordered_did.clone());
+        if vcx.procedure_registry.lookup_drop_glue(&key).is_some() {
+            info!("Drop glue for {:?} is already registered", key);
+            continue;
+        }
+
+        let name = base::strip_coq_ident(&format!("drop_glue_{}", environment::get_item_name(vcx.tcx, did)));
+        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false, format!("{name}_realization"));
+        let spec_name = format!("type_of_{name}");
+        let code_name = format!("{name}_def");
+        let trait_req_incl_name = format!("trait_incl_of_{name}");
+
+        let meta = procedures::Meta::new(
+            spec_name,
+            code_name,
+            trait_req_incl_name,
+            name,
+            match drop_glue_mode {
+                AdtDropGlueMode::Prove => procedures::Mode::Prove,
+                AdtDropGlueMode::TrustMe => procedures::Mode::TrustMe,
+                AdtDropGlueMode::OnlySpec => procedures::Mode::OnlySpec,
+                AdtDropGlueMode::Skip => unreachable!(),
+            },
+            false,
+            false,
+        );
+        vcx.procedure_registry.register_drop_glue(&key, meta);
+        vcx.trait_registry
+            .register_virtual_impl(registry::VirtualImpl::DropGlueForAdt(ordered_did), impl_lit);
+    }
+
+    Ok(())
+}
+
+fn is_exported_as_rust_box(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> bool {
+    let Some(export_as) = shims::flat::get_external_export_path_for_did(vcx.tcx, did) else {
+        return false;
+    };
+
+    export_as.path.path == ["alloc", "boxed", "Box"] && !export_as.as_method
+}
+
+fn get_drop_glue_mir_source_ty<'tcx>(
+    vcx: &VerificationCtxt<'tcx, '_>,
+    logical_did: DefId,
+    logical_adt_ty: ty::Ty<'tcx>,
+) -> Result<ty::Ty<'tcx>, PipelineError> {
+    if !is_exported_as_rust_box(vcx, logical_did) {
+        return Ok(logical_adt_ty);
+    }
+
+    let ty::TyKind::Adt(_, logical_args) = logical_adt_ty.kind() else {
+        return Err(PipelineError::Reported(vcx.tcx.dcx().span_err(
+            vcx.tcx.def_span(logical_did),
+            error::Message::UnsupportedFeature(format!(
+                "drop glue for exported Box expected ADT type, got {logical_adt_ty:?}"
+            )),
+        )));
+    };
+    if logical_args.len() != 2 {
+        return Err(PipelineError::Reported(vcx.tcx.dcx().span_err(
+            vcx.tcx.def_span(logical_did),
+            error::Message::UnsupportedFeature(format!(
+                "drop glue for exported Box expected two generic arguments, got {logical_args:?}"
+            )),
+        )));
+    }
+
+    let real_box_did = vcx.tcx.require_lang_item(LangItem::OwnedBox, vcx.tcx.def_span(logical_did));
+    let real_box_ty = vcx.tcx.type_of(real_box_did).instantiate(vcx.tcx, logical_args).skip_norm_wip();
+    info!("Using rustc Box drop-glue MIR source {real_box_ty:?} for exported Box {:?}", logical_did);
+    Ok(real_box_ty)
+}
+
+/// Translate functions of the crate, assuming they were previously registered.
+fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    let mut inline_functions_with_closures = BTreeSet::new();
+    let mut closures_in_inline_functions = BTreeSet::new();
+    for &closure in vcx.closures {
+        let mut ancestor = vcx.tcx.opt_parent(closure.to_def_id());
+        while let Some(did) = ancestor {
+            if vcx.procedure_registry.lookup_function_mode(did).is_some_and(procedures::Mode::is_inline) {
+                inline_functions_with_closures.insert(OrderedDefId::new(vcx.tcx, did));
+                closures_in_inline_functions.insert(OrderedDefId::new(vcx.tcx, closure.to_def_id()));
+                let err = vcx.tcx.dcx().span_err(
+                    vcx.tcx.def_span(closure.to_def_id()),
+                    error::Message::UnsupportedFeature(
+                        "closures inside rr::inline functions are not supported yet".to_owned(),
+                    ),
+                );
+                recover_or_fail(err)?;
+                break;
+            }
+            ancestor = vcx.tcx.opt_parent(did);
+        }
+    }
+
+    // Inline callees must be complete before their callers so that calls can use the callee's
+    // internal lifetime names. Closures follow, then all remaining functions.
+    let functions: Vec<_> = vcx
+        .functions
+        .iter()
+        .filter(|did| {
+            vcx.procedure_registry
+                .lookup_function_mode(did.to_def_id())
+                .is_some_and(procedures::Mode::is_inline)
+        })
+        .chain(vcx.closures.iter())
+        .chain(vcx.functions.iter().filter(|did| {
+            !vcx.procedure_registry
+                .lookup_function_mode(did.to_def_id())
+                .is_some_and(procedures::Mode::is_inline)
+        }))
+        .copied()
+        .collect();
+
+    for f in functions {
+        let ordered_f = OrderedDefId::new(vcx.tcx, f.to_def_id());
+        if inline_functions_with_closures.contains(&ordered_f)
+            || closures_in_inline_functions.contains(&ordered_f)
+        {
+            continue;
+        }
+        if vcx.procedure_registry.lookup_function(f.to_def_id()).is_some() {
+            translate_function(vcx, f)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Translate registered drop glue, assuming it was previously registered for local non-trivial ADTs.
+fn translate_drop_glues<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), PipelineError>
+where
+    'tcx: 'rcx,
+{
+    let drop_glues: Vec<_> = vcx
+        .procedure_registry
+        .iter_procedure_meta()
+        .filter_map(|(key, meta)| match key {
+            procedures::ProcedureKey::DropGlue(key) => Some((key.clone(), meta.clone())),
+            procedures::ProcedureKey::Function(_) => None,
+        })
+        .collect();
+
+    for (key, meta) in drop_glues {
+        let mode = meta.get_mode();
+        if mode.is_shim() {
+            info!("Skipping imported drop-glue shim {:?}", key);
+            continue;
+        }
+
+        if matches!(key, procedures::DropGlueKey::Tuple(_)) {
+            info!("Skipping builtin tuple drop-glue shim {:?}", key);
+            continue;
+        }
+        assert!(
+            mode.needs_def() || mode.is_only_spec(),
+            "drop glue should be registered in prove, trust_me, only_spec, or shim mode"
+        );
+
+        let did = match key.clone() {
+            procedures::DropGlueKey::Adt(did) => did,
+            procedures::DropGlueKey::Tuple(_) => unreachable!(),
+        };
+
+        if !vcx.type_translator.is_registered(did.def_id) {
+            // only actually translate drop glue for registered ADTs;
+            // we shouldn't register an ADT just for drop glue translation
+            continue;
+        }
+
+        info!("\nTranslating drop glue for {:?}", did.def_id);
+
+        let adt_ty: ty::Ty<'tcx> = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
+        let mir_source_ty = get_drop_glue_mir_source_ty(vcx, did.def_id, adt_ty)?;
+        let tx = drop_glue_translation::DropGlueTX::new(
+            vcx.tcx,
+            &meta,
+            adt_ty,
+            mir_source_ty,
+            &vcx.procedure_registry,
+            vcx.type_translator,
+            vcx.trait_registry,
+        );
+
+        if mode.is_only_spec() {
+            match tx.and_then(drop_glue_translation::DropGlueTX::generate_spec) {
+                Ok(specced) => {
+                    info!("Successfully generated drop-glue spec for {:?}", did.def_id);
+                    let spec_ref = vcx.fn_arena.alloc(specced.spec);
+                    let mut methods = BTreeMap::new();
+                    methods
+                        .insert("drop_glue".to_owned(), specs::traits::InstanceMethodSpec::Defined(spec_ref));
+                    let instance_spec = specs::traits::InstanceSpec::new(methods);
+                    let impl_spec = specs::traits::ImplSpec::new(
+                        specced.trait_ref,
+                        instance_spec,
+                        specced.extra_context_items,
+                    );
+                    let impl_key = registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did));
+                    vcx.trait_impls.insert(impl_key.clone(), impl_spec);
+                    vcx.trait_impl_deps.insert(impl_key, BTreeSet::new());
+                    vcx.procedure_registry.provide_specced_drop_glue(key, spec_ref);
+                },
+                Err(base::TranslationError::ErrorReported(err)) => {
+                    vcx.tcx.dcx().span_warn(
+                        vcx.tcx.def_span(did.def_id),
+                        error::Message::SkippedFunctionDueToPreviousFailure,
+                    );
+                    recover_or_fail(err)?;
+                },
+                Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+            }
+            continue;
+        }
+
+        let translated = tx.and_then(|tx| tx.translate(vcx.fn_arena));
+
+        match translated {
+            Ok(translated) => {
+                info!("Successfully translated drop glue for {:?}", did.def_id);
+                let mut methods = BTreeMap::new();
+                methods.insert(
+                    "drop_glue".to_owned(),
+                    specs::traits::InstanceMethodSpec::Defined(translated.function.spec),
+                );
+                let instance_spec = specs::traits::InstanceSpec::new(methods);
+                let impl_spec = specs::traits::ImplSpec::new(
+                    translated.trait_ref,
+                    instance_spec,
+                    translated.extra_context_items,
+                );
+                let impl_key = registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did));
+                vcx.trait_impls.insert(impl_key.clone(), impl_spec);
+                vcx.trait_impl_deps.insert(impl_key, BTreeSet::new());
+                vcx.procedure_registry.provide_translated_drop_glue(key, translated.function);
+            },
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(did.def_id),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
+                );
+                recover_or_fail(err)?;
+            },
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        }
+    }
+
+    Ok(())
+}
+
+fn translate_function<'tcx>(
+    vcx: &mut VerificationCtxt<'tcx, '_>,
+    f: LocalDefId,
+) -> Result<(), PipelineError> {
+    let proc = environment::get_procedure(vcx.tcx, f.to_def_id());
+    let fname = environment::get_item_name(vcx.tcx, f.to_def_id());
     let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
 
-    let filtered_attrs = vcx
-        .env
-        .get_attributes_of_function(f.to_def_id(), &spec_parsers::propagate_method_attr_from_impl);
+    let filtered_attrs = environment::get_attributes_of_function(
+        vcx.tcx,
+        f.to_def_id(),
+        &spec_parsers::propagate_method_attr_from_impl,
+    );
 
     let mode = meta.get_mode();
     if mode.is_shim() {
-        return true;
+        return Ok(());
     }
     if mode.is_ignore() {
-        return true;
+        return Ok(());
     }
 
     info!("\nTranslating function {}", fname);
 
-    let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.env.tcx().type_of(proc.get_id());
-    let ty = ty.instantiate_identity();
+    let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.tcx.type_of(proc.get_id());
+    let ty = ty.instantiate_identity().skip_norm_wip();
 
     let translator = match ty.kind() {
         ty::TyKind::FnDef(_def, _args) => signature::TX::new(
-            vcx.env,
+            vcx.tcx,
             &meta,
             proc,
             &filtered_attrs,
@@ -1356,7 +2149,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
         .map(|x| (x, None)),
         ty::TyKind::Closure(_, _) => {
             let translator = signature::TX::new_closure(
-                vcx.env,
+                vcx.tcx,
                 &meta,
                 proc,
                 &filtered_attrs,
@@ -1378,105 +2171,104 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 Err(err) => Err(err),
             }
         },
-        _ => Err(base::TranslationError::UnknownError("unknown function kind".to_owned())),
+        _ => {
+            Err(base::TranslationError::ErrorReported(vcx.tcx.dcx().err(error::Message::UnknownFunctionKind)))
+        },
     };
 
     if mode.is_only_spec() {
         // Only generate a spec
         match translator.and_then(|(tx, info)| tx.generate_spec().map(|x| (x, info))) {
             Ok((spec, info)) => {
-                if vcx.env.tcx().dcx().has_errors().is_some() {
-                    return false;
-                }
-
                 let spec_ref = vcx.fn_arena.alloc(spec);
                 vcx.procedure_registry.provide_specced_function(f.to_def_id(), spec_ref);
 
                 if let Some(info) = info {
-                    let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                    let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
                     vcx.procedure_registry.closure_info.insert(ordered_did, info);
                 }
-                true
+                Ok(())
             },
-            Err(base::TranslationError::FatalError(err)) => {
-                println!("Encountered fatal cross-function error in translation: {:?}", err);
-                println!("Aborting...");
-                false
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(f.to_def_id()),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
+                );
+                recover_or_fail(err)
             },
-            Err(err) => {
-                println!("Encountered error: {:?}", err);
-                println!("Skipping function {}", fname);
-                if !rrconfig::skip_unsupported_features() {
-                    exit_with_error(&format!(
-                        "Encountered error when translating function {}, stopping...",
-                        fname
-                    ));
+            Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
+        }
+    } else if mode.is_code_shim() {
+        // Generate the proof obligation for handwritten Rocq code without deriving dependencies
+        // or behavior from the placeholder Rust body.
+        match translator.and_then(|(tx, info)| tx.translate_code_shim(vcx.fn_arena).map(|x| (x, info))) {
+            Ok((fun, info)) => {
+                info!("Successfully translated code shim {}", fname);
+                vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
+
+                if let Some(info) = info {
+                    let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
+                    vcx.procedure_registry.closure_info.insert(ordered_did, info);
                 }
-                true
+                Ok(())
             },
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(f.to_def_id()),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
+                );
+                recover_or_fail(err)
+            },
+            Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
     } else {
         // Fully translate the function
         match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
-            Ok((fun, info)) => {
-                if vcx.env.tcx().dcx().has_errors().is_some() {
-                    return false;
-                }
-
-                println!("Successfully translated {}", fname);
+            Ok(((fun, inline_dependencies), info)) => {
+                info!("Successfully translated {}", fname);
                 vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
+                if mode.is_inline() {
+                    vcx.procedure_registry
+                        .provide_inline_function_dependencies(f.to_def_id(), inline_dependencies);
+                }
 
                 if let Some(info) = info {
-                    let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                    let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
                     vcx.procedure_registry.closure_info.insert(ordered_did, info);
                 }
-                true
+                Ok(())
             },
-            Err(base::TranslationError::FatalError(err)) => {
-                println!("Encountered fatal cross-function error in translation: {:?}", err);
-                println!("Aborting...");
-                false
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(f.to_def_id()),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
+                );
+                recover_or_fail(err)
             },
-            Err(err) => {
-                println!("Encountered error: {:?}", err);
-                println!("Skipping function {}", fname);
-                if !rrconfig::skip_unsupported_features() {
-                    exit_with_error(&format!(
-                        "Encountered error when translating function {}, stopping...",
-                        fname
-                    ));
-                }
-                true
-            },
+            Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
     }
 }
 
-fn exit_with_error(s: &str) {
-    eprintln!("{s}");
-    process::exit(-1);
-}
-
 /// Get all functions and closures in the current crate that have attributes on them and are not
 /// skipped due to `rr::skip` attributes.
-fn check_consider_function<'tcx>(
-    vcx: &VerificationCtxt<'tcx, '_>,
+fn check_consider_function(
+    vcx: &VerificationCtxt<'_, '_>,
     id: LocalDefId,
-) -> Result<bool, base::TranslationError<'tcx>> {
-    let env = vcx.env;
-    if env.has_tool_attribute(id.to_def_id(), "skip") {
-        warn!("Function {:?} will be skipped due to a rr::skip annotation", id);
+) -> Result<bool, base::TranslationError> {
+    if environment::has_tool_attribute(vcx.tcx, id.to_def_id(), "skip") {
+        vcx.tcx.dcx().span_warn(vcx.tcx.def_span(id), error::Message::SkipWarn);
         return Ok(false);
     }
-    let has_any_attribute = env.has_any_tool_attribute(id.to_def_id());
+    let has_any_attribute = environment::has_any_tool_attribute(vcx.tcx, id.to_def_id());
 
     // check if this is an impl with a skip annotation
-    let Some(impl_did) = env.tcx().impl_of_assoc(id.to_def_id()) else {
+    let Some(impl_did) = vcx.tcx.impl_of_assoc(id.to_def_id()) else {
         return Ok(has_any_attribute);
     };
 
-    if env.has_tool_attribute(impl_did, "skip") {
-        warn!("Function {:?} will be skipped due to a rr::skip annotation on impl", id);
+    if environment::has_tool_attribute(vcx.tcx, impl_did, "skip") {
+        vcx.tcx.dcx().span_warn(vcx.tcx.def_span(impl_did), error::Message::SkipOnImplWarn);
         return Ok(false);
     }
 
@@ -1486,22 +2278,25 @@ fn check_consider_function<'tcx>(
     }
 
     // check if this is an impl of a trait
-    if !env.tcx().impl_is_of_trait(impl_did) {
+    if !vcx.tcx.impl_is_of_trait(impl_did) {
         return Ok(false);
     }
-    let trait_ref = env.tcx().impl_trait_ref(impl_did).skip_binder();
+    let trait_ref = vcx.tcx.impl_trait_ref(impl_did).skip_binder();
     let trait_did = trait_ref.def_id;
 
     // check if the impl has any attributes declared on it
-    if env.has_any_tool_attribute(impl_did) {
+    if environment::has_any_tool_attribute(vcx.tcx, impl_did) {
         return Ok(true);
     }
 
     // Check if this is part of an impl of a derive trait for an ADT
-    if !vcx.env.tcx().impl_is_of_trait(impl_did) {
-        return Err(traits::Error::NotATraitImpl(impl_did).into());
+    if !vcx.tcx.impl_is_of_trait(impl_did) {
+        vcx.tcx.dcx().span_bug(
+            vcx.tcx.def_span(impl_did),
+            format!("expected trait impl while checking derive trait annotations: {impl_did:?}"),
+        );
     }
-    let trait_ref = vcx.env.tcx().impl_trait_ref(impl_did).skip_binder();
+    let trait_ref = vcx.tcx.impl_trait_ref(impl_did).skip_binder();
 
     let self_ty = trait_ref.self_ty();
     let ty::TyKind::Adt(def, _) = self_ty.kind() else {
@@ -1509,22 +2304,23 @@ fn check_consider_function<'tcx>(
     };
 
     // ADT has a skip annotation?
-    if env.has_tool_attribute(def.did(), "skip") {
+    if environment::has_bare_tool_attribute(vcx.tcx, def.did(), "skip") {
         return Ok(false);
     }
     // if there are no annotations, also skip
-    if !env.has_any_tool_attribute(def.did()) {
+    let adt_attrs = attrs::filter_for_tool(environment::get_attributes(vcx.tcx, def.did()));
+    if !spec_parsers::adt_attr_parser::has_non_drop_glue_adt_attr(&adt_attrs) {
         return Ok(false);
     }
 
     // otherwise, check if this is a Derive trait for which we have special support
-    if traits::is_derive_trait_with_no_annotations(env.tcx(), trait_did) == Some(true) {
+    if traits::is_derive_trait_with_no_annotations(vcx.tcx, trait_did) == Some(true) {
         return Ok(true);
     }
 
     // otherwise, check if this is for an ADT with derive annotations.
-    if traits::is_derive_trait_with_annotations(env.tcx(), trait_did) == Some(true)
-        && vcx.trait_registry.check_for_derive_trait_attrs(impl_did)?.is_some()
+    if traits::is_derive_trait_with_annotations(vcx.tcx, trait_did) == Some(true)
+        && vcx.trait_registry.get_derive_trait_impl_attrs(impl_did)?.is_some()
     {
         return Ok(true);
     }
@@ -1533,30 +2329,42 @@ fn check_consider_function<'tcx>(
 }
 
 /// Get constants in the current scope.
-pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), String> {
-    let statics = vcx.env.get_statics();
+pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), PipelineError> {
+    let statics = environment::get_statics(vcx.tcx);
 
     for s in &statics {
-        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.env.tcx().type_of(s.to_def_id());
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.tcx.type_of(s.to_def_id());
 
-        let const_attrs = attrs::filter_for_tool(vcx.env.get_attributes(s.to_def_id()));
+        let const_attrs = attrs::filter_for_tool(environment::get_attributes(vcx.tcx, s.to_def_id()));
         if const_attrs.is_empty() {
             continue;
         }
+        attrs::check_tool_attrs(&const_attrs, CONST_ATTRS.iter().copied()).map_err(|err| {
+            let err = vcx.tcx.dcx().span_err(
+                err.span,
+                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+            );
+            PipelineError::Reported(err)
+        })?;
 
         let ty = ty.skip_binder();
         let scope = scope::Params::default();
-        let typing_env = ty::TypingEnv::post_analysis(vcx.env.tcx(), s.to_def_id());
+        let typing_env = ty::TypingEnv::post_analysis(vcx.tcx, s.to_def_id());
         match vcx
             .type_translator
             .translate_type_in_scope(&scope, typing_env, ty)
             .map_err(|x| format!("{:?}", x))
         {
             Ok(translated_ty) => {
-                let _full_name = base::strip_coq_ident(&vcx.env.get_item_name(s.to_def_id()));
+                let _full_name = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, s.to_def_id()));
 
                 let mut const_parser = VerboseConstAttrParser::new();
-                let const_spec = const_parser.parse_const_attrs(*s, &const_attrs)?;
+                let const_spec = const_parser
+                    .parse_const_attrs(*s, vcx.tcx.def_span(s.to_def_id()), &const_attrs)
+                    .map_err(|err| {
+                        let err = vcx.tcx.dcx().span_err(err.span, error::Message::ConstSpecParse(err.err));
+                        PipelineError::Reported(err)
+                    })?;
 
                 let name = const_spec.name;
                 let loc_name = format!("{name}_loc");
@@ -1566,11 +2374,14 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
                     loc_name,
                     ty: translated_ty,
                 };
-                let ordered_did = OrderedDefId::new(vcx.env.tcx(), s.to_def_id());
+                let ordered_did = OrderedDefId::new(vcx.tcx, s.to_def_id());
                 vcx.const_registry.register_static(ordered_did, meta);
             },
             Err(e) => {
-                println!("Warning: static {:?} has unsupported type, skipping: {:?}", s, e);
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(s.to_def_id()),
+                    error::Message::UnsupportedType(format!("static {s:?}: {e:?}")),
+                );
             },
         }
     }
@@ -1578,12 +2389,12 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
 }
 
 /// Register traits.
-fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
-    let traits = vcx.env.get_traits();
+fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    let traits = environment::get_traits(vcx.tcx);
 
     // order according to dependencies first
     let deps = vcx.trait_registry.get_trait_deps(traits.as_slice());
-    let ordered_traits = base::order_defs_with_deps(vcx.env.tcx(), &deps);
+    let ordered_traits = base::order_defs_with_deps(vcx.tcx, &deps);
 
     let mut registered_traits = Vec::new();
     // first pre-register them to enable mutually recursive traits
@@ -1594,12 +2405,12 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
         let mut all_have_annots = true;
         let mut some_has_annot = false;
         // check that all children have a specification
-        let children = vcx.env.tcx().module_children_local(t);
+        let children = vcx.tcx.module_children_local(t);
         for c in children {
             if let hir::def::Res::Def(def_kind, def_id) = c.res
                 && def_kind == hir::def::DefKind::AssocFn
             {
-                if vcx.env.has_any_tool_attribute(def_id) {
+                if environment::has_any_tool_attribute(vcx.tcx, def_id) {
                     some_has_annot = true;
                 } else {
                     all_have_annots = false;
@@ -1608,45 +2419,63 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
         }
         if !all_have_annots {
             if some_has_annot {
-                println!("Warning: not all of trait {t:?}'s items are annotated, skipping");
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(t.to_def_id()),
+                    error::Message::AttributeError(
+                        "not all trait items are annotated, skipping trait translation".to_owned(),
+                    ),
+                );
             }
             continue;
         }
 
-        registered_traits.push(t);
-
-        vcx.trait_registry
-            .preregister_trait(t)
-            .map_err(|x| format!("{x:?}"))
-            .map_err(|e| format!("{e:?}"))?;
+        match vcx.trait_registry.preregister_trait(t) {
+            Ok(()) => registered_traits.push(t),
+            Err(base::TranslationError::ErrorReported(err)) => recover_or_fail(err)?,
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        }
     }
     // then properly translate them
     for t in registered_traits {
-        vcx.trait_registry
-            .register_trait(t, &mut vcx.procedure_registry)
-            .map_err(|x| format!("{x:?}"))
-            .map_err(|e| format!("{e:?}"))?;
+        match vcx.trait_registry.register_trait(t, &mut vcx.procedure_registry) {
+            Ok(()) => (),
+            Err(base::TranslationError::ErrorReported(err)) => recover_or_fail(err)?,
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        }
     }
     Ok(())
 }
 
 /// Register trait impls of all registered traits.
 /// Precondition: traits have already been registered.
-fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
-    let trait_impl_ids = vcx.env.get_trait_impls();
+fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    let trait_impl_ids = environment::get_trait_impls(vcx.tcx);
     info!("Found trait impls: {:?}", trait_impl_ids);
 
     for trait_impl_id in trait_impl_ids {
         let did = trait_impl_id.to_def_id();
-        let trait_ref = vcx.env.tcx().impl_trait_ref(did).skip_binder();
+        let trait_ref = vcx.tcx.impl_trait_ref(did).skip_binder();
         let trait_did = trait_ref.def_id;
 
         // check if this trait has been registered
         if let Some(registered) = vcx.trait_registry.lookup_trait(trait_did) {
+            let trait_impl_attrs = match vcx.trait_registry.get_trait_impl_attrs(did) {
+                Ok(attrs) => attrs,
+                Err(base::TranslationError::ErrorReported(err)) => {
+                    recover_or_fail(err)?;
+                    continue;
+                },
+                Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+            };
+            if attrs::has_tool_attr_filtered(&trait_impl_attrs, "skip") {
+                vcx.tcx.dcx().span_warn(vcx.tcx.def_span(did), error::Message::SkipWarn);
+                continue;
+            }
+
             // make sure all functions have a spec; otherwise, this is not a complete trait impl
-            let assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
+            let assoc_items: &ty::AssocItems = vcx.tcx.associated_items(did);
             let mut all_specced = true;
-            let assoc_items = traits::sort_assoc_items(vcx.env, assoc_items);
+            let assoc_items = traits::sort_assoc_items(vcx.tcx, assoc_items);
             for x in assoc_items {
                 if x.tag() == ty::AssocTag::Fn {
                     // check if all functions have a specification
@@ -1662,15 +2491,433 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             }
 
             // make names for the spec and inclusion proof
+            let name = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, did));
             let impl_lit = specs::traits::LiteralImpl::new(
-                base::strip_coq_ident(&vcx.env.get_item_name(did)),
+                name.clone(),
                 registered.has_semantic_interp,
+                format!("{name}_realization"),
             );
 
-            vcx.trait_registry
-                .register_impl_shim(did, impl_lit)
-                .map_err(|x| ToString::to_string(&x))?;
+            vcx.trait_registry.register_impl_shim(did, impl_lit);
         }
+    }
+    Ok(())
+}
+
+fn resolve_trait_impl_export_alias(
+    vcx: &VerificationCtxt<'_, '_>,
+    local_impl_did: DefId,
+) -> Result<Option<DefId>, PipelineError> {
+    let span = vcx.tcx.def_span(local_impl_did);
+
+    if !vcx.tcx.impl_is_of_trait(local_impl_did) {
+        return Ok(None);
+    }
+
+    let impl_ref = vcx.tcx.impl_trait_ref(local_impl_did);
+    let impl_ref = normalize_in_function(local_impl_did, vcx.tcx, impl_ref.skip_binder()).unwrap();
+    let args = impl_ref.args;
+    let trait_did = impl_ref.def_id;
+    let trait_args = &args.as_slice()[1..];
+    let self_ty = args[0].expect_ty();
+
+    let Some(trait_path) = shims::flat::PathWithArgs::from_item(vcx.tcx, trait_did, trait_args) else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(
+                "could not flatten trait path for trait impl export alias".to_owned(),
+            ),
+        );
+        return Ok(None);
+    };
+    let Some((export_trait_did, export_trait_args)) = trait_path.to_item(vcx.tcx) else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(
+                "could not resolve exported trait for trait impl export alias".to_owned(),
+            ),
+        );
+        return Ok(None);
+    };
+    if !vcx.tcx.is_trait(export_trait_did) {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError(format!(
+                "trait impl export alias resolves to non-trait item {:?}",
+                export_trait_did
+            )),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    let Some(export_self_ty) =
+        shims::flat::convert_ty_to_flat_type(vcx.tcx, self_ty).and_then(|self_ty| self_ty.to_type(vcx.tcx))
+    else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(
+                "could not resolve exported self type for trait impl export alias".to_owned(),
+            ),
+        );
+        return Ok(None);
+    };
+
+    let Some(export_impl_did) =
+        search::try_resolve_trait_impl_did(vcx.tcx, export_trait_did, &export_trait_args, export_self_ty)
+    else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError("could not resolve trait impl export alias".to_owned()),
+        );
+        return Ok(None);
+    };
+
+    if export_impl_did == local_impl_did {
+        return Ok(None);
+    }
+
+    if !vcx.tcx.impl_is_of_trait(export_impl_did) {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError(format!(
+                "trait impl export alias resolves to non-trait impl item {:?}",
+                export_impl_did
+            )),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    Ok(Some(export_impl_did))
+}
+
+fn trait_impl_has_exported_self_type(vcx: &VerificationCtxt<'_, '_>, impl_did: DefId) -> bool {
+    if !vcx.tcx.impl_is_of_trait(impl_did) {
+        return false;
+    }
+
+    let impl_ref = vcx.tcx.impl_trait_ref(impl_did);
+    let impl_ref = normalize_in_function(impl_did, vcx.tcx, impl_ref.skip_binder()).unwrap();
+    let self_ty = impl_ref.self_ty();
+
+    match self_ty.kind() {
+        ty::TyKind::Adt(def, _) if def.did().is_local() => {
+            shims::flat::get_external_export_path_for_did(vcx.tcx, def.did()).is_some()
+                && is_public_local_item(vcx.tcx, def.did())
+        },
+        // TODO: make this more permissive by descending into the type and applying Rust's criteria
+        // for impl availability
+        _ => false,
+    }
+}
+
+fn register_trait_impl_method_export_aliases(
+    vcx: &mut VerificationCtxt<'_, '_>,
+    local_impl_did: DefId,
+    export_impl_did: DefId,
+) -> Result<(), PipelineError> {
+    let export_trait_ref = vcx.tcx.impl_trait_ref(export_impl_did).skip_binder();
+    let export_trait_did = export_trait_ref.def_id;
+    let export_assoc_items = vcx.tcx.associated_items(export_impl_did);
+    let local_assoc_items = traits::sort_assoc_items(vcx.tcx, vcx.tcx.associated_items(local_impl_did));
+
+    for local_item in local_assoc_items {
+        if local_item.tag() != ty::AssocTag::Fn {
+            continue;
+        }
+
+        let Some(local_meta) = vcx.procedure_registry.lookup_function(local_item.def_id) else {
+            continue;
+        };
+
+        let Some(export_item) = export_assoc_items.find_by_ident_and_kind(
+            vcx.tcx,
+            local_item.ident(vcx.tcx),
+            ty::AssocTag::Fn,
+            export_trait_did,
+        ) else {
+            warn!(
+                "could not resolve method {:?} on exported trait impl {:?}",
+                local_item.ident(vcx.tcx),
+                export_impl_did
+            );
+            continue;
+        };
+
+        if export_item.def_id == local_item.def_id {
+            continue;
+        }
+
+        if vcx.procedure_registry.lookup_function_mode(export_item.def_id).is_some() {
+            let span = vcx.tcx.def_span(local_item.def_id);
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(format!(
+                    "exported trait impl method {:?} resolves to an already registered function",
+                    export_item.def_id
+                )),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        let meta = procedures::Meta::new(
+            local_meta.get_spec_name().to_owned(),
+            "dummy".to_owned(),
+            local_meta.get_trait_req_incl_name().to_owned(),
+            local_meta.get_name().to_owned(),
+            procedures::Mode::Shim,
+            false,
+            false,
+        );
+        vcx.procedure_registry.register_function(export_item.def_id, meta);
+        info!(
+            "registered trait impl method export alias {:?} -> {:?}",
+            export_item.def_id, local_item.def_id
+        );
+    }
+
+    Ok(())
+}
+
+fn register_current_crate_adt_export_alias(
+    vcx: &VerificationCtxt<'_, '_>,
+    local_did: DefId,
+) -> Result<(), PipelineError> {
+    let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
+        return Ok(());
+    };
+    let span =
+        find_external_export_attr_span(vcx.tcx, local_did).unwrap_or_else(|| vcx.tcx.def_span(local_did));
+
+    if export_path.as_method {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError("ADT export path must not be a method path".to_owned()),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    let Some(export_did) = search::try_resolve_did(vcx.tcx, export_path.path.path.as_slice()) else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(format!(
+                "could not resolve annotated ADT export path {:?}",
+                export_path.path.path
+            )),
+        );
+        return Ok(());
+    };
+
+    if export_did == local_did {
+        return Ok(());
+    }
+
+    if !matches!(
+        vcx.tcx.def_kind(export_did),
+        hir::def::DefKind::Struct
+            | hir::def::DefKind::Enum
+            | hir::def::DefKind::Union
+            | hir::def::DefKind::Variant
+    ) {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError(format!(
+                "annotated ADT export path {:?} resolves to non-ADT item {:?}",
+                export_path.path.path, export_did
+            )),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    let Some(lit) = vcx.type_translator.lookup_adt_shim(local_did) else {
+        return Ok(());
+    };
+    match vcx.type_translator.register_adt_shim(export_did, lit) {
+        Ok(()) => (),
+        Err(base::TranslationError::ErrorReported(err) | base::TranslationError::Tainted(err)) => {
+            return Err(PipelineError::Reported(err));
+        },
+    }
+
+    info!("registered ADT export alias {:?} -> {:?}", export_did, local_did);
+    Ok(())
+}
+
+/// Register same-crate aliases introduced by `rr::export_as` for local model items.
+fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    for adt in vcx.adts {
+        let local_did = adt.to_def_id();
+        if !is_public_local_item(vcx.tcx, local_did) {
+            continue;
+        }
+        if environment::has_bare_tool_attribute(vcx.tcx, local_did, "skip") {
+            continue;
+        }
+
+        register_current_crate_adt_export_alias(vcx, local_did)?;
+
+        let adt_def = vcx.tcx.adt_def(local_did);
+        if adt_def.is_enum() {
+            for variant in adt_def.variants() {
+                if !is_public_local_item(vcx.tcx, variant.def_id) {
+                    continue;
+                }
+                register_current_crate_adt_export_alias(vcx, variant.def_id)?;
+            }
+        }
+    }
+
+    let functions: Vec<_> = vcx
+        .functions
+        .iter()
+        .map(|did| (did.to_def_id(), false))
+        .chain(vcx.closures.iter().map(|did| (did.to_def_id(), true)))
+        .collect();
+
+    for (local_did, is_closure) in functions {
+        if !is_public_local_item(vcx.tcx, local_did) {
+            continue;
+        }
+        let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
+            continue;
+        };
+
+        let Some(local_meta) = vcx.procedure_registry.lookup_function(local_did) else {
+            continue;
+        };
+        if local_meta.get_mode().is_shim() || local_meta.get_mode().is_code_shim() {
+            continue;
+        }
+
+        let interned_path = vcx.shim_registry.intern_path(export_path.path.path);
+        info!("Looking up annotated shim {interned_path:?} for is_method={:?}", export_path.as_method);
+        if let Some(export_did) = resolve_shim(vcx, &interned_path, export_path.as_method) {
+            if export_did == local_did || vcx.procedure_registry.lookup_function_mode(export_did).is_some() {
+                let span = find_external_export_attr_span(vcx.tcx, local_did)
+                    .unwrap_or_else(|| vcx.tcx.def_span(local_did));
+                let err = vcx.tcx.dcx().span_err(
+                    span,
+                    error::Message::AttributeError(format!(
+                        "annotated export path {interned_path:?} resolves to an already registered function"
+                    )),
+                );
+                return Err(PipelineError::Reported(err));
+            }
+
+            let meta = procedures::Meta::new(
+                local_meta.get_spec_name().to_owned(),
+                local_meta.get_code_name().to_owned(),
+                local_meta.get_trait_req_incl_name().to_owned(),
+                local_meta.get_name().to_owned(),
+                procedures::Mode::Shim,
+                local_meta.is_trait_default(),
+                is_closure,
+            );
+            vcx.procedure_registry.register_function(export_did, meta);
+        } else {
+            let span = find_external_export_attr_span(vcx.tcx, local_did)
+                .unwrap_or_else(|| vcx.tcx.def_span(local_did));
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!(
+                    "could not resolve annotated export path {interned_path:?}"
+                )),
+            );
+        }
+    }
+
+    for trait_did in environment::get_traits(vcx.tcx) {
+        let local_did = trait_did.to_def_id();
+        if !is_public_local_item(vcx.tcx, local_did) {
+            continue;
+        }
+        let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
+            continue;
+        };
+        let span =
+            find_external_export_attr_span(vcx.tcx, local_did).unwrap_or_else(|| vcx.tcx.def_span(local_did));
+
+        if export_path.as_method {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError("trait export path must not be a method path".to_owned()),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        let Some(export_did) = search::try_resolve_did(vcx.tcx, export_path.path.path.as_slice()) else {
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!(
+                    "could not resolve annotated trait export path {:?}",
+                    export_path.path.path
+                )),
+            );
+            continue;
+        };
+
+        if export_did == local_did {
+            continue;
+        }
+
+        if !vcx.tcx.is_trait(export_did) {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(format!(
+                    "annotated trait export path {:?} resolves to non-trait item {:?}",
+                    export_path.path.path, export_did
+                )),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        let Some(spec) = vcx.trait_registry.lookup_trait(local_did) else {
+            continue;
+        };
+
+        if vcx.trait_registry.lookup_trait(export_did).is_some() {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(format!(
+                    "annotated trait export path {:?} resolves to an already registered trait",
+                    export_path.path.path
+                )),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        vcx.trait_registry.register_shim(export_did, (*spec).clone());
+        info!("registered trait export alias {:?} -> {:?}", export_did, local_did);
+    }
+
+    for trait_impl_did in environment::get_trait_impls(vcx.tcx) {
+        let local_impl_did = trait_impl_did.to_def_id();
+        if !trait_impl_has_exported_self_type(vcx, local_impl_did) {
+            continue;
+        }
+        let Some(export_impl_did) = resolve_trait_impl_export_alias(vcx, local_impl_did)? else {
+            continue;
+        };
+
+        let span = find_external_export_attr_span(vcx.tcx, local_impl_did)
+            .unwrap_or_else(|| vcx.tcx.def_span(local_impl_did));
+        let Some(spec) = vcx.trait_registry.lookup_impl(local_impl_did) else {
+            continue;
+        };
+
+        if vcx.trait_registry.lookup_impl(export_impl_did).is_some() {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(
+                    "annotated trait impl export path resolves to an already registered trait impl"
+                        .to_owned(),
+                ),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        vcx.trait_registry.register_impl_shim(export_impl_did, (*spec).clone());
+        register_trait_impl_method_export_aliases(vcx, local_impl_did, export_impl_did)?;
+        info!("registered trait impl export alias {:?} -> {:?}", export_impl_did, local_impl_did);
     }
 
     Ok(())
@@ -1680,9 +2927,9 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
 fn are_closures_available(vcx: &VerificationCtxt<'_, '_>) -> bool {
     // let's check first if the closure library has been imported
     let check_clos = || -> Option<()> {
-        let fnmut_did = search::get_closure_trait_did(vcx.env.tcx(), ty::ClosureKind::FnMut)?;
-        let fn_did = search::get_closure_trait_did(vcx.env.tcx(), ty::ClosureKind::Fn)?;
-        let fnonce_did = search::get_closure_trait_did(vcx.env.tcx(), ty::ClosureKind::FnOnce)?;
+        let fnmut_did = search::get_closure_trait_did(vcx.tcx, ty::ClosureKind::FnMut)?;
+        let fn_did = search::get_closure_trait_did(vcx.tcx, ty::ClosureKind::Fn)?;
+        let fnonce_did = search::get_closure_trait_did(vcx.tcx, ty::ClosureKind::FnOnce)?;
 
         vcx.trait_registry.lookup_trait(fnmut_did)?;
         vcx.trait_registry.lookup_trait(fn_did)?;
@@ -1694,10 +2941,10 @@ fn are_closures_available(vcx: &VerificationCtxt<'_, '_>) -> bool {
 }
 
 /// Register all closure impls.
-fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
+fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) {
     if !are_closures_available(vcx) {
         warn!("The RefinedRust closure library has not been imported, you will not be able to use closures.");
-        return Ok(());
+        return;
     }
 
     for closure_did in vcx.closures {
@@ -1714,15 +2961,15 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
         }
 
         // check what kind of closure this is
-        let clos_args = vcx.env.get_closure_args(closure_did.to_def_id());
+        let clos_args = environment::get_closure_args(vcx.tcx, closure_did.to_def_id());
         let kind = clos_args.kind();
 
-        let make_impl = |kind| -> Result<(), String> {
+        let make_impl = |kind| {
             // make names for the spec and inclusion proof
-            let impl_lit = specs::traits::LiteralImpl::new(
-                base::strip_coq_ident(&format!("{}_{kind:?}", vcx.env.get_item_name(did))),
-                false,
-            );
+            let name =
+                base::strip_coq_ident(&format!("{}_{kind:?}", environment::get_item_name(vcx.tcx, did)));
+            let impl_lit =
+                specs::traits::LiteralImpl::new(name.clone(), false, format!("{name}_realization"));
 
             // create function meta
             let method_name = match kind {
@@ -1739,47 +2986,43 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
                 code_name,
                 trait_req_incl_name,
                 fn_name,
-                procedures::Mode::Prove,
+                // inherit the mode from the closure itself
+                mode,
                 true,
                 false,
             );
 
-            vcx.trait_registry
-                .register_closure_impl(did, kind, impl_lit, fn_lit)
-                .map_err(|x| ToString::to_string(&x))?;
-            Ok(())
+            vcx.trait_registry.register_closure_impl(did, kind, impl_lit, fn_lit);
         };
 
         match kind {
             ty::ClosureKind::FnOnce => {
-                make_impl(ty::ClosureKind::FnOnce)?;
+                make_impl(ty::ClosureKind::FnOnce);
             },
             ty::ClosureKind::FnMut => {
-                make_impl(ty::ClosureKind::FnOnce)?;
-                make_impl(ty::ClosureKind::FnMut)?;
+                make_impl(ty::ClosureKind::FnOnce);
+                make_impl(ty::ClosureKind::FnMut);
             },
             ty::ClosureKind::Fn => {
-                make_impl(ty::ClosureKind::FnOnce)?;
-                make_impl(ty::ClosureKind::FnMut)?;
-                make_impl(ty::ClosureKind::Fn)?;
+                make_impl(ty::ClosureKind::FnOnce);
+                make_impl(ty::ClosureKind::FnMut);
+                make_impl(ty::ClosureKind::Fn);
             },
         }
     }
-
-    Ok(())
 }
 
 /// Generate closure trait instances.
-fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
+fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), PipelineError> {
     if !are_closures_available(vcx) {
-        return;
+        return Ok(());
     }
 
     let generator =
-        ClosureImplGenerator::new(vcx.env, vcx.trait_registry, vcx.type_translator, vcx.fn_arena).unwrap();
+        ClosureImplGenerator::new(vcx.tcx, vcx.trait_registry, vcx.type_translator, vcx.fn_arena).unwrap();
 
     for closure_did in vcx.closures {
-        let closure_args = vcx.env.get_closure_args(closure_did.to_def_id());
+        let closure_args = environment::get_closure_args(vcx.tcx, closure_did.to_def_id());
         let kind = closure_args.kind();
 
         let Some(_) = vcx.trait_registry.lookup_closure_impl(closure_did.to_def_id(), kind) else {
@@ -1836,7 +3079,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
         };
 
         let mut register_impl = |to_impl| {
-            let ordered_did = OrderedDefId::new(vcx.env.tcx(), closure_did.to_def_id());
+            let ordered_did = OrderedDefId::new(vcx.tcx, closure_did.to_def_id());
             let info = vcx.procedure_registry.closure_info.get_mut(&ordered_did).unwrap();
             let spec = process_impl(to_impl, &info.info);
             match spec {
@@ -1845,167 +3088,208 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
                     info.generated_functions.push(fn_def);
                     // store the trait impl
                     info.generated_impls.push(spec);
+                    Ok(())
                 },
-                Err(base::TranslationError::FatalError(err)) => {
-                    exit_with_error(&format!(
-                        "Encountered error when translating {err:?} closure impl {closure_did:?}, stopping..."
-                    ));
-                },
-                Err(err) => {
-                    println!(
-                        "Encountered error: {err:?} when translating closure impl {closure_did:?}, skipping"
+                Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
+                Err(base::TranslationError::ErrorReported(err)) => {
+                    vcx.tcx.dcx().span_warn(
+                        vcx.tcx.def_span(*closure_did),
+                        error::Message::UnsupportedFeature(format!(
+                            "failed to translate closure impl {closure_did:?}, skipping: {err:?}"
+                        )),
                     );
+                    recover_or_fail(err)
                 },
             }
         };
 
         match kind {
             ty::ClosureKind::FnOnce => {
-                register_impl(ty::ClosureKind::FnOnce);
+                register_impl(ty::ClosureKind::FnOnce)?;
             },
             ty::ClosureKind::FnMut => {
-                register_impl(ty::ClosureKind::FnOnce);
-                register_impl(ty::ClosureKind::FnMut);
+                register_impl(ty::ClosureKind::FnOnce)?;
+                register_impl(ty::ClosureKind::FnMut)?;
             },
             ty::ClosureKind::Fn => {
-                register_impl(ty::ClosureKind::FnOnce);
-                register_impl(ty::ClosureKind::FnMut);
-                register_impl(ty::ClosureKind::Fn);
+                register_impl(ty::ClosureKind::FnOnce)?;
+                register_impl(ty::ClosureKind::FnMut)?;
+                register_impl(ty::ClosureKind::Fn)?;
             },
         }
     }
+
+    Ok(())
 }
 
 /// Generate trait instances.
-fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
-    let trait_impl_ids = vcx.env.get_trait_impls();
+fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), PipelineError> {
+    let trait_impl_ids = environment::get_trait_impls(vcx.tcx);
 
     for trait_impl_id in trait_impl_ids {
         let did = trait_impl_id.to_def_id();
-        let trait_ref = vcx.env.tcx().impl_trait_ref(did).skip_binder();
+        let trait_ref = vcx.tcx.impl_trait_ref(did).skip_binder();
         let trait_did = trait_ref.def_id;
 
         // check if we registered this impl previously
         let Some(_) = vcx.trait_registry.lookup_impl(did) else { continue };
 
-        if !vcx.env.tcx().impl_is_of_trait(did) {
+        if !vcx.tcx.impl_is_of_trait(did) {
             continue;
         }
 
-        let tcx = vcx.env.tcx();
-
         trace!("Assembling trait impl {trait_impl_id:?}");
 
-        let process_impl = || -> Result<(specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
-            let (impl_info, deps, context_items) = vcx.trait_registry.get_trait_impl_info(did)?;
-            let assoc_items: &'tcx ty::AssocItems = tcx.associated_items(did);
-            trace!("impl assoc items: {assoc_items:?}");
+        let process_impl =
+            || -> Result<(specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError> {
+                let (impl_info, deps, context_items) = vcx.trait_registry.get_trait_impl_info(did)?;
+                let assoc_items: &'tcx ty::AssocItems = vcx.tcx.associated_items(did);
+                trace!("impl assoc items: {assoc_items:?}");
 
-            let trait_assoc_items: &'tcx ty::AssocItems = tcx.associated_items(trait_did);
+                let trait_assoc_items: &'tcx ty::AssocItems = vcx.tcx.associated_items(trait_did);
 
-            let mut methods = BTreeMap::new();
+                let mut methods = BTreeMap::new();
 
-            let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.env, trait_assoc_items);
-            for x in sorted_trait_assoc_items {
-                if x.tag() == ty::AssocTag::Fn {
-                    let fn_item = assoc_items.filter_by_name_unhygienic_and_kind(
-                        x.ident(tcx).name,
-                        ty::AssocTag::Fn,
-                    ).find(|y| y.trait_item_def_id() == Some(x.def_id));
-                    trace!("Translating item {x:?}, fn_item = {fn_item:?}");
+                let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.tcx, trait_assoc_items);
+                for x in sorted_trait_assoc_items {
+                    if x.tag() == ty::AssocTag::Fn {
+                        let fn_item = assoc_items
+                            .filter_by_name_unhygienic_and_kind(x.ident(vcx.tcx).name, ty::AssocTag::Fn)
+                            .find(|y| y.trait_item_def_id() == Some(x.def_id));
+                        trace!("Translating item {x:?}, fn_item = {fn_item:?}");
 
-                    if let Some(fn_item) = fn_item {
-                        if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
-                            methods.insert(x.name().as_str().to_owned(), specs::traits::InstanceMethodSpec::Defined(spec));
-                        } else {
-                            warn!("Incomplete specification for {}", fn_item.name());
-                            return Err(base::TranslationError::IncompleteTraitImplSpec(did));
-                        }
-                    } else {
-                        // this uses a default impl
-                        let fn_name = base::strip_coq_ident(tcx.item_name(x.def_id).as_str());
-                        let spec = specs::traits::InstantiatedFunctionSpec::new(impl_info.clone(), fn_name);
-
-                        let assoc_item = trait_assoc_items.find_by_ident_and_kind(tcx, x.ident(tcx), ty::AssocTag::Fn, trait_did).unwrap();
-
-                        trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
-                        trace!("assemble_trait_impls: default spec: {spec:?}");
-                        if let Some(default_meta) = vcx.procedure_registry.lookup_function(assoc_item.def_id) {
-                            // now build the generic scope for this item.
-                            let ty = tcx.type_of(assoc_item.def_id).instantiate_identity();
-                            let ty::TyKind::FnDef(_, params) = ty.kind() else {
-                                unimplemented!();
-                            };
-                            let mut generics = scope::Params::new_from_generics(tcx, params, Some(assoc_item.def_id));
-                            generics.add_param_env(assoc_item.def_id, vcx.env, vcx.type_translator, vcx.trait_registry)?;
-                            // TODO: We don't respect dependencies of the direct scope on the
-                            // surrounding scope here. For instance for assoc type constraints.
-                            //
-                            // Dirty fix: I introduce let bindings in the translation for the inst
-                            // => let's just do this for now.
-                            //
-                            // Better: we should already substitute suitably in Rust.
-                            // But how do I do that? This seems a bit difficult.
-
-                            // add late bounds
-                            let sig = ty.fn_sig(vcx.env.tcx());
-                            let bound_vars = sig.bound_vars();
-                            let mut bound_regions = Vec::new();
-                            for x in bound_vars {
-                                bound_regions.push(x.expect_region());
+                        if let Some(fn_item) = fn_item {
+                            if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
+                                methods.insert(
+                                    x.name().as_str().to_owned(),
+                                    specs::traits::InstanceMethodSpec::Defined(spec),
+                                );
+                            } else {
+                                let err = vcx
+                                    .tcx
+                                    .dcx()
+                                    .span_err(vcx.tcx.def_span(did), error::Message::IncompleteTraitImplSpec);
+                                return Err(base::TranslationError::ErrorReported(err));
                             }
-                            drop(generics.translate_bound_regions(tcx, &bound_regions));
+                        } else {
+                            // this uses a default impl
+                            let fn_name = base::strip_coq_ident(vcx.tcx.item_name(x.def_id).as_str());
+                            let spec =
+                                specs::traits::InstantiatedFunctionSpec::new(impl_info.clone(), fn_name);
 
-                            let scope: specs::GenericScope<'_> = generics.into();
+                            let assoc_item = trait_assoc_items
+                                .find_by_ident_and_kind(
+                                    vcx.tcx,
+                                    x.ident(vcx.tcx),
+                                    ty::AssocTag::Fn,
+                                    trait_did,
+                                )
+                                .unwrap();
 
-                            methods.insert(x.name().as_str().to_owned(), specs::traits::InstanceMethodSpec::DefaultSpec(Box::new(spec), scope, default_meta.get_spec_name().to_owned()));
-                        }
-                        else {
-                            // this can happen for incompletely specified traits from stdlib, let's
-                            // ignore this
+                            trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
+                            trace!("assemble_trait_impls: default spec: {spec:?}");
+                            if let Some(default_meta) =
+                                vcx.procedure_registry.lookup_function(assoc_item.def_id)
+                            {
+                                // now build the generic scope for this item.
+                                let ty =
+                                    vcx.tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
+                                let ty::TyKind::FnDef(_, params) = ty.kind() else {
+                                    unimplemented!();
+                                };
+                                let params = params
+                                    .no_bound_vars()
+                                    .expect("trait item FnDef arguments must not contain bound variables");
+                                let mut generics = scope::Params::new_from_generics(
+                                    vcx.tcx,
+                                    params,
+                                    Some(assoc_item.def_id),
+                                );
+                                generics.add_param_env(
+                                    assoc_item.def_id,
+                                    vcx.tcx,
+                                    vcx.type_translator,
+                                    vcx.trait_registry,
+                                )?;
+                                // TODO: We don't respect dependencies of the direct scope on the
+                                // surrounding scope here. For instance for assoc type constraints.
+                                //
+                                // Dirty fix: I introduce let bindings in the translation for the inst
+                                // => let's just do this for now.
+                                //
+                                // Better: we should already substitute suitably in Rust.
+                                // But how do I do that? This seems a bit difficult.
+
+                                // add late bounds
+                                let sig = ty.fn_sig(vcx.tcx);
+                                let bound_vars = sig.bound_vars();
+                                let mut bound_regions = Vec::new();
+                                for x in bound_vars {
+                                    bound_regions.push(x.expect_region());
+                                }
+                                drop(generics.translate_bound_regions(vcx.tcx, &bound_regions));
+
+                                let scope: specs::GenericScope<'_> = generics.into();
+
+                                methods.insert(
+                                    x.name().as_str().to_owned(),
+                                    specs::traits::InstanceMethodSpec::DefaultSpec(
+                                        Box::new(spec),
+                                        scope,
+                                        default_meta.get_spec_name().to_owned(),
+                                    ),
+                                );
+                            } else {
+                                // this can happen for incompletely specified traits from stdlib, let's
+                                // ignore this
+                            }
                         }
                     }
                 }
-            }
-            let instance_spec = specs::traits::InstanceSpec::new(methods);
+                let instance_spec = specs::traits::InstanceSpec::new(methods);
 
-            // assemble the spec and register it
-            let spec = specs::traits::ImplSpec::new(impl_info,
-                instance_spec,
-                context_items);
-            Ok((spec, deps))
-        };
+                // assemble the spec and register it
+                let spec = specs::traits::ImplSpec::new(impl_info, instance_spec, context_items);
+                Ok((spec, deps))
+            };
 
         let spec = process_impl();
         match spec {
             Ok((spec, deps)) => {
-                let ordered_did = OrderedDefId::new(vcx.env.tcx(), did);
-                vcx.trait_impls.insert(ordered_did, spec);
-                vcx.trait_impl_deps.insert(ordered_did, deps);
+                let key = registry::ImplKey::rust(vcx.tcx, did);
+                vcx.trait_impls.insert(key.clone(), spec);
+                vcx.trait_impl_deps.insert(key, deps);
             },
-            Err(base::TranslationError::FatalError(err)) => {
-                exit_with_error(&format!(
-                    "Encountered error when translating {err:?} trait impl {did:?}, stopping..."
-                ));
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx
+                    .dcx()
+                    .span_warn(vcx.tcx.def_span(did), error::Message::SkippedTraitImplDueToPreviousFailure);
+                recover_or_fail(err)?;
             },
-            Err(err) => {
-                println!("Encountered error: {err:?} when translating trait impl {did:?}, skipping");
-            },
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
         }
     }
+
+    Ok(())
 }
 
 /// Get and parse all module attributes.
-fn get_module_attributes(env: &Environment<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, String> {
-    let modules = env.get_modules();
+fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, PipelineError> {
+    let modules = environment::get_modules(tcx);
     let mut attrs = BTreeMap::new();
     info!("collected modules: {:?}", modules);
 
     for m in &modules {
-        let module_attrs = attrs::filter_for_tool(env.get_attributes(m.to_def_id()));
+        let module_attrs = attrs::filter_for_tool(environment::get_attributes(tcx, m.to_def_id()));
         let mut module_parser = VerboseModuleAttrParser::new();
-        let module_spec = module_parser.parse_module_attrs(*m, &module_attrs)?;
-        let ordered_did = OrderedDefId::new(env.tcx(), m.to_def_id());
+        let module_spec = match module_parser.parse_module_attrs(*m, &module_attrs) {
+            Ok(spec) => spec,
+            Err(err) => {
+                let err = tcx.dcx().span_err(err.span, error::Message::ModuleSpecParse(err.err));
+                return Err(PipelineError::Reported(err));
+            },
+        };
+        let ordered_did = OrderedDefId::new(tcx, m.to_def_id());
         attrs.insert(ordered_did, module_spec);
     }
 
@@ -2018,27 +3302,61 @@ fn add_builtin_shims(registry: &mut shim_registry::SR<'_>) {
         refinement_type: "core_marker_PhantomData_rt".to_owned(),
         syn_type: "core_marker_PhantomData_sls".to_owned(),
         sem_type: "core_marker_PhantomData_ty".to_owned(),
+        raw_type: shim_registry::RawAdtType {
+            rtype: "core_marker_PhantomData_rt".to_owned(),
+            semtype: "core_marker_PhantomData_ty".to_owned(),
+        },
         info: specs::types::AdtShimInfo::empty(),
     };
 
     registry.add_adt_shim(phantom_data_shim);
 }
 
+fn register_builtin_virtual_traits(vcx: &VerificationCtxt<'_, '_>) {
+    let mut method_trait_incl_decls = BTreeMap::new();
+    method_trait_incl_decls.insert("drop_glue".to_owned(), "trait_incl_of_DropGlue_drop_glue".to_owned());
+
+    let drop_glue_spec = specs::traits::LiteralSpec {
+        assoc_tys: Vec::new(),
+        name: "DropGlue".to_owned(),
+        has_semantic_interp: false,
+        has_spec_attrs: true,
+        attrs_dependent: false,
+        declared_attrs: vec!["DropGlueUnwind".to_owned()],
+        method_trait_incl_decls,
+    };
+
+    vcx.trait_registry
+        .register_virtual_trait(registry::VirtualTrait::DropGlue, drop_glue_spec);
+
+    let trivial_drop_glue = specs::traits::LiteralImpl::new(
+        "drop_glue_trivial".to_owned(),
+        false,
+        "drop_glue_trivial_realization".to_owned(),
+    );
+    vcx.trait_registry
+        .register_virtual_impl(registry::VirtualImpl::DropGlueTrivial, trivial_drop_glue);
+}
+
 /// Translate a crate, creating a `VerificationCtxt` in the process.
-pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), String>
+pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), PipelineError>
 where
     F: Fn(VerificationCtxt<'tcx, '_>),
 {
-    let env = Environment::new(tcx);
-    let env: &Environment<'_> = &*Box::leak(Box::new(env));
-
     // get crate attributes
     let crate_attrs = tcx.hir_krate_attrs();
     let crate_attrs = attrs::filter_for_tool(crate_attrs);
     info!("Found crate attributes: {:?}", crate_attrs);
     // parse crate attributes
     let mut crate_parser = VerboseCrateAttrParser::new();
-    let crate_spec = crate_parser.parse_crate_attrs(&crate_attrs)?;
+    let crate_span = crate_attrs.first().map_or(span::DUMMY_SP, |a| a.span);
+    let crate_spec = match crate_parser.parse_crate_attrs(&crate_attrs, crate_span) {
+        Ok(spec) => spec,
+        Err(err) => {
+            let err = tcx.dcx().span_err(err.span, error::Message::CrateSpecParse(err.err));
+            return Err(PipelineError::Reported(err));
+        },
+    };
 
     let path_prefix = crate_spec.prefix.unwrap_or_else(|| "refinedrust.examples".to_owned());
     info!("Setting Coq path prefix: {:?}", path_prefix);
@@ -2047,13 +3365,18 @@ where
     info!("Setting dune package: {:?}", package);
 
     // get module attributes
-    let module_attrs = get_module_attributes(env)?;
+    let module_attrs = get_module_attributes(tcx)?;
+
+    let mut includes = crate_spec.includes;
+    let mut export_includes = crate_spec.export_includes;
+    for module_attr in module_attrs.values() {
+        includes.extend(module_attr.includes.clone());
+        export_includes.extend(module_attr.export_includes.clone());
+    }
 
     // process exports
     let mut exports: BTreeSet<coq::module::Export> = BTreeSet::new();
-
     exports.extend(crate_spec.exports);
-
     for module_attr in module_attrs.values() {
         exports.extend(module_attr.exports.clone());
     }
@@ -2061,25 +3384,14 @@ where
     info!("Exporting extra Coq files: {:?}", exports);
 
     // process includes
-    let mut includes: BTreeSet<String> = BTreeSet::new();
-    crate_spec.includes.into_iter().map(|name| includes.insert(name)).count();
-    module_attrs
-        .values()
-        .map(|attrs| attrs.includes.iter().map(|name| includes.insert(name.to_owned())).count())
-        .count();
-    info!("Including RefinedRust modules: {:?}", includes);
+    info!("Including RefinedRust modules: {:?}", includes.keys());
     // process export_includes
-    let mut export_includes: BTreeSet<String> = BTreeSet::new();
-    crate_spec.export_includes.into_iter().map(|name| export_includes.insert(name)).count();
-    module_attrs
-        .into_values()
-        .map(|attrs| attrs.export_includes.into_iter().map(|name| export_includes.insert(name)).count())
-        .count();
-    info!("Exporting RefinedRust modules: {:?}", export_includes);
+    info!("Exporting RefinedRust modules: {:?}", export_includes.keys());
 
-    let functions = env.get_procedures();
-    let closures = env.get_closures();
-    info!("Found {} function(s) and {} closure(s)", functions.len(), closures.len());
+    let functions = environment::get_procedures(tcx);
+    let closures = environment::get_closures(tcx);
+    let adts = environment::get_adts(tcx);
+    info!("Found {} function(s), {} closure(s), and {} ADT(s)", functions.len(), closures.len(), adts.len());
 
     let struct_arena = Arena::new();
     let enum_arena = Arena::new();
@@ -2088,9 +3400,9 @@ where
     let trait_impl_arena = Arena::new();
     let trait_use_arena = Arena::new();
     let fn_spec_arena = Arena::new();
-    let type_translator = types::TX::new(env, &struct_arena, &enum_arena, &shim_arena);
+    let type_translator = types::TX::new(tcx, &struct_arena, &enum_arena, &shim_arena);
     let trait_registry =
-        registry::TR::new(env, &trait_arena, &trait_impl_arena, &trait_use_arena, &fn_spec_arena);
+        registry::TR::new(tcx, &trait_arena, &trait_impl_arena, &trait_use_arena, &fn_spec_arena);
     // establish the cycle
     type_translator.provide_trait_registry(&trait_registry);
     trait_registry.provide_type_translator(&type_translator);
@@ -2105,24 +3417,34 @@ where
     // add includes to the shim registry
     let library_load_paths = rrconfig::lib_load_paths();
     info!("Loading libraries from {:?}", library_load_paths);
-    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|e| e.to_string())?;
+    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(PipelineError::from)?;
     info!("Found the following RefinedRust libraries in the loadpath: {:?}", found_libs);
 
     let mut included_libs = BTreeSet::new();
     while !includes.is_empty() {
-        let incl = includes.iter().next().unwrap().to_owned();
+        let (incl, span) = includes.iter().next().map(|(a, b)| (a.to_owned(), b.to_owned())).unwrap();
         includes.remove(&incl);
         let Some(p) = found_libs.get(&incl) else {
-            println!("Warning: did not find library {} in loadpath", incl);
+            tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!("did not find included library {incl} in loadpath")),
+            );
             continue;
         };
-        included_libs.insert(incl);
+        included_libs.insert(incl.clone());
 
-        let f = File::open(p).map_err(|e| e.to_string())?;
-        if let Some(new_includes) = shim_registry.add_source(f).map_err(|e| e.to_string())? {
+        let f = File::open(p).map_err(PipelineError::from)?;
+        let new_includes = shim_registry.add_source(f).map_err(|err| {
+            let err = tcx.dcx().err(error::Message::AttributeError(format!(
+                "failed to load RefinedRust library {incl}: {err}"
+            )));
+            PipelineError::Reported(err)
+        })?;
+        if let Some(new_includes) = new_includes {
             for incl in new_includes {
                 if !included_libs.contains(&incl) {
-                    includes.insert(incl);
+                    // use the span for the original import that triggered this recursive import
+                    includes.insert(incl, span);
                 }
             }
         }
@@ -2130,24 +3452,36 @@ where
 
     let mut export_included_libs = BTreeSet::new();
     while !export_includes.is_empty() {
-        let incl = export_includes.iter().next().unwrap().to_owned();
+        let (incl, span) = export_includes.iter().next().map(|(a, b)| (a.to_owned(), b.to_owned())).unwrap();
         export_includes.remove(&incl);
         let Some(p) = found_libs.get(&incl) else {
-            println!("Warning: did not find library {} in loadpath", incl);
+            tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!(
+                    "did not find exported included library {incl} in loadpath"
+                )),
+            );
             continue;
         };
         let skip = included_libs.contains(&incl);
-        export_included_libs.insert(incl);
+        export_included_libs.insert(incl.clone());
 
         if skip {
             continue;
         }
 
-        let f = File::open(p).map_err(|e| e.to_string())?;
-        if let Some(new_includes) = shim_registry.add_source(f).map_err(|e| e.to_string())? {
+        let f = File::open(p).map_err(PipelineError::from)?;
+        let new_includes = shim_registry.add_source(f).map_err(|err| {
+            let err = tcx.dcx().err(error::Message::AttributeError(format!(
+                "failed to load exported RefinedRust library {incl}: {err}"
+            )));
+            PipelineError::Reported(err)
+        })?;
+        if let Some(new_includes) = new_includes {
             for incl in new_includes {
                 if !included_libs.contains(&incl) && !export_included_libs.contains(&incl) {
-                    export_includes.insert(incl);
+                    // use the span for the original import that triggered this recursive import
+                    export_includes.insert(incl, span);
                 }
             }
         }
@@ -2155,9 +3489,10 @@ where
 
     // first register names for all the procedures, to resolve mutual dependencies
     let mut vcx = VerificationCtxt {
-        env,
+        tcx,
         functions: functions.as_slice(),
         closures: closures.as_slice(),
+        adts: adts.as_slice(),
         type_translator: &type_translator,
         trait_registry: &trait_registry,
         procedure_registry,
@@ -2174,42 +3509,49 @@ where
     };
 
     // this needs to be first, in order to ensure consistent ADT use
-    register_shims(&mut vcx).map_err(|x| x.to_string())?;
+    register_shims(&mut vcx)?;
 
-    register_functions(&mut vcx).map_err(|x| x.to_string())?;
+    register_builtin_virtual_traits(&vcx);
+    register_tuple_drop_glue_shims(&mut vcx);
+
+    register_drop_glues(&mut vcx)?;
+
+    register_functions(&mut vcx)?;
 
     register_traits(&mut vcx)?;
 
+    // register ADTs which haven't been implicitly registered yet
+    register_adts(&vcx)?;
+
     register_trait_impls(&vcx)?;
 
-    register_closure_impls(&vcx)?;
+    register_current_crate_export_aliases(&mut vcx)?;
+
+    register_closure_impls(&vcx);
 
     // after trait impls, as type translation may depend on trait impls
     register_consts(&mut vcx)?;
 
-    translate_functions(&mut vcx);
+    translate_functions(&mut vcx)?;
+
+    translate_drop_glues(&mut vcx)?;
 
     // important: happens after all functions have been translated, as this uses the translated
     // function specs
-    assemble_trait_impls(&mut vcx);
+    assemble_trait_impls(&mut vcx)?;
 
-    assemble_closure_impls(&mut vcx);
+    assemble_closure_impls(&mut vcx)?;
 
     continuation(vcx);
 
     Ok(())
 }
 
-/// # Safety
-///
-/// See the module level comment in `crate::environment::mir_storage`.
-pub unsafe fn store_mir_body<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    body_with_facts: BodyWithBorrowckFacts<'tcx>,
-) {
-    // SAFETY: See the module level comment.
-    unsafe {
-        environment::mir_storage::store_mir_body(tcx, def_id, body_with_facts);
-    }
+pub fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> queries::mir_borrowck::ProvidedValue<'_> {
+    environment::mir_storage::mir_borrowck(tcx, def_id)
+}
+
+#[must_use]
+pub fn borrowck_mir_body<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> Option<&'tcx mir::Body<'tcx>> {
+    Some(&environment::mir_storage::retrieve_mir_body(tcx, def_id)?.body)
 }

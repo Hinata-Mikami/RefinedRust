@@ -6,35 +6,109 @@ use std::collections::HashMap;
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::infer::infer::TyCtxtInferExt as _;
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeVisitableExt as _;
+use rr_rustc_interface::middle::ty::{
+    RegionExt as _, TypeVisitableExt as _, {self},
+};
+use rr_rustc_interface::span::Symbol;
+use rr_rustc_interface::thin_vec::ThinVec;
 use rr_rustc_interface::{middle, trait_selection};
 use trait_selection::{infer, solve};
 
 //use trait_selection::traits::{self, normalize::NormalizeExt};
-use crate::regions::arg_folder;
-use crate::regions::region_bi_folder::RegionBiFolder;
+use crate::regions::{self, RegionBiFolder};
 
-/// Normalize a type in the given environment.
+const NORMALIZATION_REGION_PARAM_OFFSET: u32 = 1 << 31;
+const NORMALIZATION_REGION_PARAM_NAME: &str = "__rr_normalization_region";
+
+struct HideNormalizationRegions<'a, 'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    hidden: &'a mut Vec<ty::Region<'tcx>>,
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for HideNormalizationRegions<'_, 'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let region = r;
+        if !matches!(region.kind(), ty::RegionKind::ReVar(_) | ty::RegionKind::ReBound(..)) {
+            return region;
+        }
+        let index = self.hidden.iter().position(|candidate| *candidate == region).unwrap_or_else(|| {
+            self.hidden.push(region);
+            self.hidden.len() - 1
+        });
+        let index = u32::try_from(index).unwrap();
+        let index = NORMALIZATION_REGION_PARAM_OFFSET.checked_add(index).unwrap();
+        ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
+            index,
+            name: Symbol::intern(NORMALIZATION_REGION_PARAM_NAME),
+        })
+    }
+}
+
+struct RestoreNormalizationRegions<'a, 'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    hidden: &'a [ty::Region<'tcx>],
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RestoreNormalizationRegions<'_, 'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let region = r;
+        let ty::RegionKind::ReEarlyParam(region) = region.kind() else {
+            return region;
+        };
+        if region.name != Symbol::intern(NORMALIZATION_REGION_PARAM_NAME) {
+            return ty::Region::new_early_param(self.tcx, region);
+        }
+        let Some(index) = region.index.checked_sub(NORMALIZATION_REGION_PARAM_OFFSET) else {
+            return ty::Region::new_early_param(self.tcx, region);
+        };
+        self.hidden
+            .get(index as usize)
+            .copied()
+            .unwrap_or_else(|| ty::Region::new_early_param(self.tcx, region))
+    }
+}
+
+/// Normalize a type in the given environment while preserving external region variables.
 pub(crate) fn normalize_type<'tcx, T>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: T,
-) -> Result<T, Vec<trait_selection::traits::FulfillmentError<'tcx>>>
+) -> Result<T, ThinVec<trait_selection::traits::FulfillmentError<'tcx>>>
 where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {
+    // The fresh inference context would interpret borrow-checking `ReVar`s as its own inference
+    // variables, while deeply_normalize rejects escaping `ReBound`s. Hide both as named
+    // parameters and restore their exact identities afterwards.
+    let mut hidden = Vec::new();
+    let ty = ty.fold_with(&mut HideNormalizationRegions {
+        tcx,
+        hidden: &mut hidden,
+    });
     // TODO: should we normalize like this also below?
     let infer_ctx: infer::InferCtxt<'tcx> = tcx
         .infer_ctxt()
         .with_next_trait_solver(true)
         .ignoring_regions()
-        .build(typing_env.typing_mode);
+        .build(typing_env.typing_mode());
 
     let obligation_cause = middle::traits::ObligationCause::dummy();
     let at = infer_ctx.at(&obligation_cause, typing_env.param_env);
 
-    solve::deeply_normalize(at, ty)
+    solve::deeply_normalize(at, ty::Unnormalized::dummy(ty)).map(|ty| {
+        ty.fold_with(&mut RestoreNormalizationRegions {
+            tcx,
+            hidden: &hidden,
+        })
+    })
 
     //trait_selection::traits::fully_normalize(
     //&infer_ctx,
@@ -55,10 +129,10 @@ pub(crate) fn resolve_impl_source<'tcx>(
 ) -> Option<trait_selection::traits::ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
     trace!("args before erasing: {substs:?}");
-    let erased_substs = tcx.normalize_erasing_regions(typing_env, substs);
+    let erased_substs = tcx.normalize_erasing_regions(typing_env, ty::Unnormalized::dummy(substs));
     //let erased_substs = normalize_type(tcx, typing_env, substs).unwrap();
     trace!("erased args: {erased_substs:?}");
-    let erased_substs = arg_folder::relabel_late_bounds(erased_substs, tcx);
+    let erased_substs = regions::relabel_late_bounds(erased_substs, tcx);
     trace!("erased args: {erased_substs:?}");
 
     // Check if the `did` is an associated item
@@ -70,7 +144,7 @@ pub(crate) fn resolve_impl_source<'tcx>(
             },
             ty::AssocContainer::TraitImpl(_) => {
                 // this is part of an implementation of a trait
-                tcx.impl_trait_ref(item.container_id(tcx)).instantiate(tcx, erased_substs)
+                tcx.impl_trait_ref(item.container_id(tcx)).instantiate(tcx, erased_substs).skip_norm_wip()
             },
             ty::AssocContainer::InherentImpl => {
                 return None;
@@ -105,7 +179,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             trace!("resolved to impl {impl_did:?} with args {impl_args:?}");
 
             // enumerate regions in args since they were erased before
-            let (enumerated_impl_args, num_regions) = arg_folder::relabel_erased_regions(impl_args, tcx);
+            let (enumerated_impl_args, num_regions) = regions::relabel_erased_regions(impl_args, tcx);
 
             trace!("re-enumerated impl args: {enumerated_impl_args:?}, num_regions={num_regions:?}");
 
@@ -116,7 +190,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             // instantiate the trait with the impl args; the subject is the trait below the impl's binders
             let trait_ref = tcx.impl_trait_ref(impl_did);
             let subject = trait_ref.skip_binder();
-            let subject_ref = arg_folder::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
+            let subject_ref = regions::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
 
             // impl_args are the args of the trait, instantiated with the re-enumerated args of the resolved
             // impl required_args are the args of the trait that we were expecting, still
@@ -128,9 +202,6 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             trace!("mapping regions from {required_args:?} to {impl_args:?}");
 
             // normalize both args first, taking into account the late bound binders
-            // TODO: actually, this seems to have problem if we have to normalize an alias
-            // involving region variables.
-            // Is there some way to teach the resolution about region variables in scope?
             let bound_impl_args = below_binders.rebind(impl_args);
             let impl_args = normalize_type(tcx, typing_env, bound_impl_args).unwrap();
             let impl_args = impl_args.skip_binder();
@@ -155,7 +226,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 
             // then instantiate the enumerated_impl_args with the mapping, recovering the
             // propertly-instantiated args for the resolved `impl`
-            let renamed_impl_args = arg_folder::rename_region_vids(enumerated_impl_args, tcx, region_map);
+            let renamed_impl_args = regions::rename_region_vids(enumerated_impl_args, tcx, region_map);
 
             let new_data = trait_selection::traits::ImplSourceUserDefinedData {
                 impl_def_id: impl_did,
@@ -258,6 +329,28 @@ pub(crate) enum TraitResolutionKind {
     Closure,
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub(crate) struct ResolvedImpl<'tcx> {
+    pub impl_did: DefId,
+    pub impl_args: ty::GenericArgsRef<'tcx>,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub(crate) enum AssocItemResolutionKind<'tcx> {
+    Param,
+    UserDefined(ResolvedImpl<'tcx>),
+    Closure,
+    /// Codegen selected an implementation, but a downstream specialization may still replace it.
+    FurtherSpecializable,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub(crate) struct ResolvedAssocItem<'tcx> {
+    pub callable_did: DefId,
+    pub callable_args: ty::GenericArgsRef<'tcx>,
+    pub kind: AssocItemResolutionKind<'tcx>,
+}
+
 /// Resolve a reference to a trait item using codegen trait selection.
 /// `did` should be the id of a trait item.
 pub(crate) fn resolve_assoc_item<'tcx>(
@@ -266,7 +359,7 @@ pub(crate) fn resolve_assoc_item<'tcx>(
     did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<ResolvedAssocItem<'tcx>> {
     let assoc = tcx.opt_associated_item(did)?;
 
     /*
@@ -301,13 +394,17 @@ pub(crate) fn resolve_assoc_item<'tcx>(
 
             if !leaf_def.is_final() && trait_ref.still_further_specializable() {
                 // return the original id to call
-                return Some((did, substs, TraitResolutionKind::UserDefined));
+                return Some(ResolvedAssocItem {
+                    callable_did: did,
+                    callable_args: substs,
+                    kind: AssocItemResolutionKind::FurtherSpecializable,
+                });
             }
 
             // Translate the original substitution into one on the selected impl method
 
             let typing_env = typing_env.with_post_analysis_normalized(tcx);
-            let infcx = tcx.infer_ctxt().build(typing_env.typing_mode);
+            let infcx = tcx.infer_ctxt().build(typing_env.typing_mode());
 
             let substs = substs.rebase_onto(tcx, trait_did, impl_data.args);
             let substs = trait_selection::traits::translate_args(
@@ -320,18 +417,31 @@ pub(crate) fn resolve_assoc_item<'tcx>(
             let leaf_substs = substs;
             //let leaf_substs = infcx.tcx.erase_regions(substs);
 
-            Some((leaf_def.item.def_id, leaf_substs, TraitResolutionKind::UserDefined))
+            Some(ResolvedAssocItem {
+                callable_did: leaf_def.item.def_id,
+                callable_args: leaf_substs,
+                kind: AssocItemResolutionKind::UserDefined(ResolvedImpl {
+                    impl_did: impl_data.impl_def_id,
+                    impl_args: impl_data.args,
+                }),
+            })
         },
-        trait_selection::traits::ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
+        trait_selection::traits::ImplSource::Param(_) => Some(ResolvedAssocItem {
+            callable_did: did,
+            callable_args: substs,
+            kind: AssocItemResolutionKind::Param,
+        }),
         trait_selection::traits::ImplSource::Builtin(_, _) =>
         // the 0-th parameter should be self
         // if this is a closure, we want to call that closure
         {
             match *substs[0].as_type().unwrap().kind() {
                 // try to get the body
-                ty::Closure(closure_def_id, closure_substs) => {
-                    Some((closure_def_id, closure_substs, TraitResolutionKind::Closure))
-                },
+                ty::Closure(closure_def_id, closure_substs) => Some(ResolvedAssocItem {
+                    callable_did: closure_def_id,
+                    callable_args: closure_substs,
+                    kind: AssocItemResolutionKind::Closure,
+                }),
                 _ => unimplemented!(),
             }
         },

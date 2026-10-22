@@ -1,0 +1,282 @@
+From refinedrust Require Export base type lftmor.
+From refinedrust Require Import options.
+
+(** * Mutable references *)
+Section mut_ref.
+  Context `{typeGS Σ}.
+  Implicit Types (κ : lft) (γ : gname).
+
+  Definition mut_ref_own_val_def {rt : RT} κ (inner : type rt) π (rγ : place_rfn rt * gname) m (v : val) : iProp Σ :=
+    let '(r, γ) := rγ in
+    (∃ (l : loc) (ly : layout),
+      ⌜m = MetaNone⌝ ∗
+      ⌜val_decodes_to_ref v l⌝ ∗
+      ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
+      ⌜l `has_layout_loc` ly⌝ ∗
+      loc_in_bounds l 0 ly.(ly_size) ∗
+      inner.(ty_sidecond) ∗
+      place_rfn_interp_mut r γ ∗
+      have_creds ∗
+      |={lftE}=> &pin{κ} (∃ r' : rt, gvar_auth γ r' ∗ |={lftE}=> l ↦: inner.(ty_own_val) π r' MetaNone))%I.
+  Definition mut_ref_own_val_aux : seal (@mut_ref_own_val_def).
+  Proof. by eexists. Qed.
+  Definition mut_ref_own_val := mut_ref_own_val_aux.(unseal).
+  Definition mut_ref_own_val_unfold : @mut_ref_own_val = @mut_ref_own_val_def := mut_ref_own_val_aux.(seal_eq).
+
+  Definition mut_ref_shr_def {rt : RT} κ (inner : type rt) κ' π (rγ : place_rfn rt * gname) m (l : loc) : iProp Σ :=
+    let '(r, γ) := rγ in
+    (∃ (vi : val) (li : loc) (ly : layout) (r' : rt),
+      ⌜is_xrfn (r, γ)⌝ ∗
+      ⌜m = MetaNone⌝ ∗
+      ⌜l `has_layout_loc` void*⌝ ∗
+      place_rfn_interp_shared r r' ∗
+        &frac{κ'}(λ q', l ↦{q'} vi) ∗
+        (* needed explicity because there is a later + fupd over the sharing predicate *)
+        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
+        ⌜val_decodes_to_ref vi li⌝ ∗
+        ⌜li `has_layout_loc` ly⌝ ∗
+        loc_in_bounds l 0 void*.(ly_size) ∗
+        loc_in_bounds li 0 ly.(ly_size) ∗
+        inner.(ty_sidecond) ∗
+        (* we still need a later for contractiveness *)
+        ▷ □ (|={lftE}=> inner.(ty_shr) (κ⊓κ') π r' MetaNone li))%I.
+  Definition mut_ref_shr_aux : seal (@mut_ref_shr_def).
+  Proof. by eexists. Qed.
+  Definition mut_ref_shr := mut_ref_shr_aux.(unseal).
+  Definition mut_ref_shr_unfold : @mut_ref_shr = @mut_ref_shr_def := mut_ref_shr_aux.(seal_eq).
+
+  Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
+    ty_sidecond := True;
+    ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := true;
+    ty_own_val := mut_ref_own_val _ κ inner;
+
+    _ty_has_op_type ot := is_ref_ot ot;
+    ty_syn_type _ := RefSynType;
+
+    ty_shr := mut_ref_shr _ κ inner;
+    (* NOTE: we cannot descend below the borrow here to get more information recursively.
+       But this is fine, since the observation about γ here already contains all the information we need. *)
+    _ty_ghost_drop π '(r, γ) :=
+      (*place_rfn_interp_mut r γ;*)
+      match r with
+      | #r' => gvar_pobs γ r'
+      | PlaceGhost γ' => RelEq (T:=rt) γ' γ
+      end;
+
+    (* We need the inner lifetimes also to initiate sharing *)
+    _ty_lfts := [κ] ++ ty_lfts inner;
+    _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
+  |}.
+  Next Obligation.
+    simpl. apply _.
+  Qed.
+  Next Obligation.
+    intros. econstructor.
+    - rewrite mut_ref_own_val_unfold.
+      iIntros (π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
+      iPureIntro. eexists. split; first by apply syn_type_has_layout_ref.
+      by apply val_decodes_to_ref_has_layout in Hv.
+    - intros ot Hot => /=. destruct ot => /=//.
+      + simpl in Hot. subst ly; by apply syn_type_has_layout_ref.
+      + by apply syn_type_has_layout_ref.
+    - intros ot Hot. by apply is_ref_ot_wf.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ' π r m v) "_". done.
+    - unfold TCNoResolve.
+      rewrite mut_ref_shr_unfold.
+      iIntros (κ' π l [r γ]). apply _.
+    - rewrite mut_ref_shr_unfold.
+      iIntros (κ' π l [r γ] m) "(%vi & %li & %ly & %r' & _ & -> & % & ? &  _)".
+      iPureIntro. eexists _. split; last by apply syn_type_has_layout_ref.
+      done.
+    - rewrite mut_ref_shr_unfold.
+      iIntros (κ' π [r γ] m l) "(%vi & %li & %ly & %r' & %Hxr & _)".
+      done.
+    - (* initiate sharing *)
+    (*
+       Plan:
+       - get the borrow containing the credit + atime.
+       - open the borrows to obtain the receipts.
+       - use the credit (will need more than one) to bring the nested borrow in the right shape.
+         will need:
+          + 1 credit/later for the fupd_later
+          + 1 credit for folding the pinned borrow
+            + 1 credit for unfoldign the pinned borrow
+          + 1 credit/later for getting rid of the second fupd after unnesting
+          + 1 credit/later for unnesting
+        - then do recursive sharing and eliminate the logical_step for that.
+        - introduce the logical step, using the time receipt.
+        - after getting the credits and the receipt back, can close the two borrows
+        - can now prove the conclusion.
+
+    *)
+
+    iIntros (E κ' l ly π [r γ] m q ? Hxr) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
+    rewrite mut_ref_own_val_unfold mut_ref_shr_unfold.
+    iApply fupd_logical_step.
+    iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Hl & Hb)"; first solve_ndisj.
+    simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep. iDestruct "Htok" as "[Htok_κ' [Htok_κ Htok]]".
+
+    iMod (bor_exists with "LFT Hb") as (l0) "Hb"; first solve_ndisj.
+    iMod (bor_exists with "LFT Hb") as (ly0) "Hb"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>%Hv & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>%Halg & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>%Hly0 & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>#Hlb & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>#Hsc & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Hobs & Hb)"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Hcred & Hb)"; first solve_ndisj.
+    iDestruct "Htok_κ'" as "(Htok_κ' & Htokc)".
+    iMod (bor_acc with "LFT Hcred Htokc") as "(>(Hcred & Hat) & Hclos_c)"; first solve_ndisj.
+
+    (* unnest the pinned borrow *)
+    rewrite /num_cred. assert (5 = 2 + 3) as Heq by lia.
+    rewrite {1}Heq. iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    iMod (pinned_bor_unnest_full with "LFT Hcred1 Htok_κ' Hb") as "Hb"; first done.
+    iDestruct "Hcred" as "(Hcred1 & Hcred2 & Hcred)".
+    iApply (lc_fupd_add_later with "Hcred1"). iNext.
+    iMod "Hb". iMod "Hb".
+    iApply (lc_fupd_add_later with "Hcred2"). iNext.
+    iMod "Hb" as "(Hb & Htok_κ')".
+    rewrite lft_intersect_comm.
+
+    iDestruct "Htok_κ" as "(Htok_κ & Htok_κ2)".
+    iCombine "Htok_κ Htok_κ'" as "Htoka". rewrite lft_tok_sep.
+    iMod (bor_exists_tok with "LFT Hb Htoka") as "(%r' & Hb & Htoka)"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Hauth & Hb)"; first solve_ndisj.
+    iMod (bor_fupd_later with "LFT Hb Htoka") as "Hu"; [done.. | ].
+    iApply (lc_fupd_add_later with "Hcred"). iNext. iMod "Hu" as "(Hb & Htoka)".
+
+    (* gain knowledge about the refinement *)
+    iMod (place_rfn_interp_mut_share with "LFT [Hobs] Hauth Htoka") as "(#rfn & _ & _ & Htoka)"; first done.
+    { iApply bor_shorten; last done. iApply lft_intersect_incl_r. }
+    iDestruct "Htoka" as "(Htoka & Htoka2)".
+    rewrite -{1}lft_tok_sep. iDestruct "Htoka" as "(Htok_κ & Htok_κ')".
+
+    (* get a loc_in_bounds fact from the pointsto *)
+    iMod (bor_acc with "LFT Hl Htok_κ'") as "(>Hl & Hcl_l)"; first solve_ndisj.
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb'".
+    iMod ("Hcl_l" with "Hl") as "(Hl & Htok_κ')".
+    iCombine "Htok_κ Htok_κ'" as "Htoka1". rewrite lft_tok_sep.
+    iCombine "Htoka1 Htoka2" as "Htoka".
+
+    (* fracture *)
+    iMod (bor_fracture (λ q, l ↦{q} v)%I with "LFT Hl") as "Hl"; first solve_ndisj.
+
+    (* recursively share *)
+    iDestruct "Htok" as "(Htok1 & Htok2)".
+    destruct Hxr as [[xr xγ] Hxr]. inversion Hxr; subst r γ; clear Hxr.
+    iDestruct "rfn" as "%Heqr". subst r'.
+    iPoseProof (ty_share _ E with "[$LFT $TIME] Hna [Htok2 Htoka] [//] [//] Hlb Hb") as "Hu"; first solve_ndisj.
+    { by eexists xr. }
+    { rewrite ty_lfts_unfold. rewrite -!lft_tok_sep. iFrame. }
+    iModIntro. iApply (logical_step_compose with "Hu").
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hcred Hat".
+    iMod ("Hclos_c" with "[Hcred Hat]") as "(_ & Htok_κ'2)".
+    { iNext. iFrame.
+      iApply tr_weaken; last done.
+      simpl. unfold num_laters_per_step; lia. }
+
+    iModIntro. iIntros "(#Hshr & Htok)".
+    iCombine "Htok_κ2 Htok_κ'2 Htok1" as "Htok2".
+    rewrite !lft_tok_sep.
+    rewrite lft_intersect_assoc.
+    rewrite ty_lfts_unfold.
+    iCombine "Htok Htok2" as "Htok".
+    rewrite {2}lft_intersect_comm lft_intersect_assoc.
+    iFrame "Htok".
+    iExists v, l0, ly0, (RT_xrt rt xr). iSplitR.
+    { iPureIntro. eexists (xr, xγ). done. }
+    iR.
+    iFrame "Hl".
+    apply syn_type_has_layout_ref_inv in Hst as ->.
+    iR. iSplitR; first done.
+    iSplitR; first done. iSplitR; first done. iSplitR; first done.
+    iSplitR. { replace (ly_size void*) with (length v); last by eapply val_decodes_to_ref_length.
+      iFrame "Hlb'". }
+    iSplitR; first done. iSplitR; first done.
+    iNext. iModIntro. iModIntro. done.
+    - iIntros (κ0 κ' π [r γ] m l) "#Hincl".
+      rewrite mut_ref_shr_unfold.
+      iIntros "(%vi & %li & %ly & %r' & %Hxr & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & ? & #Hb)".
+      iExists vi, li, ly, r'. iSplitR; first done. iR. iFrame.
+      iSplitL "Hf". { iApply frac_bor_shorten; done. }
+      iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
+      iApply ty_shr_mono; last done.
+      iApply lft_intersect_mono; last done. iApply lft_incl_refl.
+    - rewrite mut_ref_own_val_unfold.
+      iIntros (π [r γ] m v F ? ?) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
+      iApply fupd_logical_step. destruct r as [ r | γ'].
+      + iMod (gvar_obs_persist with "Hrfn") as "?".
+        iApply logical_step_intro. by iFrame.
+      + by iApply logical_step_intro.
+    - iIntros (ot st π [r γ] v Hot).
+      rewrite mut_ref_own_val_unfold.
+      rewrite /mut_ref_own_val_def /=.
+      iIntros "Hown".
+      iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & _)".
+      iPureIntro.
+      destruct ot; simpl in *; try done; subst.
+      + eexists (OVUntyped void* v). simp decode_op_val.
+        rewrite bool_decide_true; last by eapply val_decodes_to_ref_length.
+        done.
+      + eexists (OVPtr _). apply Hv.
+    - iIntros (ot st π [r γ] v ov Hot Hdec).
+      rewrite mut_ref_own_val_unfold.
+      rewrite /mut_ref_own_val_def /=.
+      iIntros "Hown".
+      iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hcred & Hbor)".
+      iExists l, ly. iFrame. iR.
+      iPureIntro. by eapply val_decodes_to_ref_same_decoded.
+    - intros ly _ Hst. apply syn_type_has_layout_ref_inv in Hst as ->.
+      done.
+    - apply _.
+    - apply _.
+  Qed.
+
+  Global Instance mut_ref_sized {rt} (ty : type rt) κ : TySized (mut_ref κ ty).
+  Proof.
+    econstructor; done.
+  Qed.
+
+  Global Program Instance mut_ref_dep_lft_morphism {rts rt} deps
+      (T : mut_types rts → type rt) κ :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x, mut_ref κ (T x)) :=
+    λ HT, dep_lft_morph_make_ref deps T (λ x, mut_ref κ (T x)) κ HT _ _.
+  Next Obligation.
+    rewrite {1}ty_lfts_unfold. done.
+  Qed.
+  Next Obligation.
+    rewrite {1}ty_wf_E_unfold. done.
+  Qed.
+
+  Global Instance mut_ref_type_contractive {rt : RT} κ : TypeContractive (mut_ref (rt:=rt) κ).
+  Proof.
+    constructor; simpl.
+    - done.
+    - done.
+    - rewrite ty_has_op_type_unfold/=. done.
+    - done.
+    - intros n ty ty' ?.
+      intros π [] v. rewrite /ty_own_val/= mut_ref_own_val_unfold.
+      solve_type_proper.
+    - intros n ty ty' ?.
+      intros κ' π [] l. rewrite /ty_shr/= mut_ref_shr_unfold.
+      solve_type_proper.
+  Qed.
+
+  Global Instance mut_ref_type_ne {rt : RT} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).
+  Proof. apply type_contractive_type_ne, _. Qed.
+End mut_ref.
+Notation "&mut< κ , τ >" := (mut_ref κ τ) (only printing, format "'&mut<' κ , τ '>'") : stdpp_scope.

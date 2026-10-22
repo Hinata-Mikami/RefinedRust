@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_alignment_Alignment_as_usize.
 
@@ -15,17 +15,17 @@ Proof.
   (* opaque because we are working with big terms here *)
   Opaque alignment_AlignmentEnum_els.
 
-  repeat liRStep. 
+  rep liRStep.
   Transparent alignment_AlignmentEnum_els.
   liRStep.
   Opaque alignment_AlignmentEnum_els.
-  repeat liRStep. 
+  (* otherwise, [solve_goal] will take a long time to fail when the rewrite with [wrap_to_it_id] tries to apply *)
+  rewrite int_elem_of_u64_usize.
+  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
-  Unshelve. 
-  rewrite wrap_to_it_id; first last.
-  { apply int_elem_of_u64_usize. done. }
+  Unshelve.
   destruct self.
   all: vm_compute; reflexivity.
 

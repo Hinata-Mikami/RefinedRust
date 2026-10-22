@@ -1,0 +1,57 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "collections",
+        "BTreeMap"
+      ],
+      "raw_type": {
+        "rtype": "(BTreeMap_rt)",
+        "semtype": "BTreeMap_ty"
+      },
+      "rtype": "(BTreeMap_inv_t_rt)",
+      "semtype": "BTreeMap_inv_t",
+      "syntype": "BTreeMap_sls"
+    },
+    {
+      "kind": "method",
+      "name": "BTreeMap_KVA_insert",
+      "path": [
+        "alloc",
+        "collections",
+        "BTreeMap",
+        "insert"
+      ],
+      "spec": "type_of_BTreeMap_KVA_insert",
+      "trait_req_incl": "trait_incl_of_BTreeMap_KVA_insert"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.alloc.alloc.generated",
+    "rrstd.alloc.theories",
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.cmp.cmp.generated",
+    "rrstd.cmp.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.ptr.generated",
+    "rrstd.ptr.theories",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_btreemap",
+  "refinedrust_name": "btreemap",
+  "refinedrust_path": "rrstd.btreemap.btreemap.generated"
+}

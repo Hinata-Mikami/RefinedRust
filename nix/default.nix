@@ -1,44 +1,67 @@
 {
-  inputs,
-  system,
+  crane,
+  nixpkgs,
+  rust-overlay,
 }:
-with inputs; rec {
-  pkgs = import nixpkgs {inherit overlays system;};
-  rrPkgs = self.packages.${system};
 
-  overlays = [
-    (import ./ocamlFlambdaOverlay.nix {inherit pkgs;})
-    rust-overlay.overlays.default
-  ];
+with nixpkgs.lib;
+rec {
+  mapToAttrs =
+    fValue: l:
+    let
+      f = { pname, ... }@args: nameValuePair pname (fValue args);
+    in
+    listToAttrs (map f l);
 
-  mapToAttrs = fName: fValue: l: let
-    f = {pname, ...} @ args: {
-      name = fName pname;
-      value = fValue args;
-    };
-  in
-    pkgs.lib.listToAttrs (map f l);
+  mkDevContainer = import ./mkDevContainer.nix;
+
+  mkDuneWrapper = import ./mkDuneWrapper.nix;
 
   rocq = {
-    mkDepDerivation = import ./mkDepRocqDerivation.nix {inherit pkgs;};
-    mkRefinedRust = import ./mkRocqRefinedRust.nix {
-      inherit pkgs rrPkgs;
-      inherit (rust) cargoRefinedRust;
-    };
+    mkRefinedRust =
+      pkgs: frontend: stdlib:
+      import ./mkRocqRefinedRust.nix {
+        inherit pkgs stdlib;
+        cargoRefinedRust = rust.cargoRefinedRust pkgs frontend stdlib;
+      };
   };
 
-  rust = let
-    craneLib = crane.mkLib pkgs;
-  in rec {
-    inherit (craneLib) cargoDeny overrideToolchain;
-    hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
+  rust = {
+    # Libraries
+    availableTargets = pkgs: import ./availableTargets.nix { inherit pkgs rust-overlay; };
+    mkToolchain =
+      pkgs: channel: components:
+      pkgs.rust-bin.fromRustupToolchain {
+        inherit channel components;
+        profile = "minimal";
+      };
+    overrideToolchain = pkgs: (crane.mkLib pkgs).overrideToolchain;
 
-    cargoClippy = devToolchain: craneLib.cargoClippy.override {clippy = devToolchain;};
-    cargoFmt = devToolchain: craneLib.cargoFmt.override {rustfmt = devToolchain;};
-    cargoMachete = import ./cargoMachete.nix {inherit craneLib pkgs;};
-    cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib hostPlatform rrPkgs pkgs;};
-    cargoWorkspaceUnused = import ./cargoWorkspaceUnused.nix {inherit craneLib pkgs;};
+    # Tools
+    cargoClippy =
+      pkgs: devToolchain: (crane.mkLib pkgs).cargoClippy.override { clippy = devToolchain; };
+    cargoDeny = pkgs: (crane.mkLib pkgs).cargoDeny;
+    cargoFmt = pkgs: devToolchain: (crane.mkLib pkgs).cargoFmt.override { rustfmt = devToolchain; };
 
-    mkToolchain = import ./mkRustToolchain.nix {inherit hostPlatform pkgs;};
+    cargoMachete =
+      pkgs:
+      import ./cargoMachete.nix {
+        inherit pkgs;
+        craneLib = crane.mkLib pkgs;
+      };
+
+    cargoRefinedRust =
+      pkgs: frontend: stdlib:
+      import ./cargoRefinedRust.nix {
+        inherit frontend pkgs stdlib;
+        craneLib = crane.mkLib pkgs;
+      };
+
+    cargoWorkspaceUnused =
+      pkgs:
+      import ./cargoWorkspaceUnused.nix {
+        inherit pkgs;
+        craneLib = crane.mkLib pkgs;
+      };
   };
 }

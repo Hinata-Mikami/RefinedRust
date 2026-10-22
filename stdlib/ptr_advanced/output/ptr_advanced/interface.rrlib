@@ -1,0 +1,372 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull"
+      ],
+      "raw_type": {
+        "rtype": "(nonnull_NonNull_rt)",
+        "semtype": "nonnull_NonNull_ty"
+      },
+      "rtype": "(nonnull_NonNull_inv_t_rt)",
+      "semtype": "nonnull_NonNull_inv_t",
+      "syntype": "nonnull_NonNull_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "ptr",
+        "Unique"
+      ],
+      "raw_type": {
+        "rtype": "(unique_Unique_rt)",
+        "semtype": "unique_Unique_ty"
+      },
+      "rtype": "(unique_Unique_inv_t_rt)",
+      "semtype": "unique_Unique_inv_t",
+      "syntype": "unique_Unique_sls"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_as_mut",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "as_mut"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_as_mut",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_as_mut"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_as_ptr",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "as_ptr"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_as_ptr",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_as_ptr"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_as_ref",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "as_ref"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_as_ref",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_as_ref"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_cast",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "cast"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_cast",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_cast"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_is_aligned",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "is_aligned"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_is_aligned",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_is_aligned"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_is_aligned_to",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "is_aligned_to"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_is_aligned_to",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_is_aligned_to"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_new",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "new"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_new",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_new"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_new_unchecked",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "new_unchecked"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_new_unchecked",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_new_unchecked"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_read",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "read"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_read",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_read"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_read_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "read_volatile"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_read_volatile",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_read_volatile"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_write",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "write"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_write",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_write"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_write_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "write_volatile"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_write_volatile",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_write_volatile"
+    },
+    {
+      "kind": "method",
+      "name": "unique_Unique_T_as_ptr",
+      "path": [
+        "core",
+        "ptr",
+        "Unique",
+        "as_ptr"
+      ],
+      "spec": "type_of_unique_Unique_T_as_ptr",
+      "trait_req_incl": "trait_incl_of_unique_Unique_T_as_ptr"
+    },
+    {
+      "kind": "method",
+      "name": "unique_Unique_T_dangling",
+      "path": [
+        "core",
+        "ptr",
+        "Unique",
+        "dangling"
+      ],
+      "spec": "type_of_unique_Unique_T_dangling",
+      "trait_req_incl": "trait_incl_of_unique_Unique_T_dangling"
+    },
+    {
+      "kind": "method",
+      "name": "unique_Unique_T_new_unchecked",
+      "path": [
+        "core",
+        "ptr",
+        "Unique",
+        "new_unchecked"
+      ],
+      "spec": "type_of_unique_Unique_T_new_unchecked",
+      "trait_req_incl": "trait_incl_of_unique_Unique_T_new_unchecked"
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "ptr",
+            "NonNull"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": {
+          "name": "nonnull_NonNullTasstd_clone_Clone_clone",
+          "spec": "type_of_nonnull_NonNullTasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_nonnull_NonNullTasstd_clone_Clone_clone"
+        }
+      },
+      "name": "nonnull_NonNullTasstd_clone_Clone",
+      "realization": "nonnull_NonNullTasstd_clone_Clone_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "ptr",
+            "NonNull"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "nonnull_NonNullTasstd_marker_Copy",
+      "realization": "nonnull_NonNullTasstd_marker_Copy_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "ptr",
+            "Unique"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": {
+          "name": "unique_UniqueTasstd_clone_Clone_clone",
+          "spec": "type_of_unique_UniqueTasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_unique_UniqueTasstd_clone_Clone_clone"
+        }
+      },
+      "name": "unique_UniqueTasstd_clone_Clone",
+      "realization": "unique_UniqueTasstd_clone_Clone_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "ptr",
+            "Unique"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "unique_UniqueTasstd_marker_Copy",
+      "realization": "unique_UniqueTasstd_marker_Copy_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "marker",
+          "Copy"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.ptr.generated",
+    "rrstd.ptr.theories",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_ptr_advanced",
+  "refinedrust_name": "ptr_advanced",
+  "refinedrust_path": "rrstd.ptr_advanced.ptr_advanced.generated"
+}

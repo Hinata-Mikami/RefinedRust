@@ -58,6 +58,15 @@ macro_rules! i_abs_diff_impl {
                     (x as $ut).wrapping_sub(other as $ut)
                 }
             }
+
+            #[rr::export_as(#method core::num::$t::is_positive)]
+            #[rr::returns("bool_decide (x > 0)")]
+            pub fn [<$t _is_positive>](x: $t) -> bool { x > 0 }
+
+            #[rr::export_as(#method core::num::$t::is_negative)]
+            #[rr::returns("bool_decide (x < 0)")]
+            pub fn [<$t _is_negative>](x: $t) -> bool { x < 0 }
+
         }
     }
 }
@@ -68,6 +77,28 @@ i_abs_diff_impl!(i32, u32);
 i_abs_diff_impl!(i64, u64);
 i_abs_diff_impl!(i128, u128);
 i_abs_diff_impl!(isize, usize);
+
+macro_rules! i_abs_impl {
+    ($t:ty, $x:expr) => {
+        paste! {
+            #[rr::export_as(#method core::num::$t::abs)]
+            #[rr::requires($x)]
+            #[rr::returns("Z.abs x")]
+            pub fn [<$t _abs>](x: $t) -> $t {
+                // Note that the #[rustc_inherit_overflow_checks] and #[inline]
+                // above mean that the overflow semantics of the subtraction
+                // depend on the crate we're being called from.
+                if x.is_negative() {
+                    -x
+                } else {
+                    x
+                }
+            }
+        }
+    }
+}
+// TOOD: requires attribute parser needs to support it.
+//i_abs_impl!(i8, "x <> MinInt i8");
 
 
 macro_rules! u_is_power_of_two_impl {

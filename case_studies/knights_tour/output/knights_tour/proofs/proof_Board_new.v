@@ -24,10 +24,6 @@ Proof.
   Unshelve.
   (* !start proof(knights_tour.new) *)
   { rewrite lookup_total_replicate_2; solve_goal. }
-  { 
-    rewrite lookup_total_replicate_2; last lia.
-    rewrite lookup_total_replicate_2; lia. 
-  }
   (* !end proof *)
   all: print_remaining_sidecond.
 Qed.

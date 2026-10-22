@@ -1,0 +1,955 @@
+From refinedrust Require Export type ltypes programs lftmor.
+From refinedrust Require Import uninit int ltype_rules.
+From refinedrust Require Import options.
+
+(** * Existential types and invariants *)
+Section ex.
+  Context `{!typeGS Σ}.
+  (* [Y] is the abstract refinement type, [X] is the inner refinement type *)
+  Context (X Y : RT)
+    (* invariant on the contained refinement *)
+    (P : ex_inv_def X Y)
+  .
+
+  Definition ex_plain_own_val_def (ty : type X) π r m v : iProp Σ :=
+    (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x m v)%I.
+  Definition ex_plain_own_val_aux : seal (@ex_plain_own_val_def).
+  Proof. by eexists. Qed.
+  Definition ex_plain_own_val := ex_plain_own_val_aux.(unseal).
+  Definition ex_plain_own_val_unfold : @ex_plain_own_val = @ex_plain_own_val_def := ex_plain_own_val_aux.(seal_eq).
+
+  (** Provide an abstraction over [ty], by accepting a refinement [Y] and existentially quantifying over [X].
+     [P] is a predicate specifying an invariant, potentially containing additional ownership.
+     [R] determines a relation between the inner and outer refinement. *)
+  Program Definition ex_plain_t (ty : type X) : type Y := {|
+    ty_xt_inhabited := _;
+    ty_metadata_kind := ty.(ty_metadata_kind);
+    ty_trivial_drop := P.(inv_trivial_drop) && ty.(ty_trivial_drop);
+    ty_own_val := ex_plain_own_val ty;
+    ty_shr κ π r m l :=
+      (⌜is_xrfn r⌝ ∗ ∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;
+    ty_syn_type := ty.(ty_syn_type);
+    _ty_has_op_type ot := ty_has_op_type ty ot;
+    ty_sidecond :=
+      ty.(ty_sidecond);
+    _ty_ghost_drop π r :=
+      (∃ x, P.(inv_P_ghost_drop) π x r ∗ if_iFalse P.(inv_manual_ghost_drop) (ty_ghost_drop ty π x))%I;
+    _ty_lfts := P.(inv_P_lfts) ++ ty_lfts ty;
+    _ty_wf_E := P.(inv_P_wf_E) ++ ty_wf_E ty;
+  |}.
+  Next Obligation.
+    intros. apply P.
+  Defined.
+  Next Obligation.
+    intros. econstructor.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (π r m v) "(%x & HP & Hv)".
+      by iApply ty_has_layout.
+    - iIntros (ot Hot). by eapply ty_op_type_stable.
+    - intros ot Hot. by eapply ty_op_type_wf.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
+    - iIntros (? π r m v) "(_ & %x & HP & Hs)". by iApply ty_shr_sidecond.
+    - unfold TCNoResolve. apply _.
+    - iIntros (κ π l r m) "(_ & %x & HP & Hv)". by iApply ty_shr_aligned.
+    - iIntros (κ π r m l) "($ & _)".
+    - iIntros (E κ l ly π r m q ? Hyr) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
+      iApply fupd_logical_step.
+      rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
+      iDestruct "Htok" as "(Htok & Htok2)".
+      rewrite lft_intersect_list_app.
+      rewrite -{1}lft_tok_sep -{1}lft_tok_sep. iDestruct "Htok" as "(Htok & HtokP & Htoki)".
+      rewrite lft_intersect_assoc. rewrite -lft_tok_sep. iDestruct "Htok2" as "(Htok2 & Htoki2)".
+      iMod (bor_exists_tok with "LFT Hb Htok") as "(%x & Hb & Htok)"; first solve_ndisj.
+      iPoseProof (bor_iff _ _
+        ((P.(inv_P) π x r ∗ ⌜is_xrfn r → is_xrfn x⌝) ∗
+          (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
+      { iNext. iModIntro. iSplit.
+        - iIntros "(%a & Hl & HP & Hv)".
+          iDestruct (P.(inv_P_xrfn) with "HP") as "(HP & %Hxr)".
+          iSplitL "HP".
+          { iSplitL "HP"; first done. iPureIntro. exact Hxr. }
+          iExists a. iFrame.
+        - iIntros "((HP & _) & %a & Hl & Hv)". iExists a. iFrame. }
+      iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
+      iMod (bor_sep with "LFT HP") as "(HP & Hxr)"; first solve_ndisj.
+      iMod (bor_persistent with "LFT Hxr Htok") as "(>%Hxr & Htok)"; first solve_ndisj.
+      iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Hna Htok2 HP") as "HP"; [done | exact Hyr |].
+      iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
+      iPoseProof (ty_share with "[$] Hna Htok [//] [//] Hlb Hb") as "Hb";
+        first solve_ndisj; first (apply Hxr; done).
+      iModIntro. iApply (logical_step_compose with "HP"). iApply (logical_step_wand with "Hb").
+      iIntros "(Hshr & Htok) (HP & Htok2)".
+      iSplitL "HP Hshr". { iExists x. eauto with iFrame. }
+      iCombine "Htok2 Htoki2" as "Htok2". rewrite lft_tok_sep -lft_intersect_assoc.
+      iCombine "Htok HtokP" as "Htok". rewrite lft_tok_sep -lft_intersect_assoc.
+      rewrite [lft_intersect_list (ty_lfts ty) ⊓ lft_intersect_list P.(inv_P_lfts)]lft_intersect_comm.
+      iCombine "Htok Htok2" as "$".
+    - iIntros (κ κ' π r m l) "#Hincl ($ & %x & HP & Hshr)".
+      iExists x. iSplitL "HP".
+      { by iApply P.(inv_P_shr_mono). }
+      iApply (ty_shr_mono with "Hincl Hshr").
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (π r m v F ? Hdrop) "(%x & HP & Ha)".
+      apply andb_true_iff in Hdrop as [HPdrop Htydrop].
+      iPoseProof (ty_own_ghost_drop_trivial with "Ha") as "Ha"; [done | done | ].
+      iPoseProof (inv_P_drop_trivial with "HP") as "HP"; [done | done | ].
+      iApply (logical_step_compose with "Ha").
+      iApply (logical_step_compose with "HP").
+      iApply logical_step_intro.
+      iIntros "Hdrop ?".  iFrame.
+      destruct P.(inv_manual_ghost_drop); simpl; eauto with iFrame.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (ot st π r v Hot) "(%x & HP & Hv)".
+      iApply (ty_decodable X ty ot st π x v with "Hv"); done.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (ot st π r v v' Hot Hsame) "(%x & HP & Hv)".
+      iExists x. iFrame "HP".
+      iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
+    - intros ly Heq Hst. simpl.
+      by apply ty_has_op_type_untyped.
+    - apply _.
+    - apply _.
+  Qed.
+End ex.
+
+(* Use a smarter solver for persistence here *)
+Class ExInvPersistent {Σ} (P : iProp Σ) := ex_inv_pers_proof : Persistent P.
+Global Hint Mode ExInvPersistent + + : typeclass_instances.
+
+Ltac ex_t_solve_persistent := fail "implement ex_t_solve_persistent".
+Global Hint Extern 10 (ExInvPersistent _) =>
+  unfold ExInvPersistent; ex_t_solve_persistent : typeclass_instances.
+
+Class ExInvShrEq (P : Prop) := ex_inv_shr_eq_proof : P.
+Global Hint Mode ExInvShrEq + : typeclass_instances.
+
+Ltac ex_t_solve_shr_eq := fail "implement ex_t_solve_shr_eq".
+Global Hint Extern 10 (ExInvShrEq _) =>
+  unfold ExInvShrEq; ex_t_solve_shr_eq : typeclass_instances.
+
+Section copy.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_plain_t_pers_copy {X Y : RT} ty (P : ex_inv_def X Y)  :
+    Copyable ty →
+    (∀ π a b, (ExInvPersistent (P.(inv_P) π a b))) →
+    (* Alternative: I could also require invariants to have a sharing accessor *)
+    ExInvShrEq (∀ π κ a b, P.(inv_P) π a b = P.(inv_P_shr) π κ a b) →
+    Copyable (ex_plain_t X Y P ty).
+  Proof.
+    intros Hcopy Hpers Heq. econstructor.
+    { intros π r m v. change (Persistent (ty_own_val (ex_plain_t X Y P ty) π r m v)).
+      rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+      unfold ExInvPersistent in *. apply _. }
+    iIntros (???? r m q ?).
+    iIntros "CTX Hs Htok".
+    iDestruct "Hs" as "(_ & %x & Hshr & Hl)".
+    unfold ExInvShrEq in Heq. rewrite -Heq.
+    iMod (copy_shr_acc with "CTX Hl Htok") as "(%ly & >%Hst & >%Hly & %q' & %v & Ha & Hcl)"; first done.
+    iExists ly. iR. iR. iFrame.
+    iModIntro. iNext. iDestruct "Ha" as "($ & Hv)".
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+    eauto with iFrame.
+  Qed.
+End copy.
+
+Section lft_morphism.
+  Context `{!typeGS Σ}.
+
+  Global Instance lifecycle_ex_inv_def {X Y : RT} : Lifecycle (ex_inv_def X Y) := {|
+    lifecycle_lfts := inv_P_lfts;
+    lifecycle_wf_E := inv_P_wf_E;
+  |}.
+
+  Program Definition mk_ex_plain_t_dep_lft_morphism {rts : list RT} {X Y : RT}
+      depsP depsT (P : mut_types rts → ex_inv_def X Y) (T : mut_types rts → type X) deps :
+    DepLftMorphism depsP P →
+    DepLftMorphism depsT T →
+    (deps = (depsP ∪ depsT)) →
+    DepLftMorphism deps (λ x, ex_plain_t X Y (P x) (T x)) :=
+    λ HP HT _,
+      mk_dep_lft_morph
+        (dep_lft_morph_α HP ⊓ dep_lft_morph_α HT)
+        (dep_lft_morph_E HP ++ dep_lft_morph_E HT)
+        (dep_lft_morph_βdeps HP ++ dep_lft_morph_βdeps HT)
+        _ _.
+  Next Obligation.
+    iIntros (rts X Y depsP depsT P T deps HP HT -> x).
+    change (lifecycle_lfts (ex_plain_t X Y (P x) (T x))) with (ty_lfts (ex_plain_t X Y (P x) (T x))).
+    rewrite ty_lfts_unfold /= lft_intersect_list_app.
+    iApply lft_equiv_trans.
+    { iApply lft_equiv_intersect; [iApply (dep_lft_morph_lfts HP) | iApply (dep_lft_morph_lfts HT)]. }
+    iSplit.
+    - iApply lft_incl_glb.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_l.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r. iApply lft_intersect_incl_l. }
+      iApply lft_incl_trans.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_r.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r. iApply lft_intersect_incl_r. }
+      iApply lft_equiv_incl_r. iApply dep_lfts_union.
+    - iApply lft_incl_glb.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_l.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r.
+          iApply lft_incl_trans.
+          { iApply lft_equiv_incl_l. iApply dep_lfts_union. }
+          iApply lft_intersect_incl_l. }
+      iApply lft_incl_glb.
+      { iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_r. }
+      iApply lft_incl_trans; first iApply lft_intersect_incl_r.
+      iApply lft_incl_trans.
+      { iApply lft_equiv_incl_l. iApply dep_lfts_union. }
+      iApply lft_intersect_incl_r.
+  Qed.
+  Next Obligation.
+    intros rts X Y depsP depsT P T deps HP HT -> x.
+    unfold lifecycle_wf_E; simpl.
+    rewrite ty_wf_E_unfold /= !elctx_interp_app.
+    rewrite (dep_lft_morph_wf_E HP x) (dep_lft_morph_wf_E HT x).
+    rewrite /dep_beta_interp big_sepL_app dep_wf_E_union.
+    rewrite -!assoc.
+    iSplit.
+    - iIntros "(HE & HW & Hβ & HEs & HWs & Hβs)". iFrame.
+    - iIntros "(HE & HEs & HW & HWs & Hβ & Hβs)". iFrame.
+  Qed.
+
+  Global Instance ex_plain_t_dep_lft_morphism' {rts : list RT} {X Y : RT}
+      depsP depsT (P : mut_types rts → ex_inv_def X Y) (T : mut_types rts → type X) :
+    DepLftMorphism depsP P →
+    DepLftMorphism depsT T →
+    DepLftMorphism (depsP ∪ depsT) (λ x, ex_plain_t X Y (P x) (T x)).
+  Proof.
+    intros Hdep1 Hdep2. eapply mk_ex_plain_t_dep_lft_morphism; [done.. | ].
+    done.
+  Defined.
+End lft_morphism.
+
+Section sized.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_plain_t_sized {X Y : RT} ty (P : ex_inv_def X Y) :
+    TySized ty →
+    TySized (ex_plain_t X Y P ty).
+  Proof.
+    intros Hsz. econstructor.
+    - apply Hsz.
+    - apply Hsz.
+  Qed.
+End sized.
+
+Section contr.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_plain_t_contr {rt X Y : RT}
+    (P : type rt → ex_inv_def X Y)
+    (F : type rt → type X) :
+    ExInvDefContractive P →
+    TypeContractive F →
+    TypeContractive (λ ty, ex_plain_t X Y (P ty) (F ty)).
+  Proof.
+    intros HP HF.
+    constructor; simpl.
+    - apply HF.
+    - apply HF.
+    - rewrite ty_has_op_type_unfold. eapply HF.
+    - simpl. eapply HF.
+    - intros n ty ty' ?.
+      intros π r m v. rewrite /ty_own_val/= !ex_plain_own_val_unfold /ex_plain_own_val_def.
+      do 3 f_equiv.
+      { apply HP; done. }
+      apply HF; done.
+    - intros n ty ty' ?.
+      intros ?????. rewrite /ty_shr/=.
+      f_equiv.
+      do 3 f_equiv.
+      { apply HP. done. }
+      apply HF; done.
+  Qed.
+  (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
+
+  Global Instance ex_plain_t_ne {rt X Y : RT}
+    (P : type rt → ex_inv_def X Y)
+    (F : type rt → type X)
+    :
+    ExInvDefNonExpansive P →
+    TypeNonExpansive F →
+    TypeNonExpansive (λ ty, ex_plain_t X Y (P ty) (F ty)).
+  Proof.
+    intros HP HF.
+    constructor; simpl.
+    - apply HF.
+    - apply HF.
+    - rewrite ty_has_op_type_unfold. intros.
+      eapply HF; first done; first done.
+      rewrite ty_has_op_type_unfold. done.
+    - simpl. eapply HF.
+    - intros n ty ty' ?.
+      intros π r m v. rewrite /ty_own_val/= !ex_plain_own_val_unfold /ex_plain_own_val_def.
+      do 3 f_equiv.
+      { apply HP; done. }
+      apply HF; done.
+    - intros n ty ty' ?.
+      intros ?????. rewrite /ty_shr/=.
+      f_equiv.
+      do 3 f_equiv.
+      { apply HP; done. }
+      apply HF; done.
+  Qed.
+End contr.
+
+Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 11) : stdpp_scope.
+
+Section open.
+  Context `{!typeGS Σ}.
+  Context {rt X : RT} (P : ex_inv_def rt X).
+
+  (* Allow overrides *)
+  Global Program Instance learn_from_hyp_val_ex_plain_t ty r :
+    LearnFromHypVal (∃; P, ty) r | 1000 :=
+    {| learn_from_hyp_val_Q := ∃ π, boringly (∃ x : rt, P.(inv_P) π x r) |}.
+  Next Obligation.
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+    iIntros (? r ?? v m ?) "(%x & Hinv & Hv)".
+    iPoseProof (boringly_intro with "Hinv") as "#Hinv'".
+    iModIntro. iSplitL; first by eauto with iFrame.
+    iExists π.
+    iApply boringly_exists. eauto.
+  Qed.
+
+  Lemma ex_plain_t_unfold_val π (ty : type rt) v (x : X) :
+    v ◁ᵥ{π, MetaNone} x @ (∃; P, ty) ⊣⊢ ∃ r : rt, P.(inv_P) π r x ∗ v ◁ᵥ{π, MetaNone} r @ ty.
+  Proof.
+    rewrite {1}/ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def/=.
+    done.
+  Qed.
+
+  Lemma ex_plain_t_destruct_owned F π (ty : type rt) l (x : X) :
+    lftE ⊆ F →
+    l ◁ₗ[π, Owned] #x @ (◁ (∃; P, ty)) ={F}=∗
+    ∃ r : rt, P.(inv_P) π r x ∗
+    l ◁ₗ[π, Owned] #r @ (◁ ty).
+  Proof.
+    iIntros (?) "Hb".
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %x' & Hrfn & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
+    rewrite ex_plain_t_unfold_val.
+    iDestruct "Hv" as "(%r & HP & Hv)".
+    iDestruct "Hrfn" as "<-".
+    iModIntro. iExists r. iFrame.
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iExists ly. iFrame "#%".
+    iExists r. iSplitR; first done. iModIntro. eauto with iFrame.
+  Qed.
+
+  (* We open this into a ShadowedLtype for [Shared].
+     In terms of ownership, this doesn't do anything interesting, because we are working with persistent sharing predicates.
+     However, we basically "overrride" the type at this place with [◁ ty], in order to not have to eliminate the existentials multiple times on subsequent accesses.
+     This allows us to retain more information.
+
+     This is not to be confused with "properly opening" the shared type, which we can only do for types with interior mutability.
+  *)
+  Lemma ex_plain_t_open_shared F π (ty : type rt) κ l (x : X) :
+    lftE ⊆ F →
+    l ◁ₗ[π, Shared κ] #x @ (◁ (∃; P, ty)) ={F}=∗
+    ∃ r : rt, P.(inv_P_shr) π κ r x ∗
+     l ◁ₗ[π, Shared κ] #x @ (ShadowedLtype (◁ ty) (#r) (◁ (∃; P, ty))).
+  Proof.
+    iIntros (?) "#Ha". iPoseProof "Ha" as "Hb".
+    rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & Hsc & Hlb & %Hconc & %r' & -> & #Hb)".
+    iMod (fupd_mask_mono with "Hb") as "#Hb'"; first done. iClear "Hb".
+    iDestruct "Hb'" as "(_ & %r & HP & Hb)".
+    iModIntro. iExists r. iFrame "#".
+    rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
+    simp_ltypes. iSplitL; last done.
+    iApply ltype_own_ofty_unfold. rewrite /lty_of_ty_own.
+    iExists ly. iSplitR; first done. do 3 iR.
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+    iExists r. iSplitR; first done. iModIntro. done.
+  Qed.
+
+  Lemma ex_plain_t_open_uniq F π (ty : type rt) l (x : X) q κ γ κs :
+    lftE ⊆ F →
+    rrust_ctx -∗
+    q.[κ] -∗
+    (q.[κ] ={lftE}=∗ llft_elt_toks κs) -∗
+    l ◁ₗ[π, Uniq κ γ] #x @ (◁ (∃; P, ty)) ={F}=∗
+    ∃ r : rt, P.(inv_P) π r x ∗
+    l ◁ₗ[π, Owned] #r @ (◁ ty) ∗
+    (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
+      l ◁ₗ[π, Owned] r' @ lt' -∗
+      ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
+      l ◁ₗ[π, Uniq κ γ] r' @
+      (OpenedLtype (lt') (◁ ty) (◁ ∃; P, ty)
+        (λ (r : rt) (x : X), P.(inv_P) π r x)
+        (λ r x, llft_elt_toks κs)))%I.
+  Proof.
+    (* TODO duplicated a lot with opened_ltype_create_uniq_simple, mostly due to the different invariant.
+        Can we generalize? *)
+    iIntros (?) "#(LFT & LLCTX) Htok Hcl_tok Hb".
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod (pinned_bor_acc_strong lftE with "LFT Hb Htok") as "(%κ' & #Hincl & Hb & ? & Hcl_b)"; first done.
+    iMod "Hcl_F" as "_".
+    iApply (lc_fupd_add_later with "Hcred1"). iNext.
+    iDestruct "Hb" as "(%r' & Hauth & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+    iDestruct "Hb" as "(%v & Hl & %r & HP & Hv)".
+    iModIntro. iExists r. iFrame.
+    iSplitL "Hl Hv".
+    { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+      iExists ly. iFrame "#%".
+      iExists r. iSplitR; first done. iModIntro. eauto with iFrame. }
+    iIntros (rt' lt' r') "Hb %Hst".
+    rewrite ltype_own_opened_unfold /opened_ltype_own.
+    iExists ly. rewrite Hst. iSplitR; first done. iSplitR; first done.
+    iSplitR; first done. iSplitR; first done. iSplitR; first done.
+    iFrame. clear -Hly Halg.
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hat Hcred'". iModIntro.
+    iIntros (own_lt_cur' κs' r0 r') "HP #Hincl' Hown #Hub".
+    rewrite ltype_own_core_equiv. simp_ltypes.
+    (* update *)
+    iMod (gvar_update r' with "Hauth Hrfn") as "(Hauth & $)".
+
+    iAssert (□ ([† κ] ={lftE}=∗ lft_dead_list κs'))%I as "#Hkill".
+    { iModIntro. iIntros "#Hdead".
+      iApply big_sepL_fupd. iApply big_sepL_intro. iIntros "!>" (?? Hlook).
+      iPoseProof (big_sepL_lookup with "Hincl'") as "Ha"; first done.
+      iApply (lft_incl_dead with "[] Hdead"); first done.
+      done. }
+      (*iApply lft_incl_trans; done. }*)
+
+    (* close the borrow *)
+    iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    set (V := (gvar_auth γ r' ∗ (lft_dead_list κs' ={lftE}=∗ P.(inv_P) π r0 r') ∗ own_lt_cur' π r0 l)%I).
+    iMod ("Hcl_b" $! V with "[] Hcred1 [HP Hown Hauth ]") as "(Hb & Htok)".
+    { iNext. iIntros "(Hauth & HP & Hb) Hdead".
+      iModIntro. iNext. iExists r'. iFrame.
+      iMod (lft_incl_dead _ κ with "[] Hdead") as "#Hdead"; [done.. | ].
+      iMod ("Hkill" with "Hdead") as "#Hdead'".
+      iMod ("HP" with "Hdead'") as "HP".
+      iMod ("Hub" with "Hdead' Hb") as "Hown".
+      rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
+      iDestruct "Hown" as "(% &_ & _ & _ & _ &  %r1 & -> & >(%v1 & Hl & Hv))".
+      iModIntro. iFrame. }
+    { iNext. rewrite /V. iFrame. }
+    iMod ("Hcl_tok" with "Htok") as "$".
+
+    (* show that we can shift it back *)
+    iModIntro. iIntros "#Hdead Hobs". iModIntro.
+    rewrite ltype_own_core_equiv. simp_ltypes.
+    rewrite (ltype_own_ofty_unfold _ (Uniq _ _)) /lty_of_ty_own.
+    iExists ly. iSplitR; first done. iSplitR; first done. iSplitR; first done.
+    iSplitR; first done. iFrame.
+    iSplitL "Hat".
+    { iApply tr_weaken; last done.
+      simpl. unfold num_laters_per_step. lia. }
+    iModIntro.
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+    iApply (pinned_bor_shorten with "Hincl").
+    iApply (pinned_bor_impl with "[] Hb").
+    iNext. iModIntro. iSplit; first last. { eauto. }
+    iIntros "(Hauth & HP & Hcur)".
+    iExists r'. iFrame. iMod ("Hub" with "Hdead Hcur") as "Hb".
+    iClear "Hub". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hb" as "(% & _ & _ & _ & _ &  Hb)".
+    iDestruct "Hb" as "(%r1 & -> & >(%v1 & Hl & Hv1))".
+    iMod ("HP" with "Hdead") as "HP".
+    iModIntro. iFrame.
+  Qed.
+End open.
+
+Section subtype.
+  Context `{!typeGS Σ}.
+  Context {rt X : RT}.
+
+  (*Plan:
+     - let's have a definition stating inclusion.
+     - let's design subtyping instances to just require an instance for the ex_inv_def subtyping.
+
+     These instances should in turn be able to spawn subtyping conditions on other things, of course.
+
+     Steps:
+     1. create class
+     2. create
+  *)
+
+  (* Low priority default instance *)
+  Lemma subtype_adt_default E L (P1 P2 : ex_inv_def rt X) T :
+    ⌜fast_eq_hint (P1 = P2)⌝ ∗ T ⊢ subtype_adt E L P1 P2 T.
+  Proof.
+    iIntros "(-> & $)".
+    iPureIntro. iApply ex_inv_def_sub_refl.
+  Qed.
+  Definition subtype_adt_default_inst := [instance @subtype_adt_default].
+  Global Existing Instance subtype_adt_default_inst | 1000.
+
+  Lemma full_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
+    full_subtype E L ty1 ty2 →
+    ex_inv_def_sub E L P1 P2 →
+    full_subtype E L (∃; P1, ty1) (∃; P2, ty2).
+  Proof.
+    intros Hsub1 Hsub2 ?.
+    iIntros (?) "HL HE". unfold type_incl.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%Hm & #Hincl)"; first apply Hsub1.
+    iPoseProof ("Hincl" $! inhabitant) as "(#Hsc & #_)".
+    iPoseProof (Hsub2 with "HL HE") as "(#HinclP & #HinclPshr)".
+    iSplitR. { done. }
+    iSplitR. { done. }
+    iSplit; iModIntro.
+    - iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
+      iIntros (???) "(%x & Hinv & Hv1)".
+      iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
+      iExists x. iSplitL "Hinv".
+      + by iApply "HinclP".
+      + iDestruct ("Hincl" $! x) as "(_  & Hv & _)". by iApply "Hv".
+    - iEval (rewrite /ty_shr/=).
+       iIntros (????) "($ & %x & Hinv & Hv1)".
+      iExists x. iSplitL "Hinv".
+      + by iApply "HinclPshr".
+      + iDestruct ("Hincl" $! x) as "(_  & _ & Hshr)". by iApply "Hshr".
+  Qed.
+
+  Lemma mut_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :
+    mut_subtype E L ty1 ty2 (subtype_adt E L P1 P2 T)
+    ⊢ mut_subtype E L (∃; P1, ty1) (∃; P2, ty2) T.
+  Proof.
+    iIntros "(%Hsub1 & %Hsub2 & $)".
+    iPureIntro. by apply full_subtype_ex_plain_t.
+  Qed.
+  Definition mut_subtype_ex_plain_t_inst := [instance @mut_subtype_ex_plain_t].
+  Global Existing Instance mut_subtype_ex_plain_t_inst.
+
+  Lemma mut_eqtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :
+    mut_eqtype E L ty1 ty2 (subtype_adt E L P1 P2 (subtype_adt E L P2 P1 T))
+    ⊢ mut_eqtype E L (∃; P1, ty1) (∃; P2, ty2) T.
+  Proof.
+    iIntros "(%Heq1 & %Hsub1 & %Hsub2 & $)".
+    iPureIntro.
+    apply full_subtype_eqtype.
+    - apply full_subtype_ex_plain_t; last done.
+      by apply full_eqtype_subtype_l.
+    - apply full_subtype_ex_plain_t; last done.
+      by apply full_eqtype_subtype_r.
+  Qed.
+  Definition mut_eqtype_ex_plain_t_inst := [instance @mut_eqtype_ex_plain_t].
+  Global Existing Instance mut_eqtype_ex_plain_t_inst.
+End subtype.
+
+Section resolve.
+  Context `{!typeGS Σ}.
+
+  (* Generic lemmas *)
+  Lemma resolve_ghost_ofty_adt_owned {rt} (ty : type rt) π E L l r rm T :
+    resolve_ghost_adt π E L rm r ty (λ L2 r' R changed, T L2 (# r') R changed)
+    ⊢ resolve_ghost π E L rm true l (◁ ty) (Owned ) (# r) T.
+  Proof.
+    iIntros "Ha" (???) "#CTX #HE HL Hl".
+
+    rewrite ltype_own_ofty_unfold.
+    iDestruct "Hl" as "(%ly & %Hst & % & ? & ? & %r'' & <- & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iDestruct "Hb" as "(%v & Hl & Hv)".
+    iMod ("Ha" with "[] [] CTX HE HL Hv") as "(%L2 & %r2 & % & % & Hstep & HL & HT)"; [done.. | ].
+    simpl. iFrame.
+    iApply (logical_step_wand with "Hstep").
+    iModIntro. iIntros "(Hv & $)".
+    iEval (rewrite ltype_own_ofty_unfold). iExists _.
+    iFrame. iR. iR. iR. done.
+  Qed.
+
+  Lemma resolve_ghost_ofty_adt_uniq {rt} (ty : type rt) π E L l r rm κ γ T :
+    (li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+      resolve_ghost_adt π E L2 rm r ty (λ L3 r' R changed, T L3 (# r') (llft_elt_toks κs ∗ R) changed)))
+    ⊢ resolve_ghost π E L rm true l (◁ ty) (Uniq κ γ) (# r) T.
+  Proof.
+    iIntros "Ha" (???) "#CTX #HE HL Hl".
+    rewrite /lctx_lft_alive_count_goal.
+    iDestruct "Ha" as "(%κs & %L2 & %Hal & Ha)".
+    iMod (Hal with "HE HL") as "(Htoks & Hcl & HL)"; first done.
+    iMod ("Hcl" with "Htoks") as "(%q & Htok & Hcl)".
+
+    rewrite ltype_own_ofty_unfold.
+    iDestruct "Hl" as "(%ly & %Hst & % & ? & ? & Hcreds & Hrfn & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iDestruct "CTX" as "(LFT & LCTX)".
+    iMod (pinned_bor_acc with "LFT Hb Htok") as "(Hb & Hb_cl)"; first done.
+    iDestruct "Hb" as "(%v & Hl & Hb)".
+    iDestruct "Hcreds" as "((Hc1 & Hc) & Ht)".
+    iApply (lc_fupd_add_later with "Hc1"). iNext.
+    iMod (fupd_mask_mono with "Hb") as "(%v' & Hl' & Hv)"; first done.
+    iPoseProof (gvar_agree with "Hl Hrfn") as "->".
+    iMod ("Ha" with "[] [] [] HE HL Hv") as "(%L3 & %r2 & % & % & Hstep & HL & HT)"; [done.. | | ].
+    { iR. done. }
+    simpl. iFrame.
+    iApply logical_step_fupd.
+    iApply (logical_step_compose with "Hstep").
+    iApply (logical_step_intro_tr with "Ht").
+    iModIntro. iIntros "Ht Hcreds' !> (Hv & $)".
+    iDestruct "Hc" as "(Hc1 & Hc)".
+    iMod (gvar_update r2 with "Hl Hrfn") as "(Hl & Hrfn)".
+    iMod ("Hb_cl" with "[Hv Hl' Hl] Hc1") as "(Hb & Htok)".
+    { by iFrame. }
+    iMod ("Hcl" with "Htok") as "$".
+    iEval (rewrite ltype_own_ofty_unfold). iExists _.
+    iFrame. iR. iR. iL.
+    iDestruct "Ht" as "(_ & $)".
+    done.
+  Qed.
+End resolve.
+
+Section resolve.
+  Context `{!typeGS Σ}.
+  Context {rt X : RT} (P : ex_inv_def rt X).
+
+  Lemma resolve_ghost_ofty_adt_ex_owned ty π E L l r rm T :
+    resolve_ghost_adt π E L rm r (∃; P, ty) (λ L2 r' R changed, T L2 (# r') R changed)
+    ⊢ resolve_ghost π E L rm true l (◁ ∃; P, ty) (Owned) (# r) T.
+  Proof. apply resolve_ghost_ofty_adt_owned. Qed.
+  Definition resolve_ghost_ofty_adt_ex_owned_inst := [instance @resolve_ghost_ofty_adt_ex_owned].
+  Global Existing Instance resolve_ghost_ofty_adt_ex_owned_inst | 8.
+
+  Lemma resolve_ghost_ofty_adt_ex_uniq ty π E L l r rm κ γ T :
+    (li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+      resolve_ghost_adt π E L2 rm r (∃; P, ty) (λ L3 r' R changed, T L3 (# r') (llft_elt_toks κs ∗ R) changed)))
+    ⊢ resolve_ghost π E L rm true l (◁ ∃; P, ty) (Uniq κ γ) (# r) T.
+  Proof. apply resolve_ghost_ofty_adt_uniq. Qed.
+  Definition resolve_ghost_ofty_adt_ex_uniq_inst := [instance @resolve_ghost_ofty_adt_ex_uniq].
+  Global Existing Instance resolve_ghost_ofty_adt_ex_uniq_inst.
+
+  (** Low priority default instance, in case there are no user-defined instances for this ADT *)
+  Lemma resolve_ghost_adt_ex_default ty π E L r rm T :
+    T L r True false ⊢ resolve_ghost_adt π E L rm r (∃; P, ty) T.
+  Proof.
+    iIntros "HT". iIntros (????) "CTX HE HL Hv".
+    iFrame. iApply logical_step_intro. by iFrame.
+  Qed.
+  Definition resolve_ghost_adt_ex_default_inst := [instance @resolve_ghost_adt_ex_default].
+  Global Existing Instance resolve_ghost_adt_ex_default_inst | 1000.
+End resolve.
+
+Section stratify.
+  Context `{!typeGS Σ}.
+  Context {rt X : RT} (P : ex_inv_def rt X).
+
+  (** Subsumption rule for introducing an existential *)
+  (* TODO could have a more specific instance for persistent invariants with pers = true *)
+  Lemma owned_subtype_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
+    (prove_with_subtype E L false ProveDirect (P.(inv_P) π r r') True%I (λ L1 _ R, R -∗ T L1))
+    ⊢ owned_subtype π E L false r r' ty (∃; P, ty) T.
+  Proof.
+    iIntros "HT".
+    iIntros (????) "#CTX #HE HL".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hinv & _) & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
+    iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
+    iSplitR; last iSplitR.
+    - simpl. iPureIntro.
+      apply syn_type_size_eq_refl.
+    - simpl. eauto.
+    - iIntros (v) "Hv0".
+      iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
+      eauto with iFrame.
+  Qed.
+  Definition owned_subtype_ex_plain_t_inst := [instance @owned_subtype_ex_plain_t].
+  Global Existing Instance owned_subtype_ex_plain_t_inst.
+
+  Definition owned_subtype_ex_plain_t_refl π E L (ty : type rt) r1 r2 := owned_subtype_id π E L false r1 r2 (∃; P, ty).
+  Definition owned_subtype_ex_plain_t_refl_inst := [instance @owned_subtype_ex_plain_t_refl].
+  Global Existing Instance owned_subtype_ex_plain_t_refl_inst | 19.
+
+  (* Lower priority instance for subtyping from any type *)
+  Lemma owned_subtype_ex_plain_t_strong {rt0 : RT} π E L (ty : type rt0) (ty2 : type rt) (r : rt0) (r' : X) T :
+    (∃ r1, owned_subtype π E L false r r1 ty ty2 (λ L2,
+    (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') True%I (λ L1 _ R,
+      R -∗ T L1))))
+    ⊢ owned_subtype π E L false r r' ty (∃; P, ty2) T.
+  Proof.
+    iIntros "HT".
+    unfold owned_subtype, prove_with_subtype.
+    iIntros (????) "#CTX #HE HL".
+    iDestruct "HT" as "(%r1 & HT)".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L0 & Hincl & HL & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hinv & _) & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
+    iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
+    iDestruct "Hincl" as "(%Hst_eq & Hsc & Hv)".
+    iSplitR; last iSplitL "Hsc".
+    - simpl. iPureIntro. done.
+    - simpl. eauto.
+    - iIntros (v) "Hv0".
+      iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
+      iPoseProof ("Hv" with "Hv0") as "Hv".
+      eauto with iFrame.
+  Qed.
+  (* Important: has lower priority than value_t merging *)
+  Definition owned_subtype_ex_plain_t_strong_inst := [instance @owned_subtype_ex_plain_t_strong].
+  Global Existing Instance owned_subtype_ex_plain_t_strong_inst | 40.
+
+  Lemma owned_subltype_step_to_ex_plain_t {rt0 : RT} π E L step l
+      (lt : ltype rt0) (ty2 : type rt) (r : rt0) (r' : place_rfn X) T :
+    (∃ r2', ⌜r' = #r2'⌝ ∗
+      cast_ltype_to_type E L lt (λ ty1,
+        owned_subtype π E L false r r2' ty1 (∃; P, ty2) (λ L2,
+        ⌜syn_type_compat (st_of ty1 MetaNone) (st_of (∃; P, ty2) MetaNone)⌝ ∗
+        T L2 True%I)))
+    ⊢ owned_subltype_step π E L step l (#r) r' lt (◁ (∃; P, ty2)) T.
+  Proof.
+    apply owned_subltype_step_to_ofty.
+  Qed.
+  Definition owned_subltype_step_to_ex_plain_t_inst := [instance @owned_subltype_step_to_ex_plain_t].
+  Global Existing Instance owned_subltype_step_to_ex_plain_t_inst | 20.
+
+  (** Introduce the invariant only after the caller has stratified the source.
+      In particular, this rule does not compete with reusing a blocked copy of
+      the complete existential type. *)
+  Lemma introduce_owned_invariant_ex_plain_t π E L l {rt1}
+      (lt : ltype rt1) (r1 : place_rfn rt1) (r : place_rfn X) (ty : type rt) T :
+    trigger_tc (SimpLtype (match ltype_blocked_lfts lt with
+      | [] => lt | _ => ltype_core lt end)) (λ lt',
+      ∃ ri x, ⌜r = #x⌝ ∗
+      strong_subltype E L Owned r1 (#ri) lt' (◁ ty) (
+        prove_with_subtype E L true ProveWithStratify (P.(inv_P) π ri x) True%I
+          (λ L3 κs R3, T L3 (ltype_blocked_lfts lt ++ κs) R3)))
+    ⊢ introduce_owned_invariant π E L l lt r1 (∃; P, ty) r T.
+  Proof.
+    iIntros "HT".
+    iDestruct "HT" as "(%lt' & %Heq & %ri & %x & -> & HT)".
+    destruct Heq as [<-].
+    iIntros (F ???) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & HT)".
+    iMod ("HT" $! F True%I with "[//] [//] [//] CTX HE HL []")
+      as "(%L3 & %κs & %R3 & Hinv & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
+    iExists L3, κs, R3. iFrame "HL HT".
+    iModIntro.
+    iApply (logical_step_wand with "Hinv").
+    iIntros "($ & Hinv & _)".
+    iIntros "Hdead Hl". rewrite lft_dead_list_app.
+    iDestruct "Hdead" as "(Hdead & Hdead_inv)".
+    iMod ("Hinv" with "Hdead_inv") as "Hinv".
+    iAssert (|={lftE}=> l ◁ₗ[π, Owned] #ri @ (◁ ty))%I
+      with "[Hl Hdead]" as ">Hl".
+    {
+      destruct (ltype_blocked_lfts lt) as [|κ κs'] eqn:Hblocked.
+      - by iApply (ltype_incl_use with "Hincl Hl").
+      - iPoseProof (imp_unblockable_blocked_dead lt) as "Hunblock".
+        iEval (rewrite -Hblocked) in "Hdead".
+        iMod (imp_unblockable_use with "Hunblock Hdead Hl") as "Hl"; first done.
+        by iApply (ltype_incl_use with "Hincl Hl"). }
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hl" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %ri' & <- & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
+    iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iExists ly. iFrame "#%". iExists x. iSplitR; first done.
+    iModIntro. iExists v. iFrame.
+    rewrite ex_plain_t_unfold_val. eauto with iFrame.
+  Qed.
+  Definition introduce_owned_invariant_ex_plain_t_inst := [instance @introduce_owned_invariant_ex_plain_t].
+  Global Existing Instance introduce_owned_invariant_ex_plain_t_inst | 20.
+
+  (*
+  Lemma owned_subtype_unfold_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
+    (∀ r2 : rt, introduce_with_hooks E L (P.(inv_P) π r2 r') (λ L1,
+      owned_subtype π E L1 false r2 r ty ty T)) -∗
+    owned_subtype π E L false r' r (∃; P, ty) ty T.
+  Proof.
+    iIntros "HT".
+    iIntros (???) "#CTX #HE HL".
+
+    iMod ("HT" with "[//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
+    iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
+    iSplitR; last iSplitR.
+    - simpl. iPureIntro.
+      intros ly1 ly2 Hly1 HLy2. f_equiv. by eapply syn_type_has_layout_inj.
+    - simpl. eauto.
+    - iIntros (v) "Hv0".
+      iEval (rewrite /ty_own_val/=).
+      eauto with iFrame.
+  Qed.
+  Global Instance owned_subtype_ex_plain_t_inst π E L (ty : type rt) (r : rt) (r' : X) :
+    OwnedSubtype π E L false r r' ty (∃; P, ty) :=
+    λ T, i2p (owned_subtype_ex_plain_t π E L ty r r' T).
+   *)
+
+
+
+  (** Stratification rules *)
+
+  (* Unfolding by stratification *)
+  Lemma stratify_unfold_ex_plain_t_owned {M} π E L sa (sm : M) l (ty : type rt) x T :
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L StratDoUnfold sa sm l (◁ ty) (#r) (Owned) (λ L2 P _ lt' r',
+      (* This should always be satisfiable *)
+      T L2 P _ lt' r'))
+    ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned) T.
+  Proof.
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb".
+    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb )"; first done.
+    iMod ("HT" with "HP [//] [//] [//] CTX HE HL Hb") as "Ha".
+    iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
+    iExists _, _, _, _, _. iFrame.
+    iModIntro.
+    iPureIntro. simp_ltypes. simpl. done.
+  Qed.
+  (*Global Instance stratify_unfold_ex_plain_t_owned_inst {M} π E L smu sa (sm : M) l (ty : type rt) x wl :*)
+  (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Owned wl) :=*)
+    (*λ T, i2p (stratify_unfold_ex_plain_t_owned π E L smu sa sm l ty x wl T).*)
+
+  Lemma stratify_unfold_ex_plain_t_uniq {M} π E L sa (sm : M) l (ty : type rt) x κ γ T :
+    li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L'),
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L' StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Owned)
+      (λ L2 R' rt' lt' r',
+        (* opened ltype requires the syntypes to be the same *)
+        ⌜ltype_st lt' = st_of ty MetaNone⌝ ∗
+        T L2 R' _ (OpenedLtype lt' (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) r')))
+    ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Uniq κ γ) T.
+  Proof.
+    rewrite /lctx_lft_alive_count_goal. iIntros "(%κs & %L' & %Hal & HT)".
+    iIntros (F ???) "#CTX #HE HL Hb".
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod (lctx_lft_alive_count_tok lftE with "HE HL") as "(%q & Htok & Hcl_tok & HL)"; [done.. | ].
+    iMod "Hcl_F" as "_".
+    iMod (ex_plain_t_open_uniq with "CTX Htok Hcl_tok Hb") as "(%r & HP & Hb & Hcl)"; first done.
+    iMod ("HT" with "HP [//] [//] [//] CTX HE HL Hb") as "Ha".
+    iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & %Hst' & HT)".
+    iExists _, _, _, _, _. iFrame.
+    iSplitR. { iPureIntro. simp_ltypes. done. }
+    iModIntro.
+    iApply (logical_step_compose with "Hstep").
+    iApply logical_step_intro. iIntros "(Hb & $)".
+    iApply ("Hcl" with "Hb []").
+    done.
+  Qed.
+  (*Global Instance stratify_unfold_ex_plain_t_uniq_inst {M} π E L smu sa (sm : M) l (ty : type rt) x κ γ :*)
+    (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Uniq κ γ) :=*)
+    (*λ T, i2p (stratify_unfold_ex_plain_t_uniq π E L smu sa sm l ty x κ γ T).*)
+
+
+  Lemma stratify_unfold_ex_plain_t_shared {M} π E L sa (sm : M) l (ty : type rt) x κ T :
+    (∀ r, P.(inv_P_shr) π κ r x -∗ stratify_ltype π E L StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Shared κ)
+      (λ L2 R' rt' lt' r',
+         ∃ r'', ⌜r' = PlaceIn r''⌝ ∗ T L2 R' _ (ShadowedLtype lt' (#r'') (◁ (∃; P, ty))) (PlaceIn x)))
+    ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Shared κ) T.
+  Proof.
+    iIntros "HT" (F ???) "#CTX #HE HL Hb".
+    iMod (ex_plain_t_open_shared with "Hb") as "(%r & HP & Hb)"; first done.
+    iPoseProof (shadowed_ltype_acc_cur with "Hb") as "(Hb & Hcl_b)".
+    iMod ("HT" with "HP [//] [//] [//] CTX HE HL Hb") as (L2 R' rt' lt' r') "(HL & Hst & Hstep & HT)".
+    iDestruct "HT" as "(%r'' & -> & HT)".
+    iModIntro. iExists  _, _, _, _, _. iFrame.
+    simp_ltypes. iSplitR; first done.
+    iApply (logical_step_wand with "Hstep"). iIntros "(Ha & $)".
+    iApply ("Hcl_b" with "Ha").
+  Qed.
+  (*Global Instance stratify_unfold_ex_plain_t_shared_inst {M} π E L smu sa (sm : M) l (ty : type rt) x κ :*)
+    (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Shared κ) :=*)
+    (*λ T, i2p (stratify_unfold_ex_plain_t_shared π E L smu sa sm l ty x κ T).*)
+
+  (** Unfolding by place access *)
+  Lemma typed_place_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} T :
+    (∀ r,
+      introduce_with_hooks E L (P.(inv_P) f.1 r x) (λ L2, typed_place E L2 f l (◁ ty) (#r) UpdStrong (Owned) K
+      (λ L2 κs li b2 bmin' rti ltyi ri updcx,
+        T L2 κs li b2 bmin' rti ltyi ri
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            cont (@mkPUpd _ _ _ bmin _
+              upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
+              I (opt_place_update_eq_strong _ Hstrong)))))))
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) bmin (Owned) K T.
+  Proof.
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
+    iApply fupd_place_to_wp.
+    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb)"; first done.
+    (*iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.*)
+    iMod ("HT" with "[] CTX HE HL HP") as "(%L2 & HL & HT)"; first done.
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
+    iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
+    iApply ("Hcont" with "Hl").
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hst".
+    iFrame. simp_ltypes. simpl.
+    iR. destruct bmin; done.
+  Qed.
+  Definition typed_place_ex_plain_t_owned_inst := [instance @typed_place_ex_plain_t_owned].
+  Global Existing Instance typed_place_ex_plain_t_owned_inst | 15.
+
+  Lemma typed_place_ex_plain_t_uniq E L f l (ty : type rt) x κ γ K `{!TCDone (K ≠ [])} bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} T :
+    li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+    (∀ r, introduce_with_hooks E L2 (P.(inv_P) f.1 r x) (λ L3, typed_place E L3 f l
+      (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) f.1 r x) (λ r x, llft_elt_toks κs)) (#r) UpdStrong (Uniq κ γ) K
+      (λ L4 κs li b2 bmin' rti ltyi ri updcx,
+        T L4 κs li b2 bmin' rti ltyi ri
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            cont (@mkPUpd _ _ _ bmin _
+              upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
+              I (opt_place_update_eq_strong _ Hstrong))))
+        ))))
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) bmin (Uniq κ γ) K T.
+  Proof.
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
+    rewrite /lctx_lft_alive_count_goal.
+    iDestruct "HT" as "(%κs & %L' & %Hal & HT)".
+    iApply fupd_place_to_wp.
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod (lctx_lft_alive_count_tok lftE with "HE HL") as "(%q & Htok & Hcl_tok & HL)"; [done.. | ].
+    iMod "Hcl_F" as "_".
+    iMod (ex_plain_t_open_uniq with "CTX Htok Hcl_tok Hb") as "(%r & HP & Hb & Hcl)"; first done.
+    iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.
+    iMod ("HT" with "[] CTX HE HL HP") as "(%L2 & HL & HT)"; first done.
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
+    iApply ("Hcont" with "Hl").
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hst".
+    iFrame. simp_ltypes. simpl. iR. destruct bmin; done.
+  Qed.
+  Definition typed_place_ex_plain_t_uniq_inst := [instance @typed_place_ex_plain_t_uniq].
+  Global Existing Instance typed_place_ex_plain_t_uniq_inst | 15.
+
+  Lemma typed_place_ex_plain_t_shared E L f l (ty : type rt) x κ K `{!TCDone (K ≠ [])} bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} T :
+    (∀ r, introduce_with_hooks E L (P.(inv_P_shr) f.1 κ r x) (λ L2,
+       typed_place E L2 f l (ShadowedLtype (◁ ty) (#r) (◁ (∃; P, ty))) (#x) UpdStrong (Shared κ) K
+        (λ L3 κs li b2 bmin' rti ltyi ri updcx,
+          T L3 κs li b2 bmin' rti ltyi ri
+            (λ L3 upd cont, updcx L3 upd (λ upd',
+            cont (@mkPUpd _ _ _ bmin _
+              upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
+              I (opt_place_update_eq_strong _ Hstrong))))
+          )))
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) bmin (Shared κ) K T.
+  Proof.
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
+    iApply fupd_place_to_wp.
+    iMod (ex_plain_t_open_shared with "Hb") as "(%r & HP & Hb)"; first done.
+    iMod ("HT" with "[] CTX HE HL HP") as "(%L2 & HL & HT)"; first done.
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
+    iApply ("Hcont" with "Hl").
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hst".
+    iFrame. simp_ltypes. simpl. iR. destruct bmin; done.
+  Qed.
+  Definition typed_place_ex_plain_t_shared_inst := [instance @typed_place_ex_plain_t_shared].
+  Global Existing Instance typed_place_ex_plain_t_shared_inst | 15.
+
+End stratify.

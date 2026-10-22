@@ -39,12 +39,18 @@ pub enum Binder {
 
 impl Binder {
     #[must_use]
-    pub fn new<I: Into<term::Type>>(name: Option<String>, ty: I) -> Self {
+    pub fn new<I>(name: Option<String>, ty: I) -> Self
+    where
+        I: Into<term::Type>,
+    {
         Self::Default(name, ty.into())
     }
 
     #[must_use]
-    pub fn new_with_name_hint<I: Into<term::Type>>(name: String, ty: I) -> Self {
+    pub fn new_with_name_hint<I>(name: String, ty: I) -> Self
+    where
+        I: Into<term::Type>,
+    {
         let ty = ty.into();
         let ty = model::Type::WithName(Box::new(term::RocqTerm::Type(Box::new(ty))), name.clone());
         Self::Default(Some(name), term::RocqType::UserDefined(ty))
@@ -74,7 +80,7 @@ impl Binder {
     }
 
     #[must_use]
-    pub(crate) fn get_name(&self) -> String {
+    pub fn get_name(&self) -> String {
         match self {
             Self::Default(name, _) => name.clone().unwrap_or_else(|| "_".to_owned()),
             Self::Implicit(i) => i.name.clone().unwrap_or_else(|| "_".to_owned()),

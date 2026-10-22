@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_copy_nonoverlapping.
 
@@ -16,7 +16,7 @@ Proof.
   open_cache.
 
   (* manual proof from here to formulate the loop invariant *)
-  iApply typed_stmt_annot_skip.
+  iApply typed_annot_stmt_skip.
   iSelect (_ ◁ₗ[_, _] # size @ _)%I (fun H => iRename H into "Hlen").
   iSelect (_ ◁ₗ[_, _] #0%Z @ _)%I (fun H => iRename H into "Hcount").
   iSelect (_ ◁ₗ[_, _] #src @ (◁ alias_ptr_t))%I (fun H => iRename H into "Hsrc").
@@ -24,7 +24,7 @@ Proof.
   iSelect (src ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Hs").
   iSelect (dst ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Ht").
   iApply fupd_typed_stmt.
-  iMod (ofty_uninit_to_value with "Ht") as "(%v_t & Ht)"; first done.
+  iMod (ofty_uninit_to_untyped_value with "Ht") as "(%v_t & Ht)"; first done.
   iMod (ofty_value_has_length with "Hs") as "(%Hlen_s & Hs)"; first done.
   { sidecond_hook. }
   iMod (ofty_value_has_length with "Ht") as "(%Hlen_t & Ht)"; first done.
@@ -33,30 +33,28 @@ Proof.
 
   (* turn it into arrays *)
   iPoseProof (ofty_value_untyped_to_array with "Hs") as "Hs".
-  { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
+  { sidecond_hook. }
   iPoseProof (ofty_value_untyped_to_array with "Ht") as "Ht".
-  { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
+  { sidecond_hook. }
   iModIntro.
 
-  set (loop_inv := (λ (_ : ()) (E : elctx) (L : llctx),
+  set (loop_inv := (λ (_ : ()),
     ∃ (i : nat),
-    ⌜L = [ϝ ⊑ₗ{0} []]⌝ ∗
-    ⌜E = ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty⌝ ∗
     (credit_store 0 0 ∗
     arg_size ◁ₗ[π, Owned] #size @ (◁ int USize) ∗
     local_count ◁ₗ[π, Owned] #(Z.of_nat i) @ (◁ int USize) ∗
     arg_src ◁ₗ[π, Owned] #src @ (◁ alias_ptr_t) ∗
     arg_dst ◁ₗ[π, Owned] #dst @ (◁ alias_ptr_t) ∗
-    src ◁ₗ[ π, Owned] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
-    dst ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
-  iApply (typed_goto_acc _ _ _ _ _ loop_inv).
+    src ◁ₗ[ π, Owned] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t false (st_of T_ty MetaNone))) ∗
+    dst ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t false (st_of T_ty MetaNone)))))%I).
+  iApply (typed_goto_acc _ _ _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   unfold loop_inv.
   do 2 liRStep; liShow. iExists 0%nat.
   liRStepUntil (introduce_with_hooks).
   liRStep; liShow.
   iApply introduce_with_hooks_base.
-  iIntros  "(%i & -> & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
+  iIntros  "(%i & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
   rep liRStep. liShow.
   (*return: go back to values *)
   assert (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t) = (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) (take (i * ly_size T_st_ly) vs ++ drop (i * ly_size T_st_ly) v_t) : list val)) as ->.
@@ -66,7 +64,7 @@ Proof.
   iPoseProof (ofty_value_untyped_from_array with "Ht") as "Ht".
   { rewrite length_app length_take length_drop. rewrite Hlen_t Hlen_s !ly_size_mk_array_layout. lia. }
 
-  iApply typed_stmt_annot_skip.
+  iApply typed_annot_stmt_skip.
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

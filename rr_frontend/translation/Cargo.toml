@@ -12,6 +12,7 @@ analysis.workspace = true
 attribute_parse.workspace = true
 radium.workspace = true
 rr_rustc_interface.workspace = true
+rr_rustc_utils.workspace = true
 rrconfig.workspace = true
 
 datafrog.workspace = true
@@ -23,6 +24,14 @@ serde_json.workspace = true
 topological-sort.workspace = true
 typed-arena.workspace = true
 nom.workspace = true
+
+[dev-dependencies]
+compiletest_rs.workspace = true
+
+[[test]]
+name = "test_mir_mapper"
+path = "tests/test_mir_mapper.rs"
+harness = false
 
 [package.metadata.rust-analyzer]
 rustc_private = true

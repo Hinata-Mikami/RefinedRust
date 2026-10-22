@@ -1,4 +1,5 @@
 (lang dune 3.21)
-(using rocq 0.11)
 (name refinedrust)
 (package (name refinedrust))
+(package (name refinedrust-smtcoq))
+(using rocq 0.11)

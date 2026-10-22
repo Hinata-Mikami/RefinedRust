@@ -1,4 +1,5 @@
 
+#[rr::derive_instantiate("DropGlueUnwind" := "{A::DropGlueUnwind} ∨ {B::DropGlueUnwind}")]
 pub struct Zip<A, B> {
     a: A,
     b: B,

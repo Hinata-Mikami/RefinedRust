@@ -1,58 +1,49 @@
+#![rr::import("rrstd.iterator.theories", "skip")]
 
+use crate::traits::iterator::Iterator;
 
-
+#[rr::export_as(core::iter::adapters::Skip)]
+#[rr::refined_by("x" : "SkipXRT {rt_of I}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind}")]
 pub struct Skip<I> {
+    #[rr::field("#($# x.(skip_it))")]
     iter: I,
+    #[rr::field("#(Z.of_nat x.(skip_n))")]
     n: usize,
 }
 
-// Issue here: we can't say when we are done!
-// Solutions:
-// - have a length function (as a generalization of Done)?
-//   -> restrict to exact size?
-// - has_more? (negation of done)
-//   should be in iProp?
-// - Next is a relation on options
-//   + then with refinements we could get the existing spec
-// - have a pure version of Next?
+#[rr::export_as(core::iter::adapters::Skip)]
+impl<I> Skip<I> {
+    #[rr::returns("mk_skip_x iter (Z.to_nat n)")]
+    pub fn new(iter: I, n: usize) -> Skip<I> {
+        Skip { iter, n }
+    }
+}
 
-
-// this is a case for spec refinement?
-
-// Logically, we make a two-phase transition here:
-// - either we skip (in the first call to next)
-// - or we just pass through
-
-/*
-#[rr::instantiate("History" := "λ s, s.(history)")]
-#[rr::instantiate("Next" := "λ s1 e s2,
-        ⌜s2.(n) = 0⌝ ∗
-        ⌜{History} s2 = e :: {History} s1⌝ ∗
-        if_iSome e (λ e,
-            if bool_decide (s1.(n) = 0) then
-                {I.Next} s1.(iter) (Some e) s2.(iter)
-            else
-                [∗ list] ...
-        ) ∗
+#[rr::instantiate("Params" := "{MI::Params}")]
+#[rr::instantiate("Inv" := "(λ π p s, ⌜DropGlue_MIastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False⌝ ∗ {MI::Inv} π p s.(skip_it))%I")]
+#[rr::instantiate("Next" := "(λ π p_inner s1 e s2, 
         if_iNone e (
-            if bool_decide (s1.(n) = 0) then
-                {I.Next} s1.(iter) None s2.(iter)
-            else 
-                ∃ m, 
-                    m < n ∗
-                    [∗ list] ...
-        )")]
-*/
-impl<I> Iterator for Skip<I>
+             ∃ seq s2_inner, 
+                ⌜length seq ≤ s1.(skip_n)⌝ ∗ ⌜s2.(skip_n) = 0%nat⌝∗ 
+                IteratorNextFusedTrans traits_iterator_Iterator_MI_spec_attrs π p_inner s1.(skip_it) seq s2_inner ∗
+                {MI::Next} π p_inner s2_inner None s2.(skip_it)) ∗ 
+        if_iSome e (λ e, 
+            ∃ seq s2_inner, 
+                ⌜length seq = s1.(skip_n)⌝ ∗ ⌜s2.(skip_n) = 0%nat⌝∗ 
+                IteratorNextFusedTrans traits_iterator_Iterator_MI_spec_attrs π p_inner s1.(skip_it) seq s2_inner ∗
+                {MI::Next} π p_inner s2_inner (Some e) s2.(skip_it)))%I")]
+impl<MI> Iterator for Skip<MI>
 where
-    I: Iterator,
+    MI: Iterator,
 {
-    type Item = <I as Iterator>::Item;
+    type Item = <MI as Iterator>::Item;
 
-    #[inline]
-    fn next(&mut self) -> Option<I::Item> {
-        if unlikely(self.n > 0) {
-            self.iter.nth(crate::mem::take(&mut self.n))
+    fn next(&mut self) -> Option<MI::Item> {
+        if self.n > 0 {
+            let n = self.n;
+            self.n = 0;
+            self.iter.nth(n)
         } else {
             self.iter.next()
         }

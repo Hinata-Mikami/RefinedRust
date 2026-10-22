@@ -1,0 +1,10 @@
+Mapping for function dead_drop:
+summary: total=7 mapped=7 unmapped=0
+
+bb0[0] StorageLive(_2) -> Source(bb0[0] StorageLive(_2))
+bb0[1] _2 = move _1 -> Source(bb0[1] _2 = move _1)
+bb0[2] _0 = const () -> Source(bb0[3] _0 = const ())
+bb0[3] drop(_2) -> [return: bb1, unwind: bb2] -> Source(bb0[4] drop(_2) -> [return: bb1, unwind: bb3])
+bb1[0] StorageDead(_2) -> Source(bb1[0] StorageDead(_2))
+bb1[1] return -> FoldedFrom(bb2[0] return)
+bb2[0] resume -> FoldedFrom(bb4[0] resume)

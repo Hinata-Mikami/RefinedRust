@@ -1,437 +1,623 @@
 {
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-25.11";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "nixpkgs/nixos-26.05";
+    flake-parts.url = "github:hercules-ci/flake-parts";
 
     crane.url = "github:ipetkov/crane";
-
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    rust-targets = {
-      url = "file+https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix";
+    Sniper = {
+      url = "github:SMTCoq/Sniper";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-parts.follows = "flake-parts";
+      };
+    };
+
+    verit = {
+      url = "git+https://gitlab.mpi-sws.org/lgaeher/verit?rev=6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90";
       flake = false;
     };
   };
 
-  outputs = {
-    flake-utils,
-    nixpkgs,
-    rust-targets,
-    ...
-  } @ inputs:
-    flake-utils.lib.eachDefaultSystem (system: let
-      inherit (lib) pkgs;
-
-      lib = nixpkgs.lib.extend (_: _: (import ./nix {
-        inherit inputs system;
-      }));
-
+  outputs =
+    inputs@{
+      crane,
+      flake-parts,
+      nixpkgs,
+      rust-overlay,
+      self,
+      Sniper,
+      verit,
+      ...
+    }:
+    let
       name = "refinedrust";
       version = "0.1.0";
 
-      meta = with pkgs.lib; {
+      meta = {
         homepage = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev";
-        license = licenses.bsd3;
+        license = nixpkgs.lib.licenses.bsd3;
       };
 
-      rocq = {
+      pins = {
+        equations = {
+          version = "c4e99d8953cee0396a391fe017204bbc2af1fb88";
+          sha256 = "sha256-4uhcYRwZxcSRDQgJ92D854djy76piuVhttDe6XEN0Rk=";
+        };
+
         stdpp = {
-          version = "3d918b797b0addee89447b0c06a988dd080f887f";
-          sha256 = "sha256-HBT9RyRhjcXyZLYJ0mnOZ1EolELpHQN6QoIN9kE1Cfg=";
+          version = "729c671ed573749588f699138e306dbae880f3e1";
+          sha256 = "sha256-cFUimy54xl4zA9q7NadjReAspRZPrh0DSdEpTJFPidU=";
         };
 
         iris = {
-          version = "d4cb3274976b0e940710a79d3bef76ef55a721f3";
-          sha256 = "sha256-roDk7B8r+BjKfEgf4t2qs5VxsuU7z96T2MBWsuiEiIA=";
+          version = "4a6add171278417fec6da7c490fe487e502326f0";
+          sha256 = "sha256-4XY7u6KOMPENIiM/RlhOKKf06ABfnAVE8TJEeNHhn78=";
         };
 
         iris-contrib = {
-          version = "a14e61366839eaac418eb8ab8494468a4f7ba0d2";
-          sha256 = "sha256-RWhvM89RKaThKVHsL1KSBEH2LvcWmeCXRzzq4zRCOQs=";
+          version = "0ed8e45b554b2c7f7b9102818bc3ee27d8fa18b8";
+          sha256 = "sha256-Y9HyQvCnX9elwDSWK8o2Sh3E6nIRkaIxvD/zNo25Lxw=";
         };
 
         lambda-rust = {
-          version = "2fb071653b08f9808fb94aa53e27b58b9c83486a";
-          sha256 = "sha256-Qy+qXIIGMOAGzutd1kS7bJu/KXjXIzeZqW2F2AKGRBQ=";
+          version = "0a062fb1eb68f9a6ac38412347117b294fc7746b";
+          sha256 = "sha256-iQqxhPMSo/ktfhANwFlDV1Vpl4yWr9k0s/t2tFFAkpo=";
+        };
+
+        smtcoq = {
+          version = "6de39db2a996cdc663634cb79193b9d75f95b48a";
+          sha256 = "sha256-adhKClONIp3tltToQcoDO1wfqGzBCe/UE/WyBIPYlis=";
+        };
+
+        verit = {
+          version = "6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90";
+          src = verit;
+        };
+
+        sniper = {
+          version = "14fd1f02104f6e1214ad436d21eaacfb0d71db19";
+          sha256 = "sha256-bFjwYVVP2/SNixSrThp3c8RYrmSmLb7NdjzpNtcDyAk=";
         };
       };
 
-      rust = let
-        inherit (toolchainFile) channel components;
-        toolchainFile = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
-        devComponents = ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
+      stdlib = stdlibPkgs: [
+        {
+          pname = "stdlib-alloc";
+          src = ./stdlib/alloc;
+          libDeps = with stdlibPkgs; [
+            stdlib-ptr
+            stdlib-result
+            stdlib-clone
+            stdlib-mem
+            stdlib-closures
+          ];
+        }
+        {
+          pname = "stdlib-arithops";
+          src = ./stdlib/arithops;
+        }
+        {
+          pname = "stdlib-boxed";
+          src = ./stdlib/boxed;
+          libDeps = with stdlibPkgs; [
+            stdlib-alloc
+            stdlib-option
+            stdlib-mem
+            stdlib-ptr
+            stdlib-rr_internal
+            stdlib-ptr-advanced
+          ];
+        }
+        {
+          pname = "stdlib-btreemap";
+          src = ./stdlib/btreemap;
+          libDeps = with stdlibPkgs; [
+            stdlib-alloc
+            stdlib-option
+            stdlib-clone
+            stdlib-cmp
+          ];
+        }
+        {
+          pname = "stdlib-clone";
+          src = ./stdlib/clone;
+          libDeps = with stdlibPkgs; [ stdlib-sized ];
+        }
+        {
+          pname = "stdlib-closures";
+          src = ./stdlib/closures;
+        }
+        {
+          pname = "stdlib-cmp";
+          src = ./stdlib/cmp;
+          libDeps = with stdlibPkgs; [
+            stdlib-closures
+            stdlib-option
+          ];
+        }
+        {
+          pname = "stdlib-controlflow";
+          src = ./stdlib/controlflow;
+          libDeps = with stdlibPkgs; [
+            stdlib-option
+            stdlib-result
+          ];
+        }
+        {
+          pname = "stdlib-iterator";
+          src = ./stdlib/iterator;
+          libDeps = with stdlibPkgs; [
+            stdlib-clone
+            stdlib-closures
+            stdlib-cmp
+            stdlib-option
+            stdlib-range
+            stdlib-result
+            stdlib-controlflow
+          ];
+        }
+        {
+          pname = "stdlib-sized";
+          src = ./stdlib/sized;
+        }
+        {
+          pname = "stdlib-index";
+          src = ./stdlib/index;
+          libDeps = with stdlibPkgs; [ stdlib-sized ];
+        }
+        {
+          pname = "stdlib-mem";
+          src = ./stdlib/mem;
+        }
+        {
+          pname = "stdlib-option";
+          src = ./stdlib/option;
+          libDeps = with stdlibPkgs; [
+            stdlib-closures
+            stdlib-clone
+            stdlib-result
+          ];
+        }
+        {
+          pname = "stdlib-ptr";
+          src = ./stdlib/ptr;
+          libDeps = with stdlibPkgs; [
+            stdlib-mem
+            stdlib-clone
+            stdlib-num
+            stdlib-option
+          ];
+        }
+        {
+          pname = "stdlib-ptr-advanced";
+          src = ./stdlib/ptr_advanced;
+          libDeps = with stdlibPkgs; [
+            stdlib-mem
+            stdlib-ptr
+            stdlib-option
+            stdlib-clone
+          ];
+        }
+        {
+          pname = "stdlib-result";
+          src = ./stdlib/result;
+          libDeps = with stdlibPkgs; [
+            stdlib-clone
+            stdlib-closures
+          ];
+        }
+        {
+          pname = "stdlib-range";
+          src = ./stdlib/range;
+          libDeps = with stdlibPkgs; [
+            stdlib-cmp
+            stdlib-option
+          ];
+        }
+        {
+          pname = "stdlib-rr_internal";
+          src = ./stdlib/rr_internal;
+          libDeps = with stdlibPkgs; [
+            stdlib-alloc
+            stdlib-ptr
+          ];
+        }
+        {
+          pname = "stdlib-rwlock";
+          src = ./stdlib/rwlock;
+        }
+        {
+          pname = "stdlib-num";
+          src = ./stdlib/num;
+        }
+        {
+          pname = "stdlib-cell";
+          src = ./stdlib/cell;
+          libDeps = with stdlibPkgs; [
+            stdlib-sized
+          ];
+        }
+        {
+          pname = "stdlib-spin";
+          src = ./stdlib/spin;
+          libDeps = with stdlibPkgs; [
+            stdlib-option
+            stdlib-cell
+            stdlib-closures
+            stdlib-arithops
+          ];
+        }
+        {
+          pname = "stdlib-vec";
+          src = ./stdlib/vec;
+          libDeps = with stdlibPkgs; [
+            stdlib-alloc
+            stdlib-iterator
+            stdlib-option
+            stdlib-rr_internal
+            stdlib-closures
+            stdlib-index
+            stdlib-cmp
+            stdlib-ptr-advanced
+            stdlib-clone
+            stdlib-controlflow
+          ];
+        }
+        {
+          pname = "stdlib-stdlib";
+          opam-name = "refinedrust-stdlib";
+          src = ./stdlib/stdlib;
+          libDeps = builtins.attrValues (builtins.removeAttrs stdlibPkgs [ "stdlib-stdlib" ]);
+        }
+      ];
 
-        mkToolchain = target: {
-          build = lib.rust.mkToolchain channel components target;
-          dev = lib.rust.mkToolchain channel (components ++ devComponents) target;
-        };
-      in rec {
-        toolchain = mkToolchain lib.rust.hostPlatform;
-        envBuilder = lib.rust.overrideToolchain toolchain.build;
-
-        mkDrvRustTargetToolchains = drv:
-          lib.mapToAttrs (target: "target-" + target) ({pname}: drv (mkToolchain pname))
-          (map (pname: {inherit pname;}) (pkgs.lib.attrsets.attrValues (import rust-targets.outPath)));
-      };
+      case_studies = [
+        {
+          pname = "evenint";
+          src = ./case_studies/evenint;
+        }
+        {
+          pname = "hillel";
+          src = ./case_studies/hillel;
+        }
+        {
+          pname = "minivec";
+          src = ./case_studies/minivec;
+        }
+        {
+          pname = "minicell";
+          src = ./case_studies/minicell;
+        }
+        {
+          pname = "linkedlist";
+          src = ./case_studies/linkedlist;
+        }
+        {
+          pname = "paper-examples";
+          src = ./case_studies/paper_examples;
+        }
+        {
+          pname = "iterators";
+          src = ./case_studies/iterators;
+        }
+        {
+          pname = "knights-tour";
+          src = ./case_studies/knights_tour;
+        }
+        {
+          pname = "knights-tour-functional";
+          src = ./case_studies/knights_tour_functional;
+        }
+        {
+          pname = "tests";
+          src = ./case_studies/tests;
+        }
+        {
+          pname = "smtcoq";
+          src = ./case_studies/smtcoq;
+        }
+        {
+          pname = "verifythis2026";
+          src = ./case_studies/verifythis2026;
+        }
+      ];
     in
-      with pkgs.lib; rec {
-        inherit lib;
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
 
-        packages = let
-          stdlibPkgs = with pkgs.lib; attrsets.attrValues (filterAttrs (name: _: strings.hasPrefix "stdlib-" name) packages);
+      flake = {
+        lib = import ./nix { inherit crane nixpkgs rust-overlay; };
 
-          mkStdlib = {
-            pname,
-            opam-name ? pname,
-            rocqTheoriesArgs ? {},
-            withTheories ? false,
-            ...
-          } @ origArgs: let
-            args = builtins.removeAttrs origArgs ["rocqTheoriesArgs"];
-          in
-            lib.rocq.mkRefinedRust ({
-                inherit meta version;
+        overlays = {
+          deps = import ./nix/deps pins;
 
-                propagatedBuildInputs = [packages.theories];
+          default = nixpkgs.lib.composeManyExtensions [
+            rust-overlay.overlays.default
+            Sniper.overlays.default
+            self.overlays.deps
+          ];
+        };
+      };
 
-                cargoArtifacts = null;
-                withStdlib = false;
-
-                cargoRefinedRustArgs = {
-                  preBuild = ''
-                    sed -i -e 's/rr::package("refinedrust-stdlib")/rr::package("${opam-name}")/g' ./src/lib.rs
-                  '';
-                };
-              }
-              // (
-                if withTheories
-                then {
-                  rocqTheoriesArgs =
-                    {
-                      preBuild = ''
-                        find . -name "dune" -exec sed -i -e '3s|.*|  (package ${opam-name}-theories)|g' {} \;
-                        cat << EOF > dune-project
-                        (lang dune 3.21)
-                        (using rocq 0.11)
-                        (name ${opam-name}-theories)
-                        (package (name ${opam-name}-theories))
-                        EOF
-                      '';
-                    }
-                    // rocqTheoriesArgs;
-                }
-                else rocqTheoriesArgs
-              )
-              // args);
-        in
-          {
-            default = packages."target-${lib.rust.hostPlatform}";
-
-            theories = let
-              stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
-                pname = "stdpp";
-              };
-
-              iris = lib.rocq.mkDepDerivation rocq.iris {
-                pname = "iris";
-                propagatedBuildInputs = [stdpp];
-              };
-
-              iris-contrib = lib.rocq.mkDepDerivation rocq.iris-contrib {
-                pname = "iris-contrib";
-                propagatedBuildInputs = [iris];
-              };
-
-              lambda-rust = lib.rocq.mkDepDerivation rocq.lambda-rust {
-                pname = "lambda-rust";
-                propagatedBuildInputs = [iris];
-              };
+      perSystem =
+        {
+          lib,
+          pkgs,
+          system,
+          ...
+        }:
+        let
+          rust =
+            let
+              inherit (toolchainFile) channel components;
+              toolchainFile = (lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
+              devComponents = [
+                "clippy"
+                "rust-analyzer"
+                "rust-src"
+                "rustfmt"
+              ];
             in
-              pkgs.rocqPackages.mkRocqDerivation {
+            rec {
+              toolchain = rec {
+                inherit channel;
+
+                build = self.lib.rust.mkToolchain pkgs channel components;
+                dev = self.lib.rust.mkToolchain pkgs channel (components ++ devComponents);
+              };
+
+              envBuilder = self.lib.rust.overrideToolchain pkgs toolchain.build;
+            };
+        in
+        rec {
+          _module.args.pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ self.overlays.default ];
+          };
+
+          packages =
+            let
+              mkStdlib =
+                {
+                  pname,
+                  opam-name ? pname,
+                  ...
+                }@origArgs:
+                let
+                  args = builtins.removeAttrs origArgs [
+                    "pname"
+                    "opam-name"
+                  ];
+                in
+                self.lib.rocq.mkRefinedRust pkgs packages.frontend packages.stdlib (
+                  {
+                    inherit meta version;
+
+                    inherit pname opam-name;
+
+                    withStdlib = false;
+                    generateFiles = false;
+                    useDune = true;
+                    propagatedBuildInputs = [ packages.refinedrust-smtcoq ];
+
+                    preBuild = ''
+                      find . -name dune -exec sed -i -e 's/(package refinedrust-stdlib)/(package ${opam-name})/g' {} \;
+                      cat << EOF > dune-project
+                      (lang dune 3.21)
+                      (using rocq 0.11)
+                      (name ${opam-name})
+                      (package (name ${opam-name}))
+                      EOF
+                    '';
+                  }
+                  // args
+                );
+            in
+            {
+              refinedrust = pkgs.rocqPackages.mkRocqDerivation {
                 inherit meta version;
 
                 pname = name;
                 opam-name = name;
                 src = ./theories;
 
-                propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
+                propagatedBuildInputs = [
+                  pkgs.rocqPackages.equations
+                  pkgs.rocqPackages.iris-contrib
+                  pkgs.rocqPackages.lambda-rust
+                ];
                 useDune = true;
               };
 
-            frontend = rust.envBuilder.buildPackage rec {
-              inherit meta version;
+              refinedrust-smtcoq = pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
 
-              pname = "cargo-${name}";
-              src = ./rr_frontend;
+                pname = name + "-smtcoq";
+                opam-name = name + "-smtcoq";
+                src = ./theories;
 
-              cargoArtifacts = rust.envBuilder.buildDepsOnly {
-                inherit meta pname src version;
+                propagatedBuildInputs = [
+                  packages.refinedrust
+                  pkgs.rocqPackages.sniper
+                ];
+                useDune = true;
               };
 
-              nativeBuildInputs = with pkgs;
-                [makeWrapper]
-                ++ (lib.optionals stdenv.isDarwin [libiconv libzip]);
+              frontend = rust.envBuilder.buildPackage rec {
+                inherit meta version;
 
-              postInstall = ''
-                wrapProgram $out/bin/${pname} \
-                  --set-default LD_LIBRARY_PATH ${rust.toolchain.build}/lib \
-                  --set-default DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.build}/lib
-              '';
+                pname = "cargo-${name}";
+                src = ./rr_frontend;
 
-              doNotRemoveReferencesToRustToolchain = true;
-              passthru = {inherit cargoArtifacts pname src;};
-            };
-          }
-          // lib.mapToAttrs id mkStdlib [
-            {
-              pname = "stdlib-alloc";
-              src = ./stdlib/alloc;
-              libDeps = with packages; [stdlib-ptr stdlib-result stdlib-clone stdlib-mem stdlib-clone];
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-arithops";
-              src = ./stdlib/arithops;
-            }
-            {
-              pname = "stdlib-boxed";
-              src = ./stdlib/boxed;
-              libDeps = with packages; [stdlib-alloc stdlib-option stdlib-mem stdlib-ptr stdlib-rr_internal stdlib-ptr-advanced];
-            }
-            {
-              pname = "stdlib-btreemap";
-              src = ./stdlib/btreemap;
-              libDeps = with packages; [stdlib-alloc stdlib-option];
-            }
-            {
-              pname = "stdlib-clone";
-              src = ./stdlib/clone;
-              libDeps = with packages; [stdlib-sized];
-            }
-            {
-              pname = "stdlib-closures";
-              src = ./stdlib/closures;
-            }
-            {
-              pname = "stdlib-cmp";
-              src = ./stdlib/cmp;
-              libDeps = with packages; [stdlib-closures stdlib-option];
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-controlflow";
-              src = ./stdlib/controlflow;
-              libDeps = with packages; [stdlib-option stdlib-result];
-            }
-            {
-              pname = "stdlib-iterator";
-              src = ./stdlib/iterator;
-              libDeps = with packages; [stdlib-clone stdlib-closures stdlib-cmp stdlib-option stdlib-range];
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-sized";
-              src = ./stdlib/sized;
-            }
-            {
-              pname = "stdlib-index";
-              src = ./stdlib/index;
-              libDeps = with packages; [stdlib-sized];
-            }
-            {
-              pname = "stdlib-mem";
-              src = ./stdlib/mem;
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-option";
-              src = ./stdlib/option;
-              libDeps = with packages; [stdlib-closures stdlib-clone stdlib-result];
-            }
-            {
-              pname = "stdlib-ptr";
-              src = ./stdlib/ptr;
-              libDeps = with packages; [stdlib-mem stdlib-clone stdlib-num stdlib-option];
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-ptr-advanced";
-              src = ./stdlib/ptr_advanced;
-              libDeps = with packages; [stdlib-mem stdlib-ptr stdlib-option stdlib-clone];
-            }
-            {
-              pname = "stdlib-sized";
-              src = ./stdlib/sized;
-            }
-            {
-              pname = "stdlib-result";
-              src = ./stdlib/result;
-              libDeps = with packages; [stdlib-clone];
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-range";
-              src = ./stdlib/range;
-              libDeps = with packages; [stdlib-cmp stdlib-option];
-            }
-            {
-              pname = "stdlib-rr_internal";
-              src = ./stdlib/rr_internal;
-              libDeps = with packages; [stdlib-alloc stdlib-ptr];
-              withTheories = true;
-            }
-            {
-              pname = "stdlib-rwlock";
-              src = ./stdlib/rwlock;
-              withStdlib = false;
-            }
-            {
-              pname = "stdlib-num";
-              src = ./stdlib/num;
-            }
-            {
-              pname = "stdlib-spin";
-              src = ./stdlib/spin;
-              libDeps = with packages; [stdlib-option];
-              withTheories = true;
+                cargoArtifacts = rust.envBuilder.buildDepsOnly {
+                  inherit
+                    meta
+                    pname
+                    src
+                    version
+                    ;
+                };
 
-              rocqTheoriesArgs = {
-                src = ./stdlib/spin/theories/once;
+                nativeBuildInputs =
+                  with pkgs;
+                  [ makeWrapper ]
+                  ++ (lib.optionals stdenv.isDarwin [
+                    libiconv
+                    libzip
+                  ]);
+
+                postInstall = ''
+                  wrapProgram $out/bin/${pname} \
+                    --set-default LD_LIBRARY_PATH ${rust.toolchain.build}/lib \
+                    --set-default DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.build}/lib
+                '';
+
+                doNotRemoveReferencesToRustToolchain = true;
+                passthru = { inherit cargoArtifacts pname src; };
+              };
+
+              default =
+                let
+                  mkRefinedRust =
+                    toolchain:
+                    pkgs.symlinkJoin {
+                      inherit meta name;
+
+                      paths = [
+                        pkgs.gcc
+                        packages.frontend
+                        toolchain
+                        (self.lib.mkDuneWrapper pkgs packages.stdlib)
+                      ];
+
+                      nativeBuildInputs = [ pkgs.makeWrapper ];
+                      postBuild = ''
+                        wrapProgram $out/bin/cargo-${name} \
+                          --set LD_LIBRARY_PATH ${toolchain}/lib \
+                          --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain}/lib \
+                          --set PATH "$out/bin" \
+                          --set RR_NIX_STDLIB $out/share
+                      '';
+
+                      passthru = {
+                        inherit (rust.toolchain) channel;
+                        inherit mkRefinedRust;
+                      };
+                    };
+                in
+                mkRefinedRust rust.toolchain.build;
+
+              stdlib = packages.stdlib-stdlib;
+
+              devcontainer =
+                let
+                  cargoVendorDir = rust.envBuilder.vendorMultipleCargoDeps {
+                    inherit (rust.envBuilder.findCargoFiles ./rr_frontend) cargoConfigs;
+
+                    cargoLockList = [
+                      ./rr_frontend/Cargo.lock
+                      "${rust.toolchain.dev.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
+                    ];
+                  };
+                in
+                self.lib.mkDevContainer pkgs [
+                  pkgs.gcc
+                  pkgs.gnumake
+                  rust.toolchain.dev
+                  cargoVendorDir
+                  (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
+                ] rust.toolchain.dev;
+            }
+            // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));
+
+          checks =
+            let
+              mkCaseStudies =
+                let
+                  extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
+                    inherit meta version;
+
+                    pname = "extra-proofs";
+                    opam-name = "extra-proofs";
+
+                    src = ./case_studies/extra_proofs;
+
+                    buildInputs = [ packages.refinedrust-smtcoq ];
+                    useDune = true;
+                  };
+                in
+                args:
+                self.lib.rocq.mkRefinedRust pkgs packages.frontend packages.stdlib (
+                  {
+                    inherit meta version;
+
+                    propagatedBuildInputs = [ extraProofs ];
+
+                    cargoArtifacts = null;
+                    cargoExtraArgs = "";
+                    cargoVendorDir = null;
+
+                    cargoRefinedRustArgs = {
+                      toolchain = rust.toolchain.build;
+                    };
+                  }
+                  // args
+                );
+            in
+            {
+              clippy = self.lib.rust.cargoClippy pkgs rust.toolchain.dev {
+                inherit (packages.frontend.passthru) cargoArtifacts pname src;
+
+                cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
+              };
+
+              deny = self.lib.rust.cargoDeny pkgs {
+                inherit (packages.frontend.passthru) pname src;
+              };
+
+              fmt = self.lib.rust.cargoFmt pkgs rust.toolchain.dev {
+                inherit (packages.frontend.passthru) pname src;
+              };
+
+              machete = self.lib.rust.cargoMachete pkgs {
+                inherit (packages.frontend.passthru) pname src;
+              };
+
+              workspace-unused = self.lib.rust.cargoWorkspaceUnused pkgs rust.toolchain.dev {
+                inherit (packages.frontend.passthru) pname src;
               };
             }
-            {
-              pname = "stdlib-vec";
-              src = ./stdlib/vec;
-              libDeps = with packages; [stdlib-alloc stdlib-iterator stdlib-option stdlib-rr_internal stdlib-closures stdlib-index stdlib-cmp];
-            }
-            {
-              pname = "stdlib";
-              opam-name = "refinedrust-stdlib";
-              src = ./stdlib/stdlib;
-              libDeps = stdlibPkgs;
-            }
-          ]
-          // rust.mkDrvRustTargetToolchains (toolchain:
-            pkgs.symlinkJoin {
-              inherit meta name;
+            // self.lib.mapToAttrs mkCaseStudies case_studies;
 
-              paths = let
-                fetchRocqDeps = with pkgs.lib;
-                  drv: lists.unique ([drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs));
-              in
-                [pkgs.gcc pkgs.gnupatch packages.frontend toolchain.build]
-                ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-                ++ (fetchRocqDeps packages.stdlib);
+          devShells.default = pkgs.mkShell {
+            inputsFrom = with packages; [
+              frontend
+              refinedrust
+            ];
 
-              nativeBuildInputs = [pkgs.makeWrapper];
-              postBuild = ''
-                wrapProgram $out/bin/dune \
-                  --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
-                  --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
+            packages = with pkgs; [
+              cargo-deny
+              cargo-machete
+              gnumake
+              rust.toolchain.dev
+              pkgs.rocqPackages.sniper
+            ];
 
-                wrapProgram $out/bin/cargo-${name} \
-                  --set LD_LIBRARY_PATH ${toolchain.build}/lib \
-                  --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain.build}/lib \
-                  --set PATH "$out/bin" \
-                  --set RR_NIX_STDLIB $out/share/stdlib
-              '';
+            LD_LIBRARY_PATH = lib.makeLibraryPath [ rust.toolchain.dev ];
+            DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [ rust.toolchain.dev ];
+            LIBCLANG_PATH = lib.makeLibraryPath [ pkgs.libclang.lib ];
+          };
 
-              passthru = {inherit toolchain;};
-            });
-
-        checks = let
-          mkCaseStudies = let
-            extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
-              inherit meta version;
-
-              pname = "extra-proofs";
-              opam-name = "extra-proofs";
-
-              src = ./case_studies/extra_proofs;
-
-              buildInputs = [packages.theories];
-              useDune = true;
-            };
-          in
-            args:
-              lib.rocq.mkRefinedRust ({
-                  inherit meta version;
-
-                  propagatedBuildInputs = [extraProofs];
-
-                  cargoArtifacts = null;
-                  cargoExtraArgs = "";
-                  cargoVendorDir = null;
-                }
-                // args);
-        in
-          {
-            clippy = lib.rust.cargoClippy rust.toolchain.dev {
-              inherit (packages.frontend.passthru) cargoArtifacts pname src;
-
-              cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
-            };
-
-            deny = lib.rust.cargoDeny {
-              inherit (packages.frontend.passthru) pname src;
-            };
-
-            fmt = lib.rust.cargoFmt rust.toolchain.dev {
-              inherit (packages.frontend.passthru) pname src;
-            };
-
-            machete = lib.rust.cargoMachete {
-              inherit (packages.frontend.passthru) pname src;
-            };
-
-            workspace-unused = lib.rust.cargoWorkspaceUnused rust.toolchain.dev {
-              inherit (packages.frontend.passthru) pname src;
-            };
-          }
-          // lib.mapToAttrs id mkCaseStudies [
-            {
-              pname = "evenint";
-              src = ./case_studies/evenint;
-            }
-            {
-              pname = "hillel";
-              src = ./case_studies/hillel;
-            }
-            {
-              pname = "minivec";
-              src = ./case_studies/minivec;
-            }
-            {
-              pname = "paper-examples";
-              src = ./case_studies/paper_examples;
-            }
-            {
-              pname = "paper-examples-rr20";
-              src = ./case_studies/refinedrust-20-paper-examples;
-            }
-            {
-              pname = "tests";
-              src = ./case_studies/tests;
-            }
-          ];
-
-        devShells =
-          {
-            default = devShells."target-${lib.rust.hostPlatform}";
-          }
-          // rust.mkDrvRustTargetToolchains (toolchain:
-            pkgs.mkShell {
-              inputsFrom = with packages; [frontend theories];
-              packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
-
-              LD_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
-              DYLD_FALLBACK_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
-              LIBCLANG_PATH = makeLibraryPath [pkgs.libclang.lib];
-            });
-
-        formatter = pkgs.alejandra;
-      });
+          formatter = pkgs.nixfmt-tree;
+        };
+    };
 }

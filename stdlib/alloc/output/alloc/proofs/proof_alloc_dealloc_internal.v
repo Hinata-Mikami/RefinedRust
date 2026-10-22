@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.alloc.alloc.generated Require Import generated_code_alloc generated_specs_alloc generated_template_alloc_dealloc_internal.
 
@@ -21,24 +21,34 @@ Proof.
   iSelect (_ ◁ᵥ{_, _} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
   iSelect (ptr ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Hptr").
   iSelect (freeable_nz _ _ _ _) (fun H => iRename H into "Hfree").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "(_ & %Hsize)".
+  rewrite {1 2}/ty_own_val /= !int_own_val_unfold. iDestruct "Hsize" as "(_ & %Hsize)".
   iDestruct "Halign_log2" as "(_ & %Halign_log2)".
 
   rewrite /typed_stmt.
-  iIntros (?) "#CTX #HE HL Hf Hcont".
+  iIntros (??) "#CTX #HE HL Hf Hcont".
   rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
   set (ly := Layout (Z.to_nat size) (Z.to_nat align_log2)).
   iDestruct "Hptr" as "(%ly' & %Hst & %Hly & _ & #Hlb & %r' & <- & Hb)".
-  specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & ? & ?).
+  specialize (syn_type_has_layout_untyped_inv _ _ Hst) as Hst'.
+  specialize (syn_type_has_layout_literal_inv _ _ Hst') as (-> & ? & ?).
   iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
-  iDestruct "Hb" as "(%v' & Hptr & Hv')".
-  iPoseProof (ty_own_val_has_layout with "Hv'") as "%Hlyv'"; first done.
+  iDestruct "Hb" as "(%v2 & Hptr & Hv2)".
+  iPoseProof (ty_own_val_has_layout with "Hv2") as "%Hlyv2"; first done.
+  iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
 
-  iApply (wps_free _ _ _ _ ptr _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
+  iRename select (_ ◁ᵥ{_, _} ptr @ alias_ptr_t)%I into "Hal".
+  iPoseProof ("Hal") as "#Hal'".
+  iEval (rewrite /ty_own_val/=) in "Hal'".
+  iDestruct "Hal'" as "(_ & Hal')".
+  iPoseProof (alias_ptr_own_val_to_decodes with "Hal'") as "%".
+
+
+  iApply (wps_free _ _ _ _ _ ptr _ _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
   { rewrite Hsize. f_equiv.
     apply val_to_Z_unsigned_nonneg in Hsize; last done. lia. }
   { rewrite Halign_log2. f_equiv.
     apply val_to_Z_unsigned_nonneg in Halign_log2; last done. lia. }
+  { done. }
   { lia. }
   { iExists _. iFrame. fold ly. done. }
   { rewrite /freeable_nz.

@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.minivec.generated Require Import generated_code_minivec generated_specs_minivec.
 From refinedrust.examples.minivec.generated Require Import generated_template_Vec_T_push.
@@ -15,10 +15,10 @@ Proof.
   Vec_T_push_prelude.
 
   rep <-! liRStep; liShow.
-  { apply_update (updateable_typed_array_access x'0 (length self ) (st_of T_ty MetaNone)).
+  { apply_update (updateable_typed_array_access x'0 (length self ) (UntypedSynType $ st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
   { rep <-! liRStep; liShow.
-    apply_update (updateable_typed_array_access l (length self ) (st_of T_ty MetaNone)).
+    apply_update (updateable_typed_array_access l (length self ) (UntypedSynType $ st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
 
 

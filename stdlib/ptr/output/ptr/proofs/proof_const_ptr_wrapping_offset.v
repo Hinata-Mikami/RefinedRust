@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_const_ptr_wrapping_offset.
 
@@ -16,13 +16,13 @@ Proof.
   liFromSyntax.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
+  rewrite {1}/ty_own_val /= int_own_val_unfold. iDestruct "Hv1" as "(_ & %Hv1)".
+  rewrite {1}/ty_own_val /= alias_ptr_own_val_unfold. iDestruct "Hv2" as "(_ & %)".
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply wp_ptr_wrapping_offset.
-  { apply val_to_of_loc. }
+  { done. }
   { done. }
   iApply (physical_step_intro_tr with "Hat"). iIntros "!> [Hat Hat'] Hcred !>".
   iPoseProof ("Hatcl" with "[Hat']") as "Hstore".
@@ -32,18 +32,18 @@ Proof.
   assert ((l wrapping_offset{T_st_ly}ₗ count).(loc_a) ∈ USize).
   { rewrite /wrapping_offset_loc /wrapping_shift_loc/=.
     by apply wrap_unsigned_in_range. }
+  iIntros (?) "%Hv".
   iApply ("Hcont" $! _   _ _ (alias_ptr_t) with "HL Hf").
-  { rewrite /ty_own_val /=. iPureIntro. sidecond_hammer. }
+  { rewrite /ty_own_val /= alias_ptr_own_val_unfold. iPureIntro. split; first done.
+    apply val_to_loc_decodes_to_loc.
+    by apply val_to_of_loc. }
 
   repeat liRStep; liShow.
-
-
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { rewrite /WrappingOffsetLocSt.
-    simplify_layout_goal. done. }
+  all: rewrite /WrappingOffsetLocSt; simplify_layout_goal; done.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

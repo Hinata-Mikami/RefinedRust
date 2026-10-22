@@ -1,0 +1,939 @@
+From iris.proofmode Require Import string_ident.
+From lithium Require Export base.
+From lithium Require Import hooks simpl_classes pure_definitions normalize.
+
+(** This file provides various pure solvers. *)
+
+(** * [refined_solver]
+    Version of naive_solver which fails faster. *)
+Ltac refined_solver_init :=
+  unfold iff, not in *;
+  repeat match goal with
+  | H : context [∀ _, _ ∧ _ ] |- _ =>
+    repeat setoid_rewrite forall_and_distr in H; revert H
+  | H : context [Is_true _ ] |- _ =>
+    repeat setoid_rewrite Is_true_eq in H
+  | |- Is_true _ => repeat setoid_rewrite Is_true_eq
+  end.
+Ltac refined_solver tac := fail.
+Ltac refined_solver_norec tac := fail.
+Ltac refined_solver_step_1 tac :=
+  match goal with
+  (**i solve the goal *)
+  | |- _ => fast_done
+  (**i intros *)
+  | |- ∀ _, _ => intro
+  (**i simplification of assumptions *)
+  | H : False |- _ => destruct H
+  | H : _ ∧ _ |- _ =>
+     (* Work around bug https://github.com/rocq-prover/rocq/issues/2901 *)
+     let H1 := fresh in let H2 := fresh in
+     destruct H as [H1 H2]; try clear H
+  | H : ∃ _, _  |- _ =>
+     let x := fresh in let Hx := fresh in
+     destruct H as [x Hx]; try clear H
+  | H : ?P → ?Q, H2 : ?P |- _ => specialize (H H2)
+  (**i simplify and solve equalities *)
+  (* | |- _ => progress simplify_eq/= *)
+  | |- _ => progress subst; csimpl in *
+  (**i operations that generate more subgoals *)
+  | |- _ ∧ _ => split
+  (* | |- Is_true (bool_decide _) => apply (bool_decide_pack _) *)
+  (* | |- Is_true (_ && _) => apply andb_True; split *)
+  | H : _ ∨ _ |- _ =>
+     let H1 := fresh in destruct H as [H1|H1]; try clear H
+  (* | H : Is_true (_ || _) |- _ => *)
+     (* apply orb_True in H; let H1 := fresh in destruct H as [H1|H1]; try clear H *)
+  (**i solve the goal using the user supplied tactic *)
+  | |- _ => solve [tac]
+  end.
+Ltac refined_solver_step_2 tac :=
+  (**i use recursion to enable backtracking on the following clauses. *)
+  match goal with
+  (**i instantiation of the conclusion *)
+  | |- ∃ x, _ => no_new_unsolved_evars ltac:(eexists; refined_solver tac)
+  | |- _ ∨ _ => first [left; refined_solver tac | right; refined_solver tac]
+  (* | |- Is_true (_ || _) => apply orb_True; first [left; go | right; go] *)
+  | _ =>
+    (**i instantiations of assumptions. *)
+    match goal with
+    | H : ?P → ?Q |- _ =>
+      let H' := fresh "H" in
+      (* When instantiating an assumption, we can prune early and do not descend further recursively.
+         Otherwise, we should just have instantiated something else first to afterwards make progress when instantiating this assumption. *)
+      assert P as H'; [clear H; refined_solver_norec tac | specialize (H H'); clear H']
+    end
+  end.
+Ltac refined_solver_step_2_norec tac :=
+  (**i use recursion to enable backtracking on the following clauses. *)
+  match goal with
+  (**i instantiation of the conclusion *)
+  | |- ∃ x, _ => no_new_unsolved_evars ltac:(eexists; refined_solver tac)
+  | |- _ ∨ _ => first [left; refined_solver tac | right; refined_solver tac]
+  end.
+
+Ltac refined_solver_step tac :=
+  repeat (refined_solver_step_1 tac); (refined_solver_step_2 tac).
+Ltac refined_solver tac ::=
+  solve [refined_solver_init; repeat (refined_solver_step tac)].
+
+Ltac refined_solver_step_norec tac :=
+  repeat (refined_solver_step_1 tac); (refined_solver_step_2_norec tac).
+Ltac refined_solver_norec tac ::=
+  solve [refined_solver_init; repeat (refined_solver_step_norec tac)].
+
+Tactic Notation "refined_solver" tactic(t) := refined_solver t.
+Tactic Notation "refined_solver" := refined_solver eauto.
+
+(** * [normalize_and_simpl_goal] *)
+Ltac normalize_and_simpl_impl handle_exist :=
+  let discr :=
+    lazymatch goal with
+    | |- discriminate_hint ?P → ?Q =>
+        constr:(true)
+    | |- _ => constr:(false)
+    end in
+  let hint :=
+    lazymatch goal with
+    | |- name_hint ?h ?P -> ?Q =>
+        constr:(Some h)
+    | |- _ => constr:(@None String.string)
+    end in
+  try lazymatch goal with
+  | |- discriminate_hint ?P → ?Q =>
+      change_no_check (P → Q)
+  | |- name_hint _ ?P → ?Q =>
+      change_no_check (P → Q)
+  | |- shelve_hint ?P → ?Q =>
+      change_no_check (P → Q)
+  | |- destruct_hint ?x ?P → ?Q =>
+      change_no_check (P x → Q)
+  end;
+  let add_hint :=
+    idtac;
+    match goal with
+    | |- ?P → ?Q =>
+      match discr with
+      | true =>
+        change_no_check (discriminate_hint P → Q)
+      | false =>
+        match hint with
+        | Some ?h =>
+          change_no_check (name_hint h P → Q)
+        | None =>
+          idtac
+        end
+      end
+    | |- _ =>
+        (* the goal shape might have changed due to simplification, in this case drop the hint *)
+        idtac
+    end
+  in
+  let do_intro :=
+    idtac;
+    match goal with
+    | |- (∃ _, _) → _ =>
+        lazymatch handle_exist with
+        | true => case
+        | false => fail 1 "exist not handled"
+        end
+    | |- (_ = _) → _ =>
+        hooks.check_injection_hook;
+        let Hi := fresh "Hi" in move => Hi; injection Hi; clear Hi
+    | |- (?x = _) → _ =>
+        is_var x;
+        let He := fresh "Heq" in move => He;
+        repeat match goal with
+               | H : context[x] |- _ =>
+                   assert_fails (unify H He);
+                   before_revert_hook H;
+                   revert H
+                   (*generalize dependent H*)
+        end;
+        subst
+    | |- (_ = ?x) → _ =>
+        is_var x;
+        let He := fresh "Heq" in move => He;
+        repeat match goal with
+               | H : context[x] |- _ =>
+                   assert_fails (unify H He);
+                   before_revert_hook H;
+                   revert H
+                   (*generalize dependent H*)
+        end;
+        subst
+    | |- False → _ => intros []
+    | |- ?P → _ =>
+        match discr with
+        | true =>
+          let Hd := fresh "Hd" in move => Hd; try discriminate Hd
+        | false =>
+          match hint with
+          | Some ?h =>
+            string_ident.string_to_ident_cps h ltac:(fun H => first [intros H | intros ?])
+          | None =>
+              assert_is_not_trivial P;
+              let H := fresh in
+              intros H; hooks.after_intro_hook H
+          end
+        end
+    | |- _ => move => _
+    end
+  in
+  lazymatch goal with
+  (* relying on the fact that unification variables cannot contain
+  dependent variables to distinguish between dependent and non
+  dependent forall *)
+  | |- ?P -> ?Q =>
+    let T := type of P in
+    let T := eval simpl in T in
+    lazymatch T with
+    | Prop => first [
+        (* first check if the hyp is trivial *)
+        assert_is_trivial P; intros _
+      | (progress normalize_goal_impl); add_hint
+      | let changed := open_constr:(_) in
+        notypeclasses refine (@simpl_impl_unsafe changed P _ _ Q _); [solve [refine _] |];
+        (* We need to simpl here to make sure that we only introduce
+        fully simpl'd terms into the context (and do beta reduction
+        for the lemma application above). *)
+        simpl;
+        let changed := eval simpl in changed in
+        lazymatch changed with
+        | true => add_hint
+        | false => do_intro
+        end
+      | do_intro
+      ]
+    (* just some unused variable, forget it *)
+    | _ => move => _
+    end
+  end.
+
+Lemma intro_and_True P :
+  (P ∧ True) → P.
+Proof. naive_solver. Qed.
+
+Ltac normalize_and_simpl_goal_step :=
+  first [
+      lazymatch goal with
+      | |- _ ∧ _ => split; [splitting_fast_done|]
+      | _ => splitting_fast_done
+      end
+    |
+      progress normalize_goal; simpl
+    |
+      lazymatch goal with
+      | |- ∃ _, _ => fail 1 "normalize_and_simpl_goal stop in exist"
+      end
+    |
+      lazymatch goal with
+      | |- _ ∧ _ => idtac
+      | _ => refine (intro_and_True _ _)
+      end;
+      lazymatch goal with
+      | |- ?P ∧ ?Q =>
+        notypeclasses refine (@simpl_and_unsafe P _ _ Q _); [solve [refine _] |];
+        simpl;
+        split_and?
+      end
+    | lazymatch goal with
+    (* relying on the fact that unification variables cannot contain
+       dependent variables to distinguish between dependent and non dependent forall *)
+      | |- ?P -> ?Q =>
+        normalize_and_simpl_impl true
+      | |- forall _ : ?P, _ =>
+        lazymatch P with
+        | (prod _ _) => case
+        | unit => case
+        | _ => intro
+        end
+    end ].
+
+Ltac normalize_and_simpl_goal := repeat normalize_and_simpl_goal_step.
+
+(** * [compute_map_lookup] *)
+Ltac compute_map_lookup :=
+  lazymatch goal with
+  | |- ?Q !! _ = Some _ => try (is_var Q; unfold Q)
+  | _ => fail "unknown goal for compute_map_lookup"
+  end;
+  solve [repeat lazymatch goal with
+  | |- <[?x:=?s]> ?Q !! ?y = Some ?res =>
+    lazymatch x with
+    | y => change_no_check (Some s = Some res); reflexivity
+    | _ => change_no_check (Q !! y = Some res)
+    end
+  end ].
+
+(** * Enriching the context for lia  *)
+Definition enrich_marker {A} (f : A) : A := f.
+Ltac enrich_context_base :=
+    repeat match goal with
+         | |- context C [ Z.quot ?a ?b ] =>
+           let G := context C[enrich_marker Z.quot a b] in
+           change_no_check G;
+           try have ?:=Z.quot_lt a b ltac:(lia) ltac:(lia);
+           try have ?:=Z.quot_pos a b ltac:(lia) ltac:(lia)
+         | |- context C [ Z.rem ?a ?b ] =>
+           let G := context C[enrich_marker Z.rem a b] in
+           change_no_check G;
+           try have ?:=Z.rem_bound_pos a b ltac:(lia) ltac:(lia)
+         | |- context C [ Z.modulo ?a ?b ] =>
+           let G := context C[enrich_marker Z.modulo a b] in
+           change_no_check G;
+           try have ?:=Z.mod_bound_pos a b ltac:(lia) ltac:(lia)
+         | |- context C [ length (filter ?P ?l) ] =>
+           let G := context C[enrich_marker length (filter P l)] in
+           change_no_check G;
+           pose proof (length_filter P l)
+           end.
+
+Ltac enrich_context :=
+  enrich_context_base;
+  enrich_context_hook;
+  unfold enrich_marker.
+
+Section enrich_test.
+  Local Open Scope Z_scope.
+  Goal ∀ n m, 0 < n → 1 < m → n `quot` m = n `rem` m.
+    move => n m ??. enrich_context.
+  Abort.
+End enrich_test.
+
+(** * [solve_goal]  *)
+Ltac reduce_closed_Z :=
+  idtac;
+  reduce_closed_Z_hook;
+  repeat match goal with
+  | |- context [(?a ≪ ?b)%Z] => progress reduce_closed (a ≪ b)%Z
+  | H : context [(?a ≪ ?b)%Z] |- _ => progress reduce_closed (a ≪ b)%Z
+  | |- context [(?a ≫ ?b)%Z] => progress reduce_closed (a ≫ b)%Z
+  | H : context [(?a ≫ ?b)%Z] |- _ => progress reduce_closed (a ≫ b)%Z
+  end.
+
+Tactic Notation "solve_goal" "with" tactic(tac) :=
+  simpl;
+  try fast_done;
+  solve_goal_prepare_hook;
+  normalize_and_simpl_goal;
+  solve_goal_normalized_prepare_hook; reduce_closed_Z; enrich_context;
+  repeat case_bool_decide => //; repeat case_decide => //; repeat case_match => //;
+  tac.
+Tactic Notation "solve_goal" :=
+  solve_goal with solve_goal_final_hook.
+
+
+(** rep
+
+ The [rep] tactic is an alternative to the [repeat] and [do] tactics
+ that supports left-biased depth-first branching with optional
+ backtracking on failure. *)
+
+(* A backtrack point marker *)
+Definition BACKTRACK_POINT {A} (P : A) : A := P.
+Arguments BACKTRACK_POINT : simpl never.
+Global Typeclasses Opaque BACKTRACK_POINT.
+
+(* For instance, we could redefine the hook as follows: *)
+(*
+Ltac rep_check_backtrack_point_hook ::=
+  match goal with
+    | |- BACKTRACK_POINT ?P =>
+      idtac
+  end.
+ *)
+
+Module Rep.
+  Import Ltac2.
+  Import Ltac2.Printf.
+
+  (* Check whether the current goal is a backtracking point *)
+  Ltac2 rep_check_backtrack_point (_ : unit) : bool :=
+    Control.once_plus
+      (fun _ => ltac1:(rep_check_backtrack_point_hook); true)
+      (fun _ => false).
+
+  (* Backtracking mode:
+     - NoBacktrack: don't backtrack
+     - BacktrackSteps n: backtrack to n steps before failure
+     - BacktrackPoint n: go back to the n-th last goal for which [rep_check_backtrack_point] succeeded
+     - BacktrackLast: go back to the last backtracking point, or keep the current state if none exists *)
+  Ltac2 Type backtrack_mode :=
+    [ NoBacktrack | BacktrackSteps (int) | BacktrackPoint (int) | BacktrackLast ].
+
+  (* Exception to signal how many more steps should be backtracked*)
+  Ltac2 Type exn ::= [ RepBacktrack (backtrack_mode) ].
+
+  Ltac2 Type last_segment_result :=
+    [ LastSegmentDone (int) | LastSegmentNextPoint (int * int option) ].
+
+  Ltac2 Type point_status := [ PointUnknown | PointAbsent | PointPresent ].
+
+  Ltac2 Type last_iteration_result :=
+    [ LastIterationAtPoint | LastIterationFailed | LastIterationStepped (point_status) ].
+
+  Ltac2 has_goals (_ : unit) : bool := Int.gt (Control.numgoals ()) 0.
+
+  Ltac2 run_on_first_goal (tac : unit -> unit) : bool :=
+    Control.focus 1 1 (fun _ =>
+      Control.once_plus
+        (fun _ => tac (); true)
+        (fun _ => false)).
+
+  Ltac2 rec rep_no_backtrack (n : int option) (steps : int)
+      (tac : unit -> unit) : int :=
+    match has_goals () with
+    | false => steps
+    | true =>
+        let do_rep := match n with | None => true | Some n => Int.gt n 0 end in
+        match do_rep with
+        | false => steps
+        | true =>
+            match run_on_first_goal tac with
+            | false => steps
+            | true =>
+                let new_n :=
+                  match n with | None => None | Some n => Some (Int.sub n 1) end in
+                rep_no_backtrack new_n (Int.add steps 1) tac
+            end
+        end
+    end.
+
+  (* Inspect the current goal, run one step, and inspect its replacement goal
+     without leaving the focus in between. If the focused goal is solved, the
+     status of the next global goal is unknown because it is outside the focus. *)
+  Ltac2 rep_last_iteration (current_status : point_status)
+      (inspect_result : bool) (tac : unit -> unit) : last_iteration_result :=
+    Control.focus 1 1 (fun _ =>
+      let is_current_point :=
+        match current_status with
+        | PointPresent => true
+        | PointAbsent => false
+        | PointUnknown => rep_check_backtrack_point ()
+        end in
+      match is_current_point with
+      | true => LastIterationAtPoint
+      | false =>
+          Control.once_plus
+            (fun _ =>
+              tac ();
+              let result_status :=
+                match inspect_result with
+                | false => PointUnknown
+                | true =>
+                    match has_goals () with
+                    | false => PointUnknown
+                    | true =>
+                        match rep_check_backtrack_point () with
+                        | true => PointPresent
+                        | false => PointAbsent
+                        end
+                    end
+                end in
+              LastIterationStepped result_status)
+            (fun _ => LastIterationFailed)
+      end).
+
+  (* Run from one backtracking point up to completion, failure, or the next
+     point. Returning at the next point commits the previous checkpoint. *)
+  Ltac2 rec rep_last_segment (n : int option) (current_status : point_status)
+      (steps : int) (tac : unit -> unit) : last_segment_result :=
+    match has_goals () with
+    | false => LastSegmentDone steps
+    | true =>
+        let do_rep := match n with | None => true | Some n => Int.gt n 0 end in
+        match do_rep with
+        | false => LastSegmentDone steps
+        | true =>
+            let new_n :=
+              match n with | None => None | Some n => Some (Int.sub n 1) end in
+            let inspect_result :=
+              match new_n with | None => true | Some n => Int.gt n 0 end in
+            match rep_last_iteration current_status inspect_result tac with
+            | LastIterationAtPoint => LastSegmentNextPoint (steps, n)
+            | LastIterationFailed => Control.zero (RepBacktrack BacktrackLast)
+            | LastIterationStepped PointPresent =>
+                LastSegmentNextPoint (Int.add steps 1, new_n)
+            | LastIterationStepped status =>
+                rep_last_segment new_n status (Int.add steps 1) tac
+            end
+        end
+    end.
+
+  Ltac2 rec rep_last_from_point (n : int option) (steps : int)
+      (tac : unit -> unit) : int :=
+    let res := Control.case (fun _ => rep_last_segment n PointAbsent 0 tac) in
+    match res with
+    | Err e =>
+        match e with
+        | RepBacktrack BacktrackLast => steps
+        | _ => Control.zero e
+        end
+    | Val (result, _) =>
+        match result with
+        | LastSegmentDone segment_steps => Int.add steps segment_steps
+        | LastSegmentNextPoint (segment_steps, n) =>
+            rep_last_from_point n (Int.add steps segment_steps) tac
+        end
+    end.
+
+  Ltac2 rec rep_last_before_point (n : int option) (current_status : point_status)
+      (steps : int)
+      (tac : unit -> unit) : int :=
+    match has_goals () with
+    | false => steps
+    | true =>
+        let do_rep := match n with | None => true | Some n => Int.gt n 0 end in
+        match do_rep with
+        | false => steps
+        | true =>
+            let new_n :=
+              match n with | None => None | Some n => Some (Int.sub n 1) end in
+            let inspect_result :=
+              match new_n with | None => true | Some n => Int.gt n 0 end in
+            match rep_last_iteration current_status inspect_result tac with
+            | LastIterationAtPoint => rep_last_from_point n steps tac
+            | LastIterationFailed =>
+                printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+                steps
+            | LastIterationStepped PointPresent =>
+                rep_last_from_point new_n (Int.add steps 1) tac
+            | LastIterationStepped status =>
+                rep_last_before_point new_n status (Int.add steps 1) tac
+            end
+        end
+    end.
+
+  Ltac2 rep_last (n : int option) (tac : unit -> unit) : int :=
+    rep_last_before_point n PointUnknown 0 tac.
+
+  Ltac2 print_bound_exceeded (bound : int) (steps : int) :=
+    printf
+      "Warning: rep <-! step bound of %i exceeded after %i steps; stopping at the next backtracking point."
+      bound steps.
+
+  (* The bound is checked only at backtracking points, so a segment is always
+     committed or rolled back as a whole. *)
+  Ltac2 rec rep_last_bounded_from_point (bound : int) (steps : int)
+      (tac : unit -> unit) : int :=
+    match Int.gt steps bound with
+    | true =>
+        print_bound_exceeded bound steps;
+        steps
+    | false =>
+        let res := Control.case (fun _ => rep_last_segment None PointAbsent 0 tac) in
+        match res with
+        | Err e =>
+            match e with
+            | RepBacktrack BacktrackLast => steps
+            | _ => Control.zero e
+            end
+        | Val (result, _) =>
+            match result with
+            | LastSegmentDone segment_steps => Int.add steps segment_steps
+            | LastSegmentNextPoint (segment_steps, _) =>
+                rep_last_bounded_from_point bound (Int.add steps segment_steps) tac
+            end
+        end
+    end.
+
+  Ltac2 rec rep_last_bounded_before_point (bound : int)
+      (current_status : point_status) (steps : int)
+      (tac : unit -> unit) : int :=
+    match has_goals () with
+    | false => steps
+    | true =>
+        match rep_last_iteration current_status true tac with
+        | LastIterationAtPoint => rep_last_bounded_from_point bound steps tac
+        | LastIterationFailed =>
+            printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+            steps
+        | LastIterationStepped PointPresent =>
+            rep_last_bounded_from_point bound (Int.add steps 1) tac
+        | LastIterationStepped status =>
+            rep_last_bounded_before_point bound status (Int.add steps 1) tac
+        end
+    end.
+
+  Ltac2 rep_last_bounded (bound : int) (tac : unit -> unit) : int :=
+    rep_last_bounded_before_point bound PointUnknown 0 tac.
+
+  Ltac2 rec rep_last_bounded_on_failure_from_point (bound : int) (steps : int)
+      (tac : unit -> unit) (on_failure : unit -> unit) : int :=
+    match Int.gt steps bound with
+    | true =>
+        print_bound_exceeded bound steps;
+        steps
+    | false =>
+        let res := Control.case (fun _ => rep_last_segment None PointAbsent 0 tac) in
+        match res with
+        | Err e =>
+            match e with
+            | RepBacktrack BacktrackLast =>
+                Control.focus 1 1 on_failure;
+                steps
+            | _ => Control.zero e
+            end
+        | Val (result, _) =>
+            match result with
+            | LastSegmentDone segment_steps => Int.add steps segment_steps
+            | LastSegmentNextPoint (segment_steps, _) =>
+                rep_last_bounded_on_failure_from_point bound
+                  (Int.add steps segment_steps) tac on_failure
+            end
+        end
+    end.
+
+  Ltac2 rec rep_last_bounded_on_failure_before_point (bound : int)
+      (current_status : point_status) (steps : int)
+      (tac : unit -> unit) (on_failure : unit -> unit) : int :=
+    match has_goals () with
+    | false => steps
+    | true =>
+        match rep_last_iteration current_status true tac with
+        | LastIterationAtPoint =>
+            rep_last_bounded_on_failure_from_point bound steps tac on_failure
+        | LastIterationFailed =>
+            printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+            steps
+        | LastIterationStepped PointPresent =>
+            rep_last_bounded_on_failure_from_point bound (Int.add steps 1) tac on_failure
+        | LastIterationStepped status =>
+            rep_last_bounded_on_failure_before_point bound status
+              (Int.add steps 1) tac on_failure
+        end
+    end.
+
+  Ltac2 rep_last_bounded_on_failure (bound : int) (tac : unit -> unit)
+      (on_failure : unit -> unit) : int :=
+    rep_last_bounded_on_failure_before_point bound PointUnknown 0 tac on_failure.
+
+  (* calls [tac] [n] times (n = None means infinite) on the first goal
+  under focus, stops on failure of [tac] and then backtracks according to [nback]. *)
+  Ltac2 rec rep_aux (n : int option) (nback : backtrack_mode)
+      (tac : (unit -> unit)) : int :=
+    (* if there are no goals left, we are done *)
+    match has_goals () with
+    | false => 0
+    | true =>
+      (* check if we should do another repetition *)
+      let do_rep := match n with | None => true | Some n => Int.gt n 0 end in
+      match do_rep with
+      | false => 0
+      | true =>
+        let is_backtrack_point :=
+          match nback with
+          | BacktrackPoint _ =>
+              Control.focus 1 1 (fun _ => rep_check_backtrack_point ())
+          | _ => false
+          end in
+        (* backtracking point *)
+        let res := Control.case (fun _ =>
+          (* run tac on the first goal *)
+          let tac_res := Control.focus 1 1 (fun _ => Control.case tac) in
+          match tac_res  with
+          | Err _ =>
+              (* if tac failed, start the backtracking *)
+              Control.zero (RepBacktrack nback)
+          | Val _ =>
+              (* compute new n and recurse *)
+              let new_n :=
+                match n with | None => None | Some n => Some (Int.sub n 1) end in
+              let n_steps := rep_aux new_n nback tac in
+              Int.add n_steps 1
+          end) in
+        match res with
+        | Err e =>
+            match e with
+            (* check if we have to backtrack *)
+            | RepBacktrack m =>
+                match m with
+                | BacktrackSteps n =>
+                  (* either rethrow it with one less or return 0 *)
+                  match Int.gt n 0 with
+                  | true => Control.zero (RepBacktrack (BacktrackSteps (Int.sub n 1)))
+                  | false => 0
+                  end
+                | BacktrackPoint n =>
+                    match Int.gt n 0 with
+                    | true =>
+                      (* check if we are at the last backtracking point or rethrow it *)
+                      match is_backtrack_point with
+                      | true =>
+                        match Int.gt n 1 with
+                        | true =>
+                          Control.zero (RepBacktrack (BacktrackPoint (Int.sub n 1)))
+                        | false => 0
+                        end
+                      | false => Control.zero (RepBacktrack (BacktrackPoint n))
+                      end
+                    | false => 0
+                    end
+                | BacktrackLast => Control.throw Assertion_failure
+                | NoBacktrack => 0
+                end
+            | _ => Control.zero e
+            end
+        | Val (r, _) => r
+        end
+      end
+    end.
+
+  Ltac2 rep (n : int option) (nback : backtrack_mode) (tac : unit -> unit) : int :=
+    match nback with
+    | NoBacktrack => rep_no_backtrack n 0 tac
+    | BacktrackLast => rep_last n tac
+    | _ => rep_aux n nback tac
+    end.
+
+  Ltac2 print_steps (n : int) :=
+    printf "Did %i steps." n.
+
+  Ltac2 rec pos_to_ltac2_int (n : constr) : int :=
+    lazy_match! n with
+    | xH => 1
+    | xO ?n => Int.mul (pos_to_ltac2_int n) 2
+    | xI ?n => Int.add (Int.mul (pos_to_ltac2_int n) 2) 1
+    end.
+
+  Ltac2 rec z_to_ltac2_int (n : constr) : int :=
+    lazy_match! n with
+    | Z0 => 0
+    | Z.pos ?n => pos_to_ltac2_int n
+    | Z.neg ?n => Int.neg (pos_to_ltac2_int n)
+    end.
+
+  (* TODO: use a mutable record field, see Janno's message *)
+
+  (* Calls tac on a new subgoal of type Z and converts the resulting Z
+  to an int. *)
+  Ltac2 int_from_z_subgoal (tac : unit -> unit) : int :=
+    let x := Control.focus 1 1 (fun _ =>
+      let x := open_constr:(_ : Z) in
+      match Constr.Unsafe.kind x with
+      | Constr.Unsafe.Cast x _ _ =>
+          match Constr.Unsafe.kind x with
+          | Constr.Unsafe.Evar e _ =>
+              Control.new_goal e;
+              x
+          | _ => Control.throw Assertion_failure
+          end
+      | _ => Control.throw Assertion_failure
+      end) in
+    (* new goal has index 2 because it was added after goal number 1 *)
+    Control.focus 2 2 (fun _ =>
+      tac ();
+      (* check that the goal is closed *)
+      Control.enter (fun _ => Control.throw Assertion_failure));
+    Control.focus 1 1 (fun _ =>
+      let x := Std.eval_vm None x in
+      z_to_ltac2_int x).
+
+  (* Necessary because Some and None cannot be used in ltac2: quotations. *)
+  Ltac2 some (n : int) : int option := Some n.
+  Ltac2 none : int option := None.
+End Rep.
+
+(** rep repeatedly applies tac to the goal in a depth-first manner. In
+particular, if tac generates multiple subgoals, the process continues
+with the first subgoal and only looks at the second subgoal if the
+first subgoal (and all goals spawed from it) are solved. If [tac]
+fails, the complete process stops (unlike [repeat] which continues
+with other subgoals).
+
+[rep n tac] iterates this process at most n times.
+[rep <- n tac] backtracks n steps on failure.
+[rep <-! tac] backtracks to the last backtracking point on failure.
+[rep <-! <n tac] stops at the first backtracking point reached after exceeding n steps.
+[rep <-! <n tac | on_failure hook] additionally runs [hook] at the retained
+ backtracking point when [tac] fails, but not when the step bound is exceeded.
+ (See the comment on [rep_check_backtrack_point] above to see what a backtracking point is)
+[rep <-? n tac] backtracks to the n-th last backtracking point on failure.
+*)
+Tactic Notation "rep" tactic3(tac) :=
+  let r := ltac2:(tac |-
+    Rep.print_steps (Rep.rep Rep.none Rep.NoBacktrack (fun _ => Ltac1.run tac))) in
+  r tac.
+
+(* rep is carefully written such that all goals are passed to Ltac2
+and rep can apply tac in a depth-first manner to only the first goal.
+In particular, the behavior of [all: rep 10 tac.] is equivalent to
+[all: rep 5 tac. all: rep 5 tac.], even if the first call spawns new
+subgoals. (See also the tests.) *)
+Tactic Notation "rep" int(n) tactic3(tac) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac |-
+    let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+    Rep.print_steps (Rep.rep (Rep.some n) Rep.NoBacktrack (fun _ => Ltac1.run tac))) in
+  r ntac tac.
+
+Tactic Notation "rep" "<-" int(n) tactic3(tac) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac |-
+     let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+     Rep.print_steps (Rep.rep (Rep.none) (Rep.BacktrackSteps n) (fun _ => Ltac1.run tac))) in
+  r ntac tac.
+
+Tactic Notation "rep" "<-!" tactic3(tac) :=
+  let r := ltac2:(tac |-
+    Rep.print_steps (Rep.rep Rep.none Rep.BacktrackLast (fun _ => Ltac1.run tac))) in
+  r tac.
+
+Tactic Notation "rep" "<-!" "<" int(n) tactic3(tac) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac |-
+    let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+    Rep.print_steps (Rep.rep_last_bounded n (fun _ => Ltac1.run tac))) in
+  r ntac tac.
+
+Tactic Notation "rep" "<-!" "<" int(n) tactic3(tac)
+    "|" "on_failure" tactic3(on_failure) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac on_failure |-
+    let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+    Rep.print_steps
+      (Rep.rep_last_bounded_on_failure n
+        (fun _ => Ltac1.run tac) (fun _ => Ltac1.run on_failure))) in
+  r ntac tac on_failure.
+
+Tactic Notation "rep" "<-?" int(n) tactic3(tac) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac |-
+     let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+     Rep.print_steps (Rep.rep (Rep.none) (Rep.BacktrackPoint n) (fun _ => Ltac1.run tac))) in
+  r ntac tac.
+
+Module RepTest.
+  Definition DELAY (P : Prop) : Prop := P.
+
+  Ltac DELAY_test_tac :=
+    first [
+        lazymatch goal with | |- DELAY ?P => change P end |
+        exact eq_refl |
+        split |
+        lazymatch goal with | |- BACKTRACK_POINT ?P => change P end
+      ].
+  Ltac DELAY_test_tac_with_true := first [exact I | DELAY_test_tac].
+  Ltac DELAY_test_tac_fail_on_true := first [
+    lazymatch goal with | |- DELAY ?P => change P end |
+    lazymatch goal with | |- BACKTRACK_POINT ?P => change P end
+  ].
+  Local Ltac rep_check_backtrack_point_hook ::=
+    match goal with
+    | |- BACKTRACK_POINT ?P =>
+      idtac
+    end.
+
+  Goal ∃ x, Nat.iter 10 DELAY (x = 1) ∧ Nat.iter 6 DELAY (x = 2). simpl. eexists.
+    all: rep DELAY_test_tac.
+    1: lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal ∃ x, Nat.iter 10 DELAY (x = 1) ∧ Nat.iter 6 DELAY (x = 2). simpl. eexists.
+    all: rep 5 DELAY_test_tac.
+    1: lazymatch goal with | |- DELAY (DELAY (DELAY (DELAY (DELAY (DELAY (_ = 1)))))) => idtac | |- _ => fail "unexpected goal" end.
+    2: lazymatch goal with | |- DELAY (DELAY (DELAY (DELAY (DELAY (DELAY (_ = 2)))))) => idtac | |- _ => fail "unexpected goal" end.
+    (* This should only apply tac to the first subgoal. *)
+    all: rep 5 DELAY_test_tac.
+    1: lazymatch goal with | |- DELAY (_ = 1) => idtac | |- _ => fail "unexpected goal" end.
+    2: lazymatch goal with | |- DELAY (DELAY (DELAY (DELAY (DELAY (DELAY (_ = 2)))))) => idtac | |- _ => fail "unexpected goal" end.
+    (* This finishes the first subgoal and use the remaining steps on
+    the second subgoal. *)
+    all: rep 5 DELAY_test_tac.
+    1: lazymatch goal with | |- DELAY (DELAY (DELAY (1 = 2))) => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal ∃ x, Nat.iter 10 DELAY (x = 1) ∧ Nat.iter 6 DELAY (x = 2). simpl. eexists.
+    repeat DELAY_test_tac.
+    (* Same as rep above. *)
+  Abort.
+
+  Goal ∃ x, Nat.iter 10 DELAY (x = 1) ∧ Nat.iter 6 DELAY (x = 2). simpl. eexists.
+    do 5? (DELAY_test_tac).
+    (* Notice the difference to [rep] above: [do] also applies the
+    steps to the second subgoal. *)
+  Abort.
+
+  Goal ∃ x, Nat.iter 10 DELAY (x ≤ 1) ∧ Nat.iter 6 DELAY (x = 2). simpl. eexists.
+    rep <-3 DELAY_test_tac.
+    1: lazymatch goal with | |- DELAY (DELAY (DELAY (_ ≤ 1))) => idtac | |- _ => fail "unexpected goal" end.
+    2: lazymatch goal with | |- DELAY (DELAY (DELAY (DELAY (DELAY (DELAY (_ = 2)))))) => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal ∃ x, Nat.iter 10 DELAY (x ≤ 1) ∧ Nat.iter 6 DELAY (x = 2). simpl. eexists.
+    repeat DELAY_test_tac.
+    (* Notice the difference to [rep] above: [repeat] continues with
+    the second subgoal on failure. *)
+  Abort.
+
+  Goal BACKTRACK_POINT (Nat.iter 10 DELAY (BACKTRACK_POINT (BACKTRACK_POINT (Nat.iter 10 DELAY (1 = 2))))). simpl.
+    all: rep <-! DELAY_test_tac.
+    all: do 11 DELAY_test_tac.
+    1: lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal BACKTRACK_POINT (DELAY (DELAY (DELAY (BACKTRACK_POINT False)))).
+    rep <-! <2 DELAY_test_tac.
+    lazymatch goal with
+    | |- BACKTRACK_POINT False => idtac
+    | |- _ => fail "unexpected goal"
+    end.
+  Abort.
+
+  Goal BACKTRACK_POINT (DELAY True).
+    rep <-! <100 DELAY_test_tac_fail_on_true | on_failure
+      lazymatch goal with
+      | |- BACKTRACK_POINT (DELAY True) => unfold BACKTRACK_POINT, DELAY; exact I
+      | |- _ => fail "failure hook did not run at the retained point"
+      end.
+  Qed.
+
+  Goal BACKTRACK_POINT (DELAY (DELAY (DELAY (BACKTRACK_POINT False)))).
+    rep <-! <2 DELAY_test_tac | on_failure fail "unexpected failure hook".
+    lazymatch goal with
+    | |- BACKTRACK_POINT False => idtac
+    | |- _ => fail "unexpected goal"
+    end.
+  Abort.
+
+  (* Detect a point among the replacement goals created by one step. *)
+  Goal BACKTRACK_POINT (BACKTRACK_POINT False ∧ BACKTRACK_POINT True).
+    rep <-! DELAY_test_tac.
+    1: lazymatch goal with | |- BACKTRACK_POINT False => idtac | |- _ => fail "unexpected goal" end.
+    2: lazymatch goal with | |- BACKTRACK_POINT True => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  (* Reinspect the remaining replacement goal after the first is solved. *)
+  Goal BACKTRACK_POINT (BACKTRACK_POINT True ∧ BACKTRACK_POINT False).
+    rep <-! DELAY_test_tac_with_true.
+    lazymatch goal with | |- BACKTRACK_POINT False => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal Nat.iter 10 DELAY (1 = 2). simpl.
+    rep <-! DELAY_test_tac.
+    lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal BACKTRACK_POINT (DELAY False).
+    let r := ltac2:(tac |-
+      Rep.print_steps (Rep.rep (Rep.some 1) Rep.BacktrackLast (fun _ => Ltac1.run tac))) in
+    r DELAY_test_tac.
+    lazymatch goal with | |- DELAY False => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal Nat.iter 10 DELAY (1 = 2). simpl.
+    Fail rep <-? 1 DELAY_test_tac.
+    lazymatch goal with
+    | |- DELAY _ => idtac
+    | |- _ => fail "unexpected goal"
+    end.
+  Abort.
+
+  Goal BACKTRACK_POINT (Nat.iter 10 DELAY (BACKTRACK_POINT (BACKTRACK_POINT (Nat.iter 10 DELAY (1 = 2))))). simpl.
+    all: rep <-? 3 DELAY_test_tac.
+    all: do 23 DELAY_test_tac.
+    1: lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+End RepTest.

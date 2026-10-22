@@ -12,31 +12,30 @@ use log::{info, trace};
 use radium::{code, coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::target::spec::PanicStrategy;
 use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::translation;
-use crate::environment::polonius_info::PoloniusInfo;
+use crate::body::{function_translation, panic};
+use crate::environment::mir_mapper;
 use crate::environment::procedure::Procedure;
-use crate::environment::{Environment, dump_borrowck_info};
-use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::regions::region_bi_folder::RegionBiFolder as _;
+use crate::error::Message;
 use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, ClosureSpecInfo, FunctionRequirements, FunctionSpecParser as _,
-    VerboseFunctionSpecParser,
+    CLOSURE_SPEC_ATTRS, COMMON_FUNCTION_SPEC_ATTRS, ClosureMetaInfo, ClosureSpecInfo, FUNCTION_SPEC_ATTRS,
+    FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
 };
-use crate::traits::registry::{self, RegionUnifier};
-use crate::{consts, procedures, regions, types};
+use crate::traits::registry;
+use crate::{attrs, consts, environment, procedures, regions, types};
 
 pub(crate) struct TX<'a, 'def, 'tcx> {
-    env: &'def Environment<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     /// this needs to be annotated with the right borrowck things
     proc: &'def Procedure<'tcx>,
     /// the Caesium function buildder
     translated_fn: code::FunctionBuilder<'def>,
-    /// tracking lifetime inclusions for the generation of lifetime inclusions
-    inclusion_tracker: InclusionTracker<'a, 'tcx>,
+    /// generator state for borrowck-driven annotations.
+    annotations: regions::AnnotationGenerator<'a, 'tcx>,
 
     /// registry of other procedures
     procedure_registry: &'a procedures::Scope<'tcx, 'def>,
@@ -44,8 +43,6 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     const_registry: &'a consts::Scope<'def>,
     /// attributes on this function
     attrs: &'a [&'a hir::AttrItem],
-    /// polonius info for this function
-    info: &'a PoloniusInfo<'a, 'tcx>,
     /// translator for types
     ty_translator: types::LocalTX<'def, 'tcx>,
     /// trait registry in the current scope
@@ -54,11 +51,50 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     inputs: Vec<ty::Ty<'tcx>>,
 }
 
+pub(crate) fn function_has_nontrivial_annotations(tcx: ty::TyCtxt<'_>, did: DefId) -> bool {
+    environment::has_tool_attribute(tcx, did, "params")
+        || environment::has_tool_attribute(tcx, did, "ensures")
+        || environment::has_tool_attribute(tcx, did, "requires")
+        || environment::has_tool_attribute(tcx, did, "returns")
+        || environment::has_tool_attribute(tcx, did, "observe")
+        || environment::has_tool_attribute(tcx, did, "args")
+        || environment::has_tool_attribute(tcx, did, "may_unwind_if")
+        || environment::has_tool_attribute(tcx, did, "use_panic_abort")
+}
+
+fn use_panic_abort(tcx: ty::TyCtxt<'_>, attrs: &[&hir::AttrItem]) -> Result<bool, TranslationError> {
+    let Some(attr) = attrs.iter().find(|attr| attrs::get_tool_attr_name(attr) == Some("use_panic_abort"))
+    else {
+        return Ok(false);
+    };
+    if !matches!(attr.args, hir::AttrArgs::Empty) {
+        return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
+            attr.span,
+            Message::AttributeError("rr::use_panic_abort does not accept arguments".to_owned()),
+        )));
+    }
+    if tcx.sess.panic_strategy() != PanicStrategy::Abort {
+        return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
+            attr.span,
+            Message::AttributeError("rr::use_panic_abort requires compiling with panic=abort".to_owned()),
+        )));
+    }
+    Ok(true)
+}
+
+fn get_function_arg_names(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
+    tcx.fn_arg_idents(did)
+        .iter()
+        .enumerate()
+        .map(|(i, maybe_name)| maybe_name.map_or_else(|| format!("_arg_{i}"), |x| x.as_str().to_owned()))
+        .collect()
+}
+
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a spec for a trait method.
     pub(crate) fn spec_for_trait_method(
-        env: &'def Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         proc_did: DefId,
         name: &str,
         spec_name: &str,
@@ -66,33 +102,33 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError> {
         // use a dummy name as we're never going to use the code.
         let mut translated_fn = code::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
 
-        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc_did);
-        let ty = ty.instantiate_identity();
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(proc_did);
+        let ty = ty.instantiate_identity().skip_norm_wip();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
         let sig = match ty.kind() {
             ty::TyKind::FnDef(_def, _args) => {
                 assert!(ty.is_fn());
-                ty.fn_sig(env.tcx())
+                ty.fn_sig(tcx)
             },
             _ => panic!("can not handle non-fns"),
         };
         info!("Function signature: {:?}", sig);
 
-        let params = Self::get_proc_ty_params(env.tcx(), proc_did);
+        let params = Self::get_proc_ty_params(tcx, proc_did);
         info!("Function generic args: {:?}", params);
 
-        let num_late_bounds = sig.bound_vars().len() as u32;
+        let num_late_bounds = sig.bound_vars().len();
         let num_early_bounds =
-            params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+            params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
         // + 1 for static, + 1 for function lifetime
         let num_universal_regions = num_late_bounds + num_early_bounds + 2;
-        let (inputs, output, region_substitution) = regions::init::replace_fnsig_args_with_polonius_vars(
-            env,
+        let (inputs, output, region_substitution) = regions::replace_fnsig_args_with_polonius_vars(
+            tcx,
             params,
             proc_did,
             num_universal_regions,
@@ -103,7 +139,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
         let type_scope = Self::setup_local_scope(
-            env,
+            tcx,
             ty_translator,
             trait_registry,
             proc_did,
@@ -114,15 +150,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         )?;
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
-        // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc_did);
-        let arg_names: Vec<_> = arg_names
-            .iter()
-            .enumerate()
-            .map(|(i, maybe_name)| {
-                maybe_name.map(|x| x.as_str().to_owned()).unwrap_or_else(|| format!("_arg_{i}"))
-            })
-            .collect();
+        let arg_names = get_function_arg_names(tcx, proc_did);
         info!("arg names: {arg_names:?}");
 
         let spec_builder = Self::process_attrs(
@@ -135,7 +163,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         )?;
         translated_fn.add_function_spec_from_builder(spec_builder);
 
-        translated_fn.try_into().map_err(TranslationError::AttributeError)
+        translated_fn
+            .try_into()
+            .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))
     }
 
     /// Compute meta information for a closure we are processing.
@@ -146,10 +176,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         clos_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         closure_arg: &mir::LocalDecl<'tcx>,
         input_tuple_ty: ty::Ty<'tcx>,
+        output: ty::Ty<'tcx>,
         region_substitution: &mut regions::EarlyLateRegionMap<'def>,
-        info: &PoloniusInfo<'def, 'tcx>,
-        env: &Environment<'tcx>,
-    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, Option<specs::LftParam>) {
+        body_regions: &regions::BodyRegionContext<'def, 'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, ty::Ty<'tcx>, Option<specs::LftParam>) {
         // Process the lifetime parameters that come from the captures
         // Sideeffect: adds the regions that come from the captures (which may be local to the
         // surrounding function) to the region map, so that they appear as region parameters of the
@@ -157,29 +188,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let upvars_tys = clos_args.upvar_tys();
         let mut fixed_upvars_tys = Vec::new();
         for ty in upvars_tys {
-            let fixed_ty =
-                regions::arg_folder::rename_closure_capture_regions(ty, env.tcx(), region_substitution, info);
+            let fixed_ty = body_regions.rename_closure_capture_regions(ty, tcx, region_substitution);
             fixed_upvars_tys.push(fixed_ty);
         }
 
         // Do the same for the arguments of the closure -- this may contain external Polonius
         // regions in lieu of early bounds.
-        let fixed_closure_args = regions::arg_folder::rename_closure_capture_regions(
-            input_tuple_ty,
-            env.tcx(),
-            region_substitution,
-            info,
-        );
+        let fixed_closure_args =
+            body_regions.rename_closure_capture_regions(input_tuple_ty, tcx, region_substitution);
+
+        // Closure outputs can borrow from captures, so normalize and register those regions too.
+        let fixed_output = body_regions.rename_closure_capture_regions(output, tcx, region_substitution);
 
         // Do the same to the whole closure arg, which will add the optional lifetime for the
         // capture reference
         // NOTE: we rely on adding this lifetime last when generating the `call_*` fn shims.
-        let fixed_closure_arg_ty = regions::arg_folder::rename_closure_capture_regions(
-            closure_arg.ty,
-            env.tcx(),
-            region_substitution,
-            info,
-        );
+        let fixed_closure_arg_ty =
+            body_regions.rename_closure_capture_regions(closure_arg.ty, tcx, region_substitution);
 
         // find the optional lifetime for the outer reference
         let mut maybe_outer_lifetime = None;
@@ -192,12 +217,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         }
 
-        (fixed_closure_arg_ty, fixed_upvars_tys, fixed_closure_args, maybe_outer_lifetime)
+        (fixed_closure_arg_ty, fixed_upvars_tys, fixed_closure_args, fixed_output, maybe_outer_lifetime)
     }
 
     /// Create a translation instance for a closure.
     pub(crate) fn new_closure(
-        env: &'def Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         meta: &procedures::Meta,
         proc: Procedure<'tcx>,
         attrs: &'a [&'a hir::AttrItem],
@@ -205,7 +230,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
-    ) -> Result<(Self, procedures::ClosureImplInfo<'tcx, 'def>), TranslationError<'tcx>> {
+    ) -> Result<(Self, procedures::ClosureImplInfo<'tcx, 'def>), TranslationError> {
         let mut translated_fn = code::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
@@ -215,10 +240,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // TODO can we avoid the leak
         let proc: &'def Procedure<'_> = &*Box::leak(Box::new(proc));
-        let body = proc.get_mir();
+        let body = proc.borrowck_mir();
         Self::dump_body(body);
+        Self::dump_body(proc.dropck_mir());
+        for line in mir_mapper::format_mapping(body, proc.dropck_mir(), proc.mapping()).lines() {
+            info!("{line}");
+        }
 
-        let clos_args = env.get_closure_args(proc.get_id());
+        let clos_args = environment::get_closure_args(tcx, proc.get_id());
         let closure_kind = clos_args.kind();
         let tupled_upvars_tys = clos_args.tupled_upvars_ty();
         let parent_args = clos_args.parent_args();
@@ -226,7 +255,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let sig = unnormalized_sig;
         // Note: `captures` contains the late bounds of this closure, i.e., lifetimes that just this
         // closure is generic over.
-        let captures = env.tcx().closure_captures(proc.get_id().as_local().unwrap());
+        let captures = tcx.closure_captures(proc.get_id().as_local().unwrap());
         info!("closure sig: {:?}", sig);
         info!("Closure has captures: {:?}", captures);
         info!("Closure arg upvar_tys: {:?}", tupled_upvars_tys);
@@ -237,10 +266,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // the closure arg, containing the captures
         let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
 
-        let info = PoloniusInfo::new(env, proc);
-
-        // TODO: avoid leak
-        let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
+        let body_regions = regions::BodyRegionContext::new(proc);
 
         // For closures, we only handle the parent's args here!
         // We add the lifetime parameters arising from the captures of the closure (which may be
@@ -248,49 +274,43 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let params = parent_args;
         info!("Function generic args: {:?}", params);
 
-        if rrconfig::dump_borrowck_info() {
-            dump_borrowck_info(env, proc.get_id(), info);
-        }
+        body_regions.dump_borrowck_info_if_enabled(tcx, proc.get_id());
 
         // Note: this only treats the formal arguments of the closure, but not the closure captures
-        let num_universals = info.borrowck_in_facts.universal_region.len();
-        let mut num_late_bounds = sig.bound_vars().len() as u32;
-        let num_early_bounds =
-            params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+        let mut additional_late_bounds = 0;
         // closures don't have early bounds: only late bounds and external lifetimes from the
         // surrounding scope.
-        assert!(num_early_bounds == 0);
+        assert!(!params.iter().any(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))));
         if let ty::TyKind::Ref(_, _, _) = closure_arg.ty.kind() {
             // add 1 for the closure arg
-            num_late_bounds += 1;
+            additional_late_bounds += 1;
         }
-        let (tupled_inputs, output, mut region_substitution) =
-            regions::init::replace_fnsig_args_with_polonius_vars(
-                env,
+        let (tupled_inputs, output, mut region_substitution) = body_regions
+            .normalize_fn_sig_with_additional_late_bounds(
+                tcx,
                 params,
                 proc.get_id(),
-                num_universals as u32,
-                num_early_bounds,
-                num_late_bounds,
                 sig,
+                additional_late_bounds,
             );
 
         // detuple the inputs
-        assert!(tupled_inputs.len() == 1);
+        assert_eq!(tupled_inputs.len(), 1);
         let input_tuple_ty = tupled_inputs[0];
 
         info!("region substitution: {region_substitution:?}");
 
         // fix the regions in the closure args (esp the captures) and add the regions for the
         // captures to the region map (i.e., external regions).
-        let (fixed_closure_arg_ty, upvars_tys, input_tuple_ty, maybe_outer_lifetime) =
+        let (fixed_closure_arg_ty, upvars_tys, input_tuple_ty, output, maybe_outer_lifetime) =
             Self::compute_closure_meta(
                 clos_args,
                 closure_arg,
                 input_tuple_ty,
+                output,
                 &mut region_substitution,
-                info,
-                env,
+                &body_regions,
+                tcx,
             );
         let maybe_outer_lifetime = maybe_outer_lifetime.map(|x| x.lft().to_owned());
 
@@ -306,17 +326,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
 
         let type_scope = Self::setup_local_scope(
-            env,
+            tcx,
             ty_translator,
             trait_registry,
             proc.get_id(),
             params,
             &mut translated_fn,
             region_substitution.clone(),
-            Some(info),
+            Some(body_regions.region_var_resolver()),
         )?;
 
-        let inclusion_tracker = regions::init::initialize_inclusion_tracker(&type_scope.lifetime_scope, info);
+        let annotations = body_regions.annotation_generator(tcx, &type_scope.lifetime_scope);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -325,11 +345,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         all_inputs.insert(0, fixed_closure_arg_ty);
 
         let mut t = Self {
-            env,
+            tcx,
             proc,
-            info,
             translated_fn,
-            inclusion_tracker,
+            annotations,
             procedure_registry: proc_registry,
             attrs,
             ty_translator: type_translator,
@@ -352,7 +371,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         };
 
         // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc.get_id());
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = tcx.fn_arg_idents(proc.get_id());
         let arg_names: Vec<_> = arg_names
             .iter()
             .enumerate()
@@ -366,10 +385,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // process attributes
         let spec_info = t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
+        let use_panic_abort = use_panic_abort(tcx, attrs)?;
+        panic::add_strategy_link_assumption(tcx, &mut t.translated_fn, use_panic_abort);
 
         // compute the info needed to assemble the trait impls for this closure
         let self_var_ty = t.ty_translator.translate_type(fixed_closure_arg_ty)?;
-        let self_ty = Environment::get_closure_self_ty_from_var_ty(fixed_closure_arg_ty, closure_kind);
+        let self_ty = environment::get_closure_self_ty_from_var_ty(fixed_closure_arg_ty, closure_kind);
         let args_ty = t.ty_translator.translate_type(input_tuple_ty)?;
         let output_ty = t.ty_translator.translate_type(output)?;
         let mut args_tys: Vec<specs::Type<'def>> = Vec::new();
@@ -395,26 +416,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             args_ty,
             args_tys,
             output_ty,
+            spec_info.params_encoded,
             spec_info.pre_encoded,
             spec_info.post_encoded,
             spec_info.post_mut_encoded,
+            spec_info.unwind_condition_encoded,
+            use_panic_abort,
         );
 
         Ok((t, info))
     }
 
-    fn function_has_nontrivial_annotations(env: &'def Environment<'tcx>, did: DefId) -> bool {
-        env.has_tool_attribute(did, "params")
-            || env.has_tool_attribute(did, "ensures")
-            || env.has_tool_attribute(did, "requires")
-            || env.has_tool_attribute(did, "returns")
-            || env.has_tool_attribute(did, "observe")
-            || env.has_tool_attribute(did, "args")
-    }
-
     /// Translate the body of a function.
     pub(crate) fn new(
-        env: &'def Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         meta: &procedures::Meta,
         proc: Procedure<'tcx>,
         attrs: &'a [&'a hir::AttrItem],
@@ -422,7 +437,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
-    ) -> Result<Self, TranslationError<'tcx>> {
+    ) -> Result<Self, TranslationError> {
         let mut translated_fn = code::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
@@ -433,139 +448,69 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // TODO can we avoid the leak
         let proc: &'def Procedure<'_> = &*Box::leak(Box::new(proc));
 
-        let body = proc.get_mir();
+        let body = proc.borrowck_mir();
         Self::dump_body(body);
+        Self::dump_body(proc.dropck_mir());
+        for line in mir_mapper::format_mapping(body, proc.dropck_mir(), proc.mapping()).lines() {
+            info!("{line}");
+        }
 
-        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(proc.get_id());
         info!("Function type: {ty:?}");
 
-        let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
+        let params = Self::get_proc_ty_params(tcx, proc.get_id());
         info!("Function generic args: {:?}", params);
 
-        let ty = ty.instantiate_identity();
+        let ty = ty.instantiate_identity().skip_norm_wip();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
         assert!(ty.is_fn());
-        let sig = ty.fn_sig(env.tcx());
+        let sig = ty.fn_sig(tcx);
         info!("sig: {sig:?}");
 
-        let info = PoloniusInfo::new(env, proc);
-        // TODO: avoid leak
-        let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
+        let body_regions = regions::BodyRegionContext::new(proc);
 
-        if rrconfig::dump_borrowck_info() {
-            dump_borrowck_info(env, proc.get_id(), info);
-        }
+        body_regions.dump_borrowck_info_if_enabled(tcx, proc.get_id());
 
-        let (inputs, output, region_substitution) = if let Some(impl_did) =
-            env.tcx().impl_of_assoc(proc.get_id())
-            && env.tcx().impl_is_of_trait(impl_did)
+        let (inputs, output, region_substitution) = if let Some(impl_did) = tcx.impl_of_assoc(proc.get_id())
+            && tcx.impl_is_of_trait(impl_did)
         {
             // If this is a function in a trait impl, we need to do some extra fixing up, because
             // lifetime elision behaves strangely.
 
             // We compute the expected signature this function *should* have
-            let expected_sig = trait_registry.get_expected_sig_for_impl_fn(proc.get_id())?;
+            let expected_sig = trait_registry.get_expected_sig_for_impl_fn(proc.get_id());
             info!("expected sig: {expected_sig:?}");
 
-            // Important: use the fn's sig here.
-            let num_universals = info.borrowck_in_facts.universal_region.len();
-            let num_late_bounds = sig.bound_vars().len() as u32;
-            let num_early_bounds =
-                params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
-
-            let (direct_inputs, direct_output, _) = regions::init::replace_fnsig_args_with_polonius_vars(
-                env,
-                params,
-                proc.get_id(),
-                num_universals as u32,
-                num_early_bounds,
-                num_late_bounds,
-                sig,
-            );
-
-            info!("direct signature: {direct_inputs:?} -> {direct_output:?}");
-
-            let (inputs, output, mut mapping) = regions::init::replace_fnsig_args_with_polonius_vars(
-                env,
-                params,
-                proc.get_id(),
-                num_universals as u32,
-                num_early_bounds,
-                num_late_bounds,
-                expected_sig,
-            );
-
-            // Now unify the two signatures.
-            let typing_env = ty::TypingEnv::post_analysis(env.tcx(), proc.get_id());
-            let mut unifier = RegionUnifier::new(env.tcx(), typing_env);
-            // Since we cannot reliably normalize here without erasing regions, ignore aliases for now.
-            unifier.ignore_aliases();
-
-            unifier.map_ty_slices(&direct_inputs, &inputs);
-            unifier.map_tys(direct_output, output);
-            let (_, vid_mapping) = unifier.get_result();
-
-            info!("region mapping: {vid_mapping:?}");
-            for (from, to) in vid_mapping {
-                let to = to.as_var();
-                if from != to {
-                    mapping.insert_vid_fixup(from.into(), to.into());
-                }
-            }
-            // TODO: also add the equality constraints to the inclusion tracker?
-
-            (inputs, output, mapping)
+            body_regions.normalize_trait_impl_expected_sig(tcx, params, proc.get_id(), sig, expected_sig)
         } else {
-            let num_universals = info.borrowck_in_facts.universal_region.len();
-            let num_late_bounds = sig.bound_vars().len() as u32;
-            let num_early_bounds =
-                params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
-
-            regions::init::replace_fnsig_args_with_polonius_vars(
-                env,
-                params,
-                proc.get_id(),
-                num_universals as u32,
-                num_early_bounds,
-                num_late_bounds,
-                sig,
-            )
+            body_regions.normalize_fn_sig(tcx, params, proc.get_id(), sig)
         };
         info!("normalized signature: {inputs:?} -> {output:?}");
 
         let type_scope = Self::setup_local_scope(
-            env,
+            tcx,
             ty_translator,
             trait_registry,
             proc.get_id(),
             params.as_slice(),
             &mut translated_fn,
             region_substitution,
-            Some(info),
+            Some(body_regions.region_var_resolver()),
         )?;
 
-        let inclusion_tracker = regions::init::initialize_inclusion_tracker(&type_scope.lifetime_scope, info);
+        let annotations = body_regions.annotation_generator(tcx, &type_scope.lifetime_scope);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
-        // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc.get_id());
-        let arg_names: Vec<_> = arg_names
-            .iter()
-            .enumerate()
-            .map(|(i, maybe_name)| {
-                maybe_name.map(|x| x.as_str().to_owned()).unwrap_or_else(|| format!("_arg_{i}"))
-            })
-            .collect();
+        let arg_names = get_function_arg_names(tcx, proc.get_id());
         info!("arg names: {arg_names:?}");
 
         let mut t = Self {
-            env,
+            tcx,
             proc,
-            info,
             translated_fn,
-            inclusion_tracker,
+            annotations,
             procedure_registry: proc_registry,
             attrs,
             ty_translator: type_translator,
@@ -576,8 +521,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // If this is an impl of a trait, and there are no explicit annotations, use the default specification
         // of the trait (instead of the Rust implied safety contract)
-        if env.trait_impl_of_method(proc.get_id()).is_some()
-            && !Self::function_has_nontrivial_annotations(env, proc.get_id())
+        if environment::trait_impl_of_method(tcx, proc.get_id()).is_some()
+            && !function_has_nontrivial_annotations(tcx, proc.get_id())
         {
             // Use the default spec annotated on the trait
             let spec = t.make_trait_instance_spec()?;
@@ -587,9 +532,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     t.translated_fn.add_late_coq_param(binder);
                 }
             } else {
-                return Err(TranslationError::AttributeError(
+                return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(
                     "No valid specification provided for trait impl".to_owned(),
-                ));
+                ))));
             }
         } else {
             // process attributes
@@ -605,8 +550,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if spec_builder.has_spec() {
                 t.translated_fn.add_function_spec_from_builder(spec_builder);
             } else {
-                return Err(TranslationError::AttributeError("No valid specification provided".to_owned()));
+                return Err(TranslationError::ErrorReported(
+                    tcx.dcx().err(Message::AttributeError("No valid specification provided".to_owned())),
+                ));
             }
+        }
+
+        let use_panic_abort = use_panic_abort(tcx, attrs)?;
+        if meta.get_mode().needs_def() {
+            panic::add_strategy_link_assumption(tcx, &mut t.translated_fn, use_panic_abort);
         }
 
         Ok(t)
@@ -616,36 +568,53 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate(
         self,
         spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
-    ) -> Result<code::Function<'def>, TranslationError<'tcx>> {
-        let translator = translation::TX::new(
-            self.env,
+    ) -> Result<(code::Function<'def>, procedures::InlineFunctionDependencies<'tcx>), TranslationError> {
+        let translator = function_translation::TX::new(
+            self.tcx,
             self.procedure_registry,
             self.const_registry,
             self.trait_registry,
             self.ty_translator,
             self.proc,
-            self.info,
             &self.inputs,
-            self.inclusion_tracker,
+            self.annotations,
             self.translated_fn,
         )?;
         translator.translate(spec_arena)
     }
 
+    /// Finalize a function backed by handwritten Rocq code without inspecting its Rust body.
+    pub(crate) fn translate_code_shim(
+        mut self,
+        spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
+    ) -> Result<code::Function<'def>, TranslationError> {
+        let arg_names = get_function_arg_names(self.tcx, self.proc.get_id());
+        for (name, ty) in arg_names.iter().zip(self.inputs.iter().copied()) {
+            let translated_ty = self.ty_translator.translate_type(ty)?;
+            self.translated_fn.code.add_argument(name, (&translated_ty).into());
+        }
+
+        Ok(self.translated_fn.into_function(spec_arena))
+    }
+
     /// Translation that only generates a specification.
     pub(crate) fn generate_spec(
         self,
-    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
-        self.translated_fn.try_into().map_err(TranslationError::AttributeError)
+    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError> {
+        self.translated_fn
+            .try_into()
+            .map_err(|err| TranslationError::ErrorReported(self.tcx.dcx().err(Message::AttributeError(err))))
     }
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get type parameters of the given procedure.
     fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::GenericArgsRef<'tcx> {
-        let ty = tcx.type_of(did).instantiate_identity();
+        let ty = tcx.type_of(did).instantiate_identity().skip_norm_wip();
         match ty.kind() {
-            ty::TyKind::FnDef(_, params) => params,
+            ty::TyKind::FnDef(_, params) => params
+                .no_bound_vars()
+                .expect("procedure FnDef arguments must not contain bound variables"),
             _ => panic!("Procedure::new called on a procedure whose type is not TyKind::FnDef!"),
         }
     }
@@ -653,24 +622,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Set up the local generic scope of the function, including type parameters, lifetime
     /// parameters, and trait constraints.
     fn setup_local_scope(
-        env: &Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_did: DefId,
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut code::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap<'def>,
-        info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
+        region_resolver: Option<regions::RegionVarResolver>,
+    ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError> {
         // enter the procedure
         let type_scope = types::FunctionState::new_with_traits(
             proc_did,
-            env,
-            env.tcx().mk_args(params),
+            tcx,
+            tcx.mk_args(params),
             region_substitution,
             ty_translator,
             trait_registry,
-            info,
+            region_resolver,
         )?;
 
         // add generic args to the fn
@@ -706,7 +675,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         output: ty::Ty<'tcx>,
         arg_names: &[String],
         meta: ClosureMetaInfo<'_, 'tcx, 'def>,
-    ) -> Result<ClosureSpecInfo, TranslationError<'tcx>> {
+    ) -> Result<ClosureSpecInfo, TranslationError> {
         trace!("entering process_closure_attrs");
         let v = self.attrs;
 
@@ -727,7 +696,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let parser = rrconfig::attribute_parser();
         if parser.as_str() != "verbose" {
             trace!("leaving process_closure_attrs");
-            return Err(TranslationError::UnknownAttributeParser(parser));
+            return Err(TranslationError::ErrorReported(
+                self.tcx.dcx().err(Message::UnknownAttributeParser(parser)),
+            ));
         }
 
         let mut spec_builder = specs::functions::LiteralSpecBuilder::new();
@@ -737,9 +708,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // (We need a read reference to the scope, so we can't write to it at the same time)
         let mut tuple_uses = HashMap::new();
         let spec_info = {
+            attrs::check_tool_attrs(
+                v,
+                COMMON_FUNCTION_SPEC_ATTRS.iter().copied().chain(CLOSURE_SPEC_ATTRS.iter().copied()),
+            )
+            .map_err(|err| {
+                TranslationError::ErrorReported(ty_translator.translator.tcx().dcx().span_err(
+                    err.span,
+                    Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                ))
+            })?;
             let scope = ty_translator.scope.borrow();
             let mut parser = VerboseFunctionSpecParser::new(
-                &self.translated_fn.spec.function_name,
                 &translated_arg_types,
                 &translated_ret_type,
                 ret_is_option,
@@ -753,7 +733,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .parse_closure_spec(v, &mut spec_builder, meta, |x| {
                     ty_translator.make_tuple_use(x, Some(&mut tuple_uses))
                 })
-                .map_err(TranslationError::AttributeError)?;
+                .map_err(|err| {
+                    TranslationError::ErrorReported(
+                        ty_translator
+                            .translator
+                            .tcx()
+                            .dcx()
+                            .span_err(err.span, Message::AttributeError(err.err.to_string())),
+                    )
+                })?;
 
             let x = parser.into();
             Self::process_function_requirements(&mut self.translated_fn, x);
@@ -775,7 +763,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         arg_names: &[String],
         inputs: &[ty::Ty<'tcx>],
         output: ty::Ty<'tcx>,
-    ) -> Result<specs::functions::LiteralSpecBuilder<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::functions::LiteralSpecBuilder<'def>, TranslationError> {
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
         let mut translated_arg_types: Vec<specs::Type<'def>> = Vec::new();
@@ -794,11 +782,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let parser = rrconfig::attribute_parser();
         match parser.as_str() {
             "verbose" => {
+                attrs::check_tool_attrs(
+                    attrs,
+                    COMMON_FUNCTION_SPEC_ATTRS.iter().copied().chain(FUNCTION_SPEC_ATTRS.iter().copied()),
+                )
+                .map_err(|err| {
+                    TranslationError::ErrorReported(ty_translator.translator.tcx().dcx().span_err(
+                        err.span,
+                        Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                    ))
+                })?;
                 {
                     let scope = ty_translator.scope.borrow();
                     let mut parser: VerboseFunctionSpecParser<'_, 'def, _, _> =
                         VerboseFunctionSpecParser::new(
-                            &translator.spec.function_name,
                             &translated_arg_types,
                             &translated_ret_type,
                             ret_is_option,
@@ -808,15 +805,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             |lit| ty_translator.translator.intern_literal(lit),
                         );
 
-                    parser
-                        .parse_function_spec(attrs, &mut spec_builder)
-                        .map_err(TranslationError::AttributeError)?;
+                    parser.parse_function_spec(attrs, &mut spec_builder).map_err(|err| {
+                        TranslationError::ErrorReported(
+                            ty_translator
+                                .translator
+                                .tcx()
+                                .dcx()
+                                .span_err(err.span, Message::AttributeError(err.err.to_string())),
+                        )
+                    })?;
                     Self::process_function_requirements(translator, parser.into());
                 }
 
                 Ok(spec_builder)
             },
-            _ => Err(TranslationError::UnknownAttributeParser(parser)),
+            _ => Err(TranslationError::ErrorReported(
+                ty_translator.translator.tcx().dcx().err(Message::UnknownAttributeParser(parser)),
+            )),
         }
     }
 
@@ -825,24 +830,26 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
     ) -> Result<
         Option<(specs::traits::InstantiatedFunctionSpec<'def>, coq::binder::BinderList)>,
-        TranslationError<'tcx>,
+        TranslationError,
     > {
         let did = self.proc.get_id();
 
-        let Some(impl_did) = self.env.tcx().impl_of_assoc(did) else {
+        let Some(impl_did) = self.tcx.impl_of_assoc(did) else {
             return Ok(None);
         };
 
-        if !self.env.tcx().impl_is_of_trait(impl_did) {
+        if !self.tcx.impl_is_of_trait(impl_did) {
             return Ok(None);
         }
-        let trait_did = self.env.tcx().impl_trait_id(impl_did);
+        let trait_did = self.tcx.impl_trait_id(impl_did);
 
-        self.trait_registry
-            .lookup_trait(trait_did)
-            .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
+        self.trait_registry.lookup_trait(trait_did).ok_or_else(|| {
+            TranslationError::ErrorReported(
+                self.tcx.dcx().err(Message::TraitResolution(format!("{trait_did:?}"))),
+            )
+        })?;
 
-        let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
+        let fn_name = strip_coq_ident(self.tcx.item_name(self.proc.get_id()).as_str());
 
         let (trait_info, _, context_items) = self.trait_registry.get_trait_impl_info(impl_did)?;
         Ok(Some((specs::traits::InstantiatedFunctionSpec::new(trait_info, fn_name), context_items)))
@@ -857,12 +864,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Dump a basic block as info debug output.
     fn dump_basic_block(bb_idx: mir::BasicBlock, bb: &mir::BasicBlockData<'_>) {
-        info!("Basic block {:?}:", bb_idx);
+        info!("Basic block {bb_idx:?}:");
         let mut i = 0;
         for s in &bb.statements {
-            info!("{}\t{:?}", i, s);
+            let span = s.source_info.span;
+            info!("{i}\t{s:?}\t\t{span:?}");
             i += 1;
         }
-        info!("{}\t{:?}", i, bb.terminator());
+        let term = bb.terminator();
+        let span = term.source_info.span;
+        info!("{i}\t{term:?}\t\t{span:?}");
     }
 }

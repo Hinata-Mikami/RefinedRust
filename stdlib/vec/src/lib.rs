@@ -4,9 +4,15 @@
 #![allow(unused)]
 
 #![feature(allocator_api)]
+#![allow(internal_features)]
+#![feature(ptr_internals)]
+#![feature(sized_type_properties)]
+
+#![rr::import("rrstd.vec.theories", "vec")]
 
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("rrstd.alloc")]
+#![rr::coq_prefix("rrstd.vec")]
+
 #![rr::include("alloc")]
 #![rr::include("iterator")]
 #![rr::include("option")]
@@ -14,19 +20,131 @@
 #![rr::include("closures")]
 #![rr::include("cmp")]
 #![rr::include("index")]
+#![rr::include("ptr_advanced")]
+#![rr::include("clone")]
+#![rr::include("controlflow")]
+#![rr::include("sized")]
 
 use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;
+use core::ptr::{Unique, NonNull};
+use std::ptr;
+use std::alloc::Layout;
+use std::mem::SizedTypeProperties;
 
 
-#[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
-#[rr::exists("x", "y")]
+// NB: The real rustc impl uses usize with a niche on the highest bit, but we can't handle that.
+type Cap = usize;
+
+/// Like a `RawVec`, but only generic over the allocator, not the type.
+///
+/// As such, all the methods need the layout passed-in as a parameter.
+///
+/// Having this separation reduces the amount of code we need to monomorphize,
+/// as most operations don't need the actual type, just its layout.
+#[rr::refined_by("(l, cap, alloc)" : "(loc * nat * {rt_of A} : RT)%type")]
+#[rr::trust_me(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{A::DropGlueUnwind}")]
+struct RawVecInner<A: Allocator = Global> {
+    #[rr::field("#(l)")]
+    ptr: Unique<u8>,
+    #[rr::field("#(Z.of_nat cap)")]
+    cap: Cap,
+    #[rr::field("#(alloc)")]
+    alloc: A,
+}
+
+#[rr::skip]
+impl<A: Allocator> RawVecInner<A> {
+    unsafe fn current_memory(&self, elem_layout: Layout) -> Option<(NonNull<u8>, Layout)> {
+        if elem_layout.size() == 0 || self.cap == 0 {
+            None
+        } else {
+            // We could use Layout::array here which ensures the absence of isize and usize overflows
+            // and could hypothetically handle differences between stride and size, but this memory
+            // has already been allocated so we know it can't overflow and currently Rust does not
+            // support such types. So we can do better by skipping some checks and avoid an unwrap.
+            unsafe {
+                let alloc_size = elem_layout.size().unchecked_mul(self.cap);
+                let layout = Layout::from_size_align_unchecked(alloc_size, elem_layout.align());
+                Some((self.ptr.into(), layout))
+            }
+        }
+    }
+
+    /// # Safety
+    ///
+    /// This function deallocates the owned allocation, but does not update `ptr` or `cap` to
+    /// prevent double-free or use-after-free. Essentially, do not do anything with the caller
+    /// after this function returns.
+    /// Ideally this function would take `self` by move, but it cannot because it exists to be
+    /// called from a `Drop` impl.
+    unsafe fn deallocate(&mut self, elem_layout: Layout) {
+        // SAFETY: Precondition passed to caller
+        if let Some((ptr, layout)) = unsafe { self.current_memory(elem_layout) } {
+            unsafe {
+                self.alloc.deallocate(ptr, layout);
+            }
+        }
+    }
+}
+
+
+// TODO: maybe expose a value interface instead
+#[rr::only_spec(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{A::DropGlueUnwind}")]
+#[rr::export_as(alloc::raw_vec::RawVec)]
+#[rr::refined_by("(l, cap, els)" : "(loc * nat * list (place_rfn (option (place_rfn {rt_of T}))))")]
+#[rr::exists("a")]
+#[rr::invariant(#iris "{A::FreeablePerm} a l (size_of_array_in_bytes {st_of T} cap)")]
+// Ownership needs to be here in order to allow drop glue to safely call Drop
+#[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
+pub(crate) struct RawVec<T, A: Allocator = Global> {
+    #[rr::field("#((l, cap, $# a))")]
+    inner: RawVecInner<A>,
+    #[rr::field("#(tt)")]
+    _marker: PhantomData<T>,
+}
+
+
+// TODO: may_dangle
+#[rr::only_spec]
+impl<T, A: Allocator> Drop for RawVec<T, A> {
+    /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
+    #[rr::params("l", "lmem", "cap", "els")] 
+    #[rr::args("l" @ "alias_ref_t")]
+    #[rr::requires(#type "l" : "(lmem, cap, els)" @ "RawVec_inv_t T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::exists("a")]
+    #[rr::ensures(#type "l" : "-[ #(l, cap, a); #tt]" @ "RawVec_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    fn drop(&mut self) {
+        // SAFETY: We are in a Drop impl, self.inner will not be used again.
+        unsafe { self.inner.deallocate(T::LAYOUT) }
+    }
+}
+
+// Uses the invariant from our "MiniVec" case study.
+#[rr::only_spec(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {A::DropGlueUnwind}")]
 #[rr::export_as(alloc::vec::Vec)]
+#[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
+#[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
+#[rr::invariant("Hxs" : "xs = project_vec_els len els")]
+#[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
+#[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
+#[rr::invariant("Hels_len": "length els = cap")]
+#[rr::invariant("Hlen_eq": "len = length xs")]
+#[rr::invariant("Hcap": "len ≤ cap")]
+#[rr::invariant("Hbound" : "len ≤ MaxInt usize")]
+// invariant due to GEP / ptr::offset limits: the total size of the allocation should not exceed isize::max bytes
+// we need the ZST case to know that we never call grow except when we have reached the capacity limit
+#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
+// elementwise ghost-drop
+#[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
 pub struct Vec<T, A: Allocator = Global> {
-    #[rr::field("x")]
-    _x: PhantomData<T>,
-    #[rr::field("y")]
-    _y: A,
+    #[rr::field("#((l, cap, els))")]
+    buf: RawVec<T, A>,
+    #[rr::field("#(Z.of_nat len)")]
+    len: usize,
 }
 
 #[rr::export_as(alloc::vec::Vec)]
@@ -44,6 +162,35 @@ impl<T> Vec<T> {
     #[rr::returns("[]")]
     pub fn with_capacity(capacity: usize) -> Self {
         unimplemented!();
+    }
+}
+
+// TODO: may_dangle
+#[rr::only_spec]
+impl<T, A: Allocator> Drop for Vec<T, A> {
+    #[rr::params("l", "xs")]
+    #[rr::args("l" @ "alias_ref_t")]
+    #[rr::requires(#type "l" : "$# xs" @ "Vec_inv_t T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::exists("lmem", "cap")]
+    // Postcondition: ghost drop for all the elements
+    #[rr::ensures(#iris "[∗ list] r ∈ xs, ty_ghost_drop {T} π ($# r)")]
+    // Postcondition: vector without its safety invariant. All the elements of the RawVec are in the
+    // uninit state.
+    #[rr::ensures(#type "l" : "-[ #(lmem, cap, replicate cap (#None)); #(Z.of_nat $ length xs)]" @ "Vec_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+    fn drop(&mut self) {
+        /*
+        unsafe {
+            // use drop for [T]
+            // use a raw slice to refer to the elements of the vector as weakest necessary type;
+            // could avoid questions of validity in certain cases
+            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
+        }
+        */
+        // RawVec handles deallocation
+
+        // NB in the proof we have to transition all elements of the RawVec into the uninitialized
+        // state
     }
 }
 
@@ -89,44 +236,32 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rr::args("(xs, γ)", "Z.of_nat i")]
     #[rr::requires("i < length xs")]
     #[rr::observe("γ": "delete i (<$#> xs)")]
+    #[rr::returns("xs !!! i")]
     pub fn remove(&mut self, index: usize) -> T {
         unreachable!(); 
     }
 
-    #[rr::params("xs", "γ", "i" : "nat")]
-    #[rr::args("(xs, γ)", "Z.of_nat i")]
-    #[rr::requires("i < length xs")]
-    #[rr::exists("γi")]
-    #[rr::returns("((xs !!! i), γi)")]
-    #[rr::observe("γ": "<[i := PlaceGhost γi]> (<$#>  xs)")]
-    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+    #[rr::requires("index < length self.cur")]
+    //#[rr::observe("self.ghost": "take index self.cur ++ take 1%nat (drop (length self.cur - (1+index) ) (drop (1 + index) self.cur))")]
+    // TODO: very weak specification for now, getting this right in all boundary conditions is
+    // tricky
+    #[rr::exists("xs")]
+    #[rr::ensures("take (Z.to_nat index) self.cur = take (Z.to_nat index) xs")]
+    #[rr::ensures("length xs = (length self.cur - 1)%nat")]
+    #[rr::observe("self.ghost": "<$#> xs")]
+    #[rr::returns("self.cur !!! Z.to_nat index")]
+    pub fn swap_remove(&mut self, index: usize) -> T {
         unreachable!(); 
     }
+}
 
-    #[rr::params("xs", "γ", "i" : "nat")]
-    #[rr::args("(xs, γ)", "Z.of_nat i")]
-    #[rr::exists("γi")]
-    #[rr::returns("if decide (i < length xs) then Some (xs !!! i, γi) else None")]
-    #[rr::observe("γ": "if decide (i < length xs) then <[i := PlaceGhost γi]> (<$#> xs) else <$#> xs")]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        unreachable!(); 
-    }
-
-    #[rr::params("xs", "i" : "nat")]
-    #[rr::args("xs", "Z.of_nat i")]
-    #[rr::requires("i < length xs")]
-    #[rr::returns("(xs !!! i)")]
-    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
-        unreachable!(); 
-    }
-
-    #[rr::params("xs", "i" : "nat")]
-    #[rr::args("xs", "Z.of_nat i")]
-    #[rr::returns("if decide (i < length xs) then Some (xs !!! i) else None")]
-    pub fn get(&self, index: usize) -> Option<&T> {
-        unreachable!();
-    }
-
+#[rr::only_spec]
+#[rr::export_as(alloc::vec::from_elem)]
+#[rr::requires("(size_of_array_in_bytes {st_of T} (2 * (Z.to_nat n)) ≤ MaxInt ISize)%Z")]
+#[rr::returns("replicate (Z.to_nat n) elem")]
+pub fn vec_from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
+    unimplemented!();
+    //<T as SpecFromElem>::from_elem(elem, n, Global)
 }
 
 #[rr::export_as(alloc::vec::Vec)]
@@ -139,6 +274,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
 
 #[rr::instantiate("FromSequence" := "λ x, x")]
+#[rr::instantiate("FromSequenceStatus" := "λ _ status, status = IteratorCollectFinished")]
 impl<T> FromIterator<T> for Vec<T> {
     #[rr::only_spec]
     #[rr::default_spec]
@@ -148,16 +284,18 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
+#[rr::trust_me(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {A::DropGlueUnwind}")]
 #[rr::refined_by("xs" : "list ({rt_of T})")]
-#[rr::exists("x", "y")]
+#[rr::exists("x", "y" : "{xt_of A}")]
 #[rr::export_as(alloc::vec::into_iter::IntoIter)]
 pub struct IntoIter<
     T,
     A: Allocator = Global,
 > {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     _x: PhantomData<T>,
-    #[rr::field("y")]
+    #[rr::field("#($# y)")]
     _y: A,
 }
 
@@ -173,10 +311,11 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     }
 }
 
-#[rr::instantiate("Next" := "λ π l e l2, 
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Next" := "λ π _ l e l2, 
     (⌜if_None e (l = [] ∧ l2 = [])⌝∗
     ⌜if_Some e (λ e, l = e :: l2)⌝)%I")]
-#[rr::instantiate("Inv" := "λ π self, True%I")]
+#[rr::instantiate("Inv" := "λ π _ self, True%I")]
 impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
@@ -439,16 +578,17 @@ pub struct Iter<'a, T: 'a> {
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
     /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     end_or_len: *const T,
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     _marker: PhantomData<&'a T>,
 }
 
-#[rr::instantiate("Next" := "λ π l e l2, 
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Next" := "λ π _ l e l2, 
     (⌜if_None e (l = [] ∧ l2 = [])⌝∗
     ⌜if_Some e (λ e, l = e :: l2)⌝)%I")]
-#[rr::instantiate("Inv" := "λ π self, True%I")]
+#[rr::instantiate("Inv" := "λ π _ self, True%I")]
 impl<'a, T: 'a> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
@@ -465,6 +605,78 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
     {
         unimplemented!();
     }
+
+    #[rr::only_spec]
+    fn all<F>(&mut self, f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
+    {
+        unimplemented!();
+    }
 }
 
+// Slice IterMut
+#[rr::export_as(core::slice::iter::IterMut)]
+#[rr::refined_by("xs" : "(list ({rt_of T} * gname))%type")]
+// Ownership: Uniq 'a xs.1 ownership of the array elements (big sep)
+#[rr::exists("x" : "loc", "y" : "loc")]
+pub struct IterMut<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
+    #[rr::field("#(x)")]
+    ptr: NonNull<T>,
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
+    #[rr::field("#(y)")]
+    end_or_len: *mut T,
+    #[rr::field("#(tt)")]
+    _marker: PhantomData<&'a mut T>,
+}
 
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Next" := "λ π _ l1 e l2, 
+    (⌜if_None e (l1 = [] ∧ l2 = [])⌝ ∗
+    ⌜if_Some e (λ e, l1 = e :: l2)⌝)%I")]
+#[rr::instantiate("Inv" := "λ π _ self, True%I")]
+impl<'a, T: 'a> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    // when verifying this, we need to make sure to use the right ghost var.
+    // otherwise, close Next under RelEq
+    #[rr::only_spec]
+    fn next(&mut self) -> Option<&'a mut T> {
+        unimplemented!();
+    }
+
+    //#[rr::only_spec]
+    //fn position<F>(&mut self, f: F) -> Option<usize>
+    //where
+        //Self: Sized,
+        //F: FnMut(Self::Item) -> bool,
+    //{
+        //unimplemented!();
+    //}
+}
+
+#[rr::only_spec]
+#[rr::exists("γs")]
+#[rr::ensures("length γs = length x.cur")]
+#[rr::observe("x.ghost": "(PlaceGhost <$> γs) : list (place_rfn {rt_of T})")]
+#[rr::returns("zip x.cur γs")]
+fn vec_iter_mut<T>(x: &mut Vec<T>) -> IterMut<'_, T> {
+    unimplemented!();
+}
+
+// TODO: add ghost drop instance to get remaining observations
+
+
+// To make this useful, we need to gather up the observations, maybe into a bigsep.
+// Obs list or so? 
+// Easier to resolve at resolve_ghost using the vector instance or to have a Rel? 
+// I guess for resolve_ghost_iter we can just check for the ObsList in the context and have an easy
+// time.
+//

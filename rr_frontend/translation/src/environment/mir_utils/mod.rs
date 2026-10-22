@@ -6,4 +6,5 @@
 
 //! This module provides utility functions for MIR.
 
+pub(crate) mod box_alias;
 pub(crate) mod real_edges;

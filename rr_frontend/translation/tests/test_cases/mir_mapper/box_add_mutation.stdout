@@ -1,0 +1,18 @@
+Mapping for function box_add_mutation:
+summary: total=10 mapped=10 unmapped=0
+
+bb0[0] _3 = copy (_1.0: std::ptr::Unique<i32>) as *const i32 (BoxDerefTransmute) -> SplitFrom(bb0[0] _2 = AddWithOverflow(copy (*_1), const 42_i32))
+bb0[1] _2 = AddWithOverflow(copy (*_3), const 42_i32) -> SplitFrom(bb0[0] _2 = AddWithOverflow(copy (*_1), const 42_i32))
+bb0[2] _4 = copy (_1.0: std::ptr::Unique<i32>) as *const i32 (BoxDerefTransmute) -> Inserted
+bb0[3] assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy (*_4), const 42_i32) -> [success: bb1, unwind: bb2] -> Source(bb0[1] assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy (*_1), const 42_i32) -> [success: bb1, unwind: bb3])
+bb1[0] _5 = copy (_1.0: std::ptr::Unique<i32>) as *const i32 (BoxDerefTransmute) -> Inserted
+bb1[1] (*_5) = move (_2.0: i32) -> Source(bb1[0] (*_1) = move (_2.0: i32))
+bb1[2] _0 = move _1 -> Source(bb1[1] _0 = move _1)
+bb1[3] return -> FoldedFrom(bb2[0] return)
+bb2[0] drop(_1) -> [return: bb3, unwind terminate(cleanup)] -> Source(bb3[0] drop(_1) -> [return: bb4, unwind terminate(cleanup)])
+bb3[0] resume -> Source(bb4[0] resume)
+
+Box deref aliases:
+_3 aliases *_1 (source: bb0[0])
+_4 aliases *_1 (source: none)
+_5 aliases *_1 (source: none)

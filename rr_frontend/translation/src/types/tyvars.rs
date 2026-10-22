@@ -9,22 +9,25 @@
 use std::collections::{BTreeSet, HashSet};
 
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
+use rr_rustc_interface::middle::ty::{RegionExt as _, TypeSuperFoldable as _};
+use rr_rustc_interface::type_ir::TypeFoldable as _;
 
-use crate::environment::Environment;
-use crate::rustcmp;
+use crate::{rustcmp, traits};
 
 /// A `TypeFolder` that gathers all the type variables.
-pub(crate) struct TyVarFolder<'def, 'tcx> {
-    env: &'def Environment<'tcx>,
+pub(crate) struct TyVarFolder<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    /// The caller's environment, used to resolve concrete associated types before collecting dependencies.
+    typing_env: ty::TypingEnv<'tcx>,
     tyvars: BTreeSet<ty::ParamTy>,
     projections: HashSet<ty::AliasTy<'tcx>>,
 }
 
-impl<'def, 'tcx> TyVarFolder<'def, 'tcx> {
-    pub(crate) fn new(env: &'def Environment<'tcx>) -> Self {
+impl<'tcx> TyVarFolder<'tcx> {
+    pub(crate) fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
         TyVarFolder {
-            env,
+            tcx,
+            typing_env,
             tyvars: BTreeSet::new(),
             projections: HashSet::new(),
         }
@@ -34,15 +37,15 @@ impl<'def, 'tcx> TyVarFolder<'def, 'tcx> {
         // We first need to order the aliases
         let mut ordered_projections: Vec<_> = self.projections.into_iter().collect();
 
-        ordered_projections.sort_by(|a, b| rustcmp::cmp_alias_ty(self.env, a, b));
+        ordered_projections.sort_by(|a, b| rustcmp::cmp_alias_ty(self.tcx, a, b));
 
         (self.tyvars, ordered_projections)
     }
 }
 
-impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'_, 'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
     fn cx(&self) -> ty::TyCtxt<'tcx> {
-        self.env.tcx()
+        self.tcx
     }
 
     // TODO: handle the case that we pass below binders
@@ -59,9 +62,16 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'_, 'tcx> {
                 self.tyvars.insert(*param);
                 t
             },
-            ty::TyKind::Alias(kind, ty) => {
-                if *kind == ty::AliasTyKind::Projection {
-                    self.projections.insert(*ty);
+            ty::TyKind::Alias(_, alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
+                // Try to normalize aliases first; if we can normalize, fold the normalized type.
+                // As a guard to avoid infinite recursion, only recurse if the normalize type is
+                // different.
+                if let Ok(normalized_ty) = traits::resolution::normalize_type(self.tcx, self.typing_env, t)
+                    && normalized_ty != t
+                {
+                    normalized_ty.fold_with(self);
+                } else {
+                    self.projections.insert(*alias_ty);
                 }
 
                 t

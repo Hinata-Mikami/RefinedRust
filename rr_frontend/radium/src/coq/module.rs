@@ -23,7 +23,7 @@ pub struct DirPath(pub Vec<String>);
 
 impl From<Vec<&str>> for DirPath {
     fn from(v: Vec<&str>) -> Self {
-        Self(v.into_iter().map(ToString::to_string).collect())
+        Self(v.into_iter().map(str::to_owned).collect())
     }
 }
 
@@ -52,7 +52,10 @@ pub struct FromRequire {
 
 impl FromRequire {
     #[must_use]
-    pub fn new<I: Into<String>>(import: Vec<I>, kind: Kind) -> Self {
+    pub fn new<I>(import: Vec<I>, kind: Kind) -> Self
+    where
+        I: Into<String>,
+    {
         let from = None;
         let import = import.into_iter().map(Into::into).collect();
 
@@ -61,7 +64,10 @@ impl FromRequire {
 
     #[expect(clippy::same_name_method)]
     #[must_use]
-    pub fn from<I: Into<DirPath>>(self, from: I) -> Self {
+    pub fn from<I>(self, from: I) -> Self
+    where
+        I: Into<DirPath>,
+    {
         let from = Some(from.into());
 
         Self { from, ..self }
@@ -94,12 +100,18 @@ pub struct Import(pub FromRequire);
 
 impl Import {
     #[must_use]
-    pub fn new<I: Into<String>>(import: Vec<I>) -> Self {
+    pub fn new<I>(import: Vec<I>) -> Self
+    where
+        I: Into<String>,
+    {
         Self(FromRequire::new(import, Kind::Import))
     }
 
     #[must_use]
-    pub fn from<I: Into<DirPath>>(self, from: I) -> Self {
+    pub fn from<I>(self, from: I) -> Self
+    where
+        I: Into<DirPath>,
+    {
         Self(self.0.from(from))
     }
 }
@@ -110,12 +122,18 @@ pub struct Export(pub FromRequire);
 
 impl Export {
     #[must_use]
-    pub fn new<I: Into<String>>(import: Vec<I>) -> Self {
+    pub fn new<I>(import: Vec<I>) -> Self
+    where
+        I: Into<String>,
+    {
         Self(FromRequire::new(import, Kind::Export))
     }
 
     #[must_use]
-    pub fn from<I: Into<DirPath>>(self, from: I) -> Self {
+    pub fn from<I>(self, from: I) -> Self
+    where
+        I: Into<DirPath>,
+    {
         Self(self.0.from(from))
     }
 }
@@ -181,6 +199,7 @@ impl fmt::Display for ExportList<'_> {
 }
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use indoc::indoc;
 

@@ -1,0 +1,8 @@
+error: [RefinedRust] Attribute is ill-formed: rr::inline is not allowed on closures
+ --> fail/inline-on-closure.rs:8:14
+  |
+8 |     let _f = #[rr::inline] || {};
+  |              ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

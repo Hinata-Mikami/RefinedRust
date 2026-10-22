@@ -8,14 +8,55 @@ use attribute_parse::{MToken, parse};
 use parse::Peek as _;
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
-use crate::spec_parsers::parse_utils::{ParamLookup, attr_args_tokens, str_err};
+use crate::spec_parsers::SpannedError;
+use crate::spec_parsers::parse_utils::{
+    CoqLiteralError, ParamLookup, attr_args_tokens, parse_context_item, str_err,
+};
+
+pub(crate) const ENUM_SPEC_ATTRS: &[&str] = &[
+    "refined_by",
+    "partial",
+    "context",
+    "export_as",
+    "derive_instantiate",
+    "verify",
+    "skip",
+    "trust_me",
+    "only_spec",
+];
+
+pub(crate) const ENUM_VARIANT_SPEC_ATTRS: &[&str] = &["pattern", "refinement"];
+
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
+    #[display("No refined_by clause provided for enum {:?}", _0)]
+    MissingRefinedBy(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
+
+fn first_span(attrs: &[&hir::AttrItem]) -> Span {
+    attrs.first().map_or(DUMMY_SP, |a| a.span)
+}
 
 /// An attribute spec parser handles the parsing of the attributes of the whole enum and relevant
 /// attributes on the variants at once.
 ///
 /// Supported attributes for the whole enum:
 /// - `rr::refined_by`: specifies the refinement type
+/// - `rr::context`: specifies context items required by the enum definition
 ///
 /// Supported attributes for the enum variants:
 /// - `rr::pattern`: specifies the Coq pattern of the refinement type that matches this variant
@@ -27,7 +68,7 @@ pub(crate) trait EnumSpecParser {
         ty_name: &str,
         attrs: &'a [&'a hir::AttrItem],
         variant_attrs: &[Vec<&'a hir::AttrItem>],
-    ) -> Result<specs::enums::Spec, String>;
+    ) -> Result<specs::enums::Spec, SpannedError<ParserError>>;
 }
 
 #[derive(Debug)]
@@ -39,8 +80,11 @@ pub(crate) struct EnumPattern {
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         // parse the pattern
+        let pat_span = stream.pos().unwrap_or(DUMMY_SP);
         let pat: parse::LitStr = stream.parse(meta)?;
-        let (pat, _) = meta.process_coq_literal(&pat.value());
+        let (pat, _) = meta
+            .process_coq_literal(pat_span, &pat.value())
+            .map_err(|err| parse::Error::OtherErr(pat_span, err.to_string()))?;
 
         let args: Vec<String> = if parse::Dollar::peek(stream) {
             // optionally parse args
@@ -53,10 +97,12 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
             parsed_args
                 .into_iter()
                 .map(|s| {
-                    let (arg, _) = meta.process_coq_literal(&s.value());
-                    arg
+                    let (arg, _) = meta
+                        .process_coq_literal(pat_span, &s.value())
+                        .map_err(|err| parse::Error::OtherErr(pat_span, err.to_string()))?;
+                    Ok(arg)
                 })
-                .collect()
+                .collect::<parse::Result<Vec<_>>>()?
         } else {
             Vec::new()
         };
@@ -81,33 +127,38 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
         ty_name: &str,
         attrs: &'a [&'a hir::AttrItem],
         variant_attrs: &[Vec<&'a hir::AttrItem>],
-    ) -> Result<specs::enums::Spec, String> {
+    ) -> Result<specs::enums::Spec, SpannedError<ParserError>> {
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
         let mut is_partial = false;
+        let mut coq_params = Vec::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
-            let args = &it.args;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let span = it.span;
             match seg.as_str() {
                 "refined_by" => {
-                    let ty: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                    let (rt_processed, _) = self.scope.process_coq_literal(ty.value().as_str());
+                    let ty: parse::LitStr = buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
+                    let (rt_processed, _) = self
+                        .scope
+                        .process_coq_literal(span, ty.value().as_str())
+                        .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                     rfn_type = Some(rt_processed);
                 },
                 "partial" => {
                     is_partial = true;
                 },
-                "export_as" | "derive_instantiate" => {},
-                _ => {
-                    return Err(format!("unknown attribute for enum specification: {:?}", args));
+                "context" => {
+                    coq_params
+                        .push(parse_context_item(&buffer, self.scope).map_err(|err| parse_err(span, err))?);
                 },
+                _ => {},
             }
         }
 
@@ -123,15 +174,21 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 };
 
                 let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+                let span = it.span;
                 let name = seg.as_str();
                 match name {
                     "pattern" => {
-                        let pat: EnumPattern = buffer.parse(self.scope).map_err(str_err)?;
+                        let pat: EnumPattern =
+                            buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
                         pattern = Some(pat);
                     },
                     "refinement" => {
-                        let rfn: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                        let (rfn_processed, _) = self.scope.process_coq_literal(rfn.value().as_str());
+                        let rfn: parse::LitStr =
+                            buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
+                        let (rfn_processed, _) =
+                            self.scope
+                                .process_coq_literal(span, rfn.value().as_str())
+                                .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                         refinement = Some(rfn_processed);
                     },
                     _ => {
@@ -147,7 +204,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
         }
 
         let Some(rfn_type) = rfn_type else {
-            return Err(format!("No refined_by clause provided for enum {:?}", ty_name));
+            return Err(spanned_error(first_span(attrs), ParserError::MissingRefinedBy(ty_name.to_owned())));
         };
 
         let rfn_type = coq::term::Type::Literal(rfn_type);
@@ -156,19 +213,23 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
             rfn_type,
             variant_patterns,
             is_partial,
+            coq_params,
         })
     }
 }
 
 /// Parse the arguments of a `rr::refine_as` annotation.
 /// Returns the optional specified name.
-pub(crate) fn parse_enum_refine_as(attrs: &hir::AttrArgs) -> Result<Option<String>, String> {
+pub(crate) fn parse_enum_refine_as(
+    attrs: &hir::AttrArgs,
+    span: Span,
+) -> Result<Option<String>, SpannedError<ParserError>> {
     let buffer = parse::Buffer::new(&attr_args_tokens(attrs));
 
     if matches!(attrs, hir::AttrArgs::Empty) {
         Ok(None)
     } else {
-        let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
+        let name: parse::LitStr = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
         Ok(Some(name.value()))
     }
 }

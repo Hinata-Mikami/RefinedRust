@@ -1,0 +1,6 @@
+(rocq.theory
+ (name radium.program_logic)
+ (package refinedrust)
+ (synopsis "Caesium WP")
+ (generate_project_file)
+ (theories stdpp iris Ltac2 Stdlib radium.physical_step))

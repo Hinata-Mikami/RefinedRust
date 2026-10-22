@@ -1,0 +1,48 @@
+Mapping for function cleanup_points_iterator_assert:
+summary: total=41 mapped=41 unmapped=0
+
+bb0[0] StorageLive(_3) -> Source(bb0[0] StorageLive(_3))
+bb0[1] StorageLive(_4) -> Source(bb0[1] StorageLive(_4))
+bb0[2] StorageLive(_5) -> Source(bb0[2] StorageLive(_5))
+bb0[3] StorageLive(_6) -> Source(bb0[3] StorageLive(_6))
+bb0[4] StorageLive(_7) -> Source(bb0[4] StorageLive(_7))
+bb0[5] _7 = move _1 -> Source(bb0[5] _7 = move _1)
+bb0[6] StorageLive(_8) -> Source(bb0[6] StorageLive(_8))
+bb0[7] _8 = copy _2 -> Source(bb0[7] _8 = copy _2)
+bb0[8] _6 = <I as std::iter::Iterator>::take(move _7, move _8) -> [return: bb1, unwind: bb11] -> Source(bb0[8] _6 = <I as std::iter::Iterator>::take(move _7, move _8) -> [return: bb1, unwind: bb13])
+bb1[0] StorageDead(_8) -> Source(bb1[0] StorageDead(_8))
+bb1[1] StorageDead(_7) -> Source(bb1[1] StorageDead(_7))
+bb1[2] StorageLive(_9) -> Source(bb1[2] StorageLive(_9))
+bb1[3] _9 = copy _2 -> Source(bb1[3] _9 = copy _2)
+bb1[4] _5 = <std::iter::Take<I> as std::iter::Iterator>::skip(move _6, move _9) -> [return: bb2, unwind: bb11] -> Source(bb1[4] _5 = <std::iter::Take<I> as std::iter::Iterator>::skip(move _6, move _9) -> [return: bb2, unwind: bb12])
+bb2[0] _4 = &mut _5 -> Source(bb2[0] _4 = &mut _5)
+bb2[1] StorageDead(_9) -> Source(bb2[1] StorageDead(_9))
+bb2[2] StorageDead(_6) -> Source(bb2[2] StorageDead(_6))
+bb2[3] _3 = <std::iter::Skip<std::iter::Take<I>> as std::iter::Iterator>::next(move _4) -> [return: bb3, unwind: bb10] -> Source(bb2[3] _3 = <std::iter::Skip<std::iter::Take<I>> as std::iter::Iterator>::next(move _4) -> [return: bb3, unwind: bb11])
+bb3[0] StorageDead(_4) -> Source(bb3[0] StorageDead(_4))
+bb3[1] drop(_5) -> [return: bb4, unwind: bb9] -> Source(bb3[2] drop(_5) -> [return: bb4, unwind: bb10])
+bb4[0] StorageDead(_5) -> Source(bb4[0] StorageDead(_5))
+bb4[1] StorageLive(_10) -> Source(bb4[1] StorageLive(_10))
+bb4[2] StorageLive(_11) -> Source(bb4[2] StorageLive(_11))
+bb4[3] StorageLive(_12) -> Source(bb4[3] StorageLive(_12))
+bb4[4] _12 = &_3 -> Source(bb4[4] _12 = &_3)
+bb4[5] _11 = std::option::Option::<<I as std::iter::Iterator>::Item>::is_none(move _12) -> [return: bb5, unwind: bb9] -> Source(bb4[5] _11 = std::option::Option::<<I as std::iter::Iterator>::Item>::is_none(move _12) -> [return: bb5, unwind: bb10])
+bb5[0] switchInt(move _11) -> [0: bb7, otherwise: bb6] -> Source(bb5[0] switchInt(move _11) -> [0: bb7, otherwise: bb6])
+bb6[0] StorageDead(_12) -> Source(bb6[0] StorageDead(_12))
+bb6[1] _10 = const () -> Source(bb6[1] _10 = const ())
+bb6[2] StorageDead(_11) -> Source(bb6[2] StorageDead(_11))
+bb6[3] StorageDead(_10) -> Source(bb6[3] StorageDead(_10))
+bb6[4] _0 = const () -> Source(bb6[4] _0 = const ())
+bb6[5] drop(_3) -> [return: bb8, unwind: bb11] -> Source(bb6[5] drop(_3) -> [return: bb8, unwind: bb14])
+bb7[0] StorageDead(_12) -> Source(bb7[0] StorageDead(_12))
+bb7[1] StorageLive(_13) -> Source(bb7[1] StorageLive(_13))
+bb7[2] _13 = core::panicking::panic(const "assertion failed: result.is_none()") -> bb9 -> Source(bb7[2] _13 = core::panicking::panic(const "assertion failed: result.is_none()") -> bb10)
+bb8[0] StorageDead(_3) -> Source(bb8[0] StorageDead(_3))
+bb8[1] return -> FoldedFrom(bb9[0] return)
+bb9[0] drop(_3) -> [return: bb11, unwind terminate(cleanup)] -> Source(bb10[0] drop(_3) -> [return: bb14, unwind terminate(cleanup)])
+bb10[0] drop(_5) -> [return: bb11, unwind terminate(cleanup)] -> Source(bb11[0] drop(_5) -> [return: bb14, unwind terminate(cleanup)])
+bb11[0] resume -> Inserted
+
+Inserted terminator point mappings:
+bb11[0] resume Start -> bb15[0] resume Start
+bb11[0] resume Mid -> bb15[0] resume Start

@@ -38,7 +38,10 @@ where
 impl<S: Serialize> Serialize for PointwiseState<'_, '_, S> {
     /// Serialize `PointwiseState` by translating it to a combination of vectors, tuples and maps,
     /// such that serde can automatically translate it.
-    fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
+    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+    where
+        Se: Serializer,
+    {
         let mut map = serializer.serialize_map(Some(self.mir.basic_blocks.len()))?;
 
         for bb in self.mir.basic_blocks.indices() {

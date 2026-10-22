@@ -373,12 +373,6 @@ impl Ident {
         Self(normalised)
     }
 
-    /// Add a prefix to the identifier.
-    #[must_use]
-    pub fn prepend(self, prefix: &str) -> Self {
-        Self::new(&format!("{}{}", prefix, self))
-    }
-
     /// Add a suffix to the identifier.
     #[must_use]
     pub fn append(self, suffix: &str) -> Self {
@@ -395,17 +389,23 @@ pub struct Document(pub Vec<Sentence>);
 
 impl Document {
     #[must_use]
-    pub fn new<I: Into<Sentence>>(sentences: Vec<I>) -> Self {
+    pub fn new<I>(sentences: Vec<I>) -> Self
+    where
+        I: Into<Sentence>,
+    {
         Self(sentences.into_iter().map(Into::into).collect())
     }
 
-    pub fn push<I: Into<Sentence>>(&mut self, sentence: I) {
+    pub fn push<I>(&mut self, sentence: I)
+    where
+        I: Into<Sentence>,
+    {
         self.0.push(sentence.into());
     }
 
-    //pub fn append(&mut self, mut other: Document) {
-    //self.0.append(&mut other.0);
-    //}
+    pub fn append_document(&mut self, mut other: Self) {
+        self.0.append(&mut other.0);
+    }
 }
 
 /// A [sentence], or a comment.
@@ -417,6 +417,7 @@ impl Document {
 #[transitive(from(command::Context, command::Command))]
 #[transitive(from(command::Definition, command::Command))]
 #[transitive(from(command::Lemma, command::Command))]
+#[transitive(from(command::Arguments, command::Command))]
 #[transitive(from(eval::Compute, command::QueryCommand))]
 #[transitive(from(inductive::Inductive, command::Command))]
 #[transitive(from(module::FromRequire, command::Command))]
@@ -443,11 +444,17 @@ pub struct ProofDocument(pub Vec<Vernac>);
 
 impl ProofDocument {
     #[must_use]
-    pub fn new<I: Into<Vernac>>(vernacs: Vec<I>) -> Self {
+    pub fn new<I>(vernacs: Vec<I>) -> Self
+    where
+        I: Into<Vernac>,
+    {
         Self(vernacs.into_iter().map(Into::into).collect())
     }
 
-    pub fn push<I: Into<Vernac>>(&mut self, vernac: I) {
+    pub fn push<I>(&mut self, vernac: I)
+    where
+        I: Into<Vernac>,
+    {
         self.0.push(vernac.into());
     }
 }
@@ -476,6 +483,7 @@ pub enum Vernac {
 pub struct Attribute(String);
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use super::*;
 

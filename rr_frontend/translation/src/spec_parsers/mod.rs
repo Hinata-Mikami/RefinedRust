@@ -1,3 +1,4 @@
+pub(crate) mod adt_attr_parser;
 pub(crate) mod const_attr_parser;
 pub(crate) mod crate_attr_parser;
 pub(crate) mod enum_spec_parser;
@@ -12,6 +13,7 @@ pub(crate) mod verbose_function_spec_parser;
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
 /// For parsing of `RustPaths`
 #[derive(Debug)]
@@ -47,7 +49,7 @@ impl<F> Parse<F> for ExportAs {
                 },
                 _ => {
                     return Err(parse::Error::OtherErr(
-                        stream.pos().unwrap(),
+                        stream.pos().unwrap_or(DUMMY_SP),
                         format!("invalid macro command: {:?}", macro_cmd.value()),
                     ));
                 },
@@ -77,6 +79,40 @@ pub(crate) fn get_export_as_attr(attrs: &[&hir::AttrItem]) -> Result<ExportAs, S
     Err("Did not find export_as annotation".to_owned())
 }
 
+/// For parsing of `rr::depends_on` annotations
+#[derive(Debug)]
+pub(crate) struct DependsOn {
+    pub paths: Vec<RustPath>,
+}
+impl<F> Parse<F> for DependsOn {
+    fn parse(stream: parse::Stream<'_>, meta: &F) -> parse::Result<Self> {
+        let paths: parse::Punctuated<RustPath, MToken![,]> =
+            parse::Punctuated::parse_separated_nonempty(stream, meta)?;
+
+        let paths = paths.into_iter().collect();
+
+        let export = Self { paths };
+        Ok(export)
+    }
+}
+
+pub(crate) fn get_depends_on_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<RustPath>, String> {
+    let mut deps = Vec::new();
+    for &it in attrs {
+        let path_segs = &it.path.segments;
+
+        if let Some(seg) = path_segs.get(1) {
+            let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
+
+            if seg.as_str() == "depends_on" {
+                let mut path = DependsOn::parse(&buffer, &()).map_err(parse_utils::str_err)?;
+                deps.append(&mut path.paths);
+            }
+        }
+    }
+    Ok(deps)
+}
+
 /// Parser for getting shim attributes
 #[derive(Debug)]
 pub(crate) struct ShimAnnot {
@@ -90,7 +126,7 @@ where
     U: ?Sized,
 {
     fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
-        let pos = stream.pos().unwrap();
+        let pos = stream.pos().unwrap_or(DUMMY_SP);
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 
@@ -139,7 +175,7 @@ where
     U: ?Sized,
 {
     fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
-        let pos = stream.pos().unwrap();
+        let pos = stream.pos().unwrap_or(DUMMY_SP);
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 
@@ -181,4 +217,10 @@ pub(crate) fn propagate_method_attr_from_impl(it: &hir::AttrItem) -> bool {
     } else {
         false
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct SpannedError<T> {
+    pub(crate) err: T,
+    pub(crate) span: Span,
 }

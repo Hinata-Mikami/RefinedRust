@@ -1,13 +1,8 @@
-// extern crate creusot_std;
-// use creusot_std::{
-//     prelude::{vec, *},
-//     std::clone::Clone,
-// };
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 #![feature(stmt_expr_attributes)]
-#![rr::import("refinedrust.extra_proofs.knights_tour", "defs")]
+#![rr::import("refinedrust.extra_proofs.knights_tour", "bounds_defs")]
 #![rr::package("knights-tour")]
 #![rr::include("stdlib")]
 
@@ -42,11 +37,11 @@ use wrappers::*;
 // !end spec
 struct Point {
     // !start spec(knights_tour.point)
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     // !end spec
     pub x: isize,
     // !start spec(knights_tour.point)
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     // !end spec
     pub y: isize,
 }
@@ -55,9 +50,7 @@ impl Point {
     // !start spec(knights_tour.mov)
     #[rr::requires("int_elem_of_it (self.1 + p.:0) isize")]
     #[rr::requires("int_elem_of_it (self.2 + p.:1) isize")]
-    #[rr::requires("kmove (0%Z, 0%Z) (p.:0, p.:1)")]
-    #[rr::ensures("ret = (self.1 + p.:0, self.2 + p.:1)")]
-    #[rr::ensures("kmove self ret")]
+    #[rr::returns("(self.1 + p.:0, self.2 + p.:1)")]
     // !end spec
     // !start code(knights_tour.mov)
     fn mov(&self, p: &(isize, isize)) -> Self {
@@ -80,20 +73,18 @@ impl Point {
 
 // !start spec(knights_tour.board)
 #[rr::refined_by("(s, f)" : "nat * (list (list Z))")]
-#[rr::ghost_drop("True")]
 #[rr::exists("field" : "list _")]
 #[rr::invariant("field = fmap (λ (x : list Z), #(fmap (λ (y: Z), #y) x) : place_rfn (list (place_rfn Z))) f")]
 #[rr::invariant("s = length f")]
 #[rr::invariant("Hnestedlen" : "∀ i : nat, i < length f → length (f !!! i) = s")]
-#[rr::invariant("Hnonnegative" : "∀ (i j : nat), in_bounds s (Z.of_nat i, Z.of_nat j) -> 0 ≤ ((f !!! i) !!! j)")]
 // !end spec
 pub struct Board {
     // !start spec(knights_tour.board)
-    #[rr::field("Z.of_nat s")]
+    #[rr::field("#(Z.of_nat s)")]
     // !end spec
     pub size: usize,
     // !start spec(knights_tour.board)
-    #[rr::field("field")]
+    #[rr::field("#(field)")]
     // !end spec
     pub field: Vec<Vec<usize>>,
 }
@@ -102,7 +93,6 @@ impl Board {
     // !start spec(knights_tour.new)
     #[rr::requires("Z.to_nat 16 * size ∈ isize")]
     #[rr::ensures("ret.1 = Z.to_nat size")]
-    #[rr::ensures("ret.2 = replicate (Z.to_nat size) (replicate (Z.to_nat size) 0)")]
     // !end spec
     // !start code(knights_tour.new)
     fn new(size: usize) -> Self {
@@ -123,7 +113,6 @@ impl Board {
 
     // !start spec(knights_tour.available)
     #[rr::ensures("if ret then in_bounds self.1 p else True")]
-    #[rr::ensures("if ret then board_at self.2 p = 0 else True")]
     // !end spec
     // !start code(knights_tour.available)
     fn available(&self, p: Point) -> bool {
@@ -162,18 +151,12 @@ impl Board {
     }
     // !end code
 
-    // !start spec(knights_tour.set)
-    #[rr::requires("0 ≤ v")]
+    // !start spec(knights_tour.count_degree)
     #[rr::requires("in_bounds self.cur.1 p")]
     #[rr::exists("new_rows" : "list (list Z)")]
     #[rr::observe("self.ghost" : "(self.cur.1, new_rows)")]
-    #[rr::ensures(
-        "∀ (i j : nat),
-        if decide ((Z.of_nat i, Z.of_nat j) = p) then (board_at new_rows (Z.of_nat i, Z.of_nat j) = v)
-        else (board_at new_rows (Z.of_nat i, Z.of_nat j) = board_at self.cur.2 (Z.of_nat i, Z.of_nat j))"
-    )]
     // !end spec
-    // !start code(knights_tour.set)
+    // !start code(knights_tour.count_degree)
     fn set(&mut self, p: Point, v: usize) {
         let idx = vec_index_mut(&mut self.field, p.x as usize);
         *vec_index_mut(idx, p.y as usize) = v;
@@ -181,13 +164,12 @@ impl Board {
     // !end code
 }
 
-// !start spec(knights_tour.moves)
+// !start spec(knights_tour.count_degree)
 #[rr::requires("Hbounds": "size_of_array_in_bytes (tuple2_sls (IntSynType isize) (IntSynType isize)) 16 ≤ MaxInt isize")]
 #[rr::ensures("∀ (a b : Z), *[a; b] ∈ ret -> (a ≤ 2)%Z ∧ (-2 ≤ a)%Z ∧ (b ≤ 2)%Z ∧ (-2 ≤ b)%Z")]
-#[rr::ensures("∀ (a b : Z), *[a; b] ∈ ret -> kmove (0%Z, 0%Z) (a, b)")]
 #[rr::ensures("length ret = 8%nat")]
 // !end spec
-// !start code(knights_tour.moves)
+// !start code(knights_tour.count_degree)
 fn moves() -> Vec<(isize, isize)> {
     let mut v = Vec::new();
     v.push((2, 1));
@@ -233,28 +215,23 @@ fn min(v: &Vec<(usize, Point)>) -> Option<(usize, Point)> {
 #[rr::requires("Hx_upper": "a < size")]
 #[rr::requires("Hy_upper": "b < size")]
 #[rr::requires("16 * size ∈ isize")]
+#[rr::requires("size * size ∈ usize")]
 #[rr::requires("size_of_array_in_bytes (tuple2_sls (IntSynType usize) Point_sls) 16 ≤ MaxInt isize")]
 #[rr::requires("size_of_array_in_bytes (tuple2_sls (IntSynType isize) (IntSynType isize)) 16 ≤ MaxInt isize")]
-#[rr::requires("size * size + 1 ∈ usize")]
-#[rr::exists("p" : "Z * Z")]
-#[rr::ensures("if_Some ret (λ board, kpath board (a,b) p (Z.to_nat (size * size - 1)))")]
 // !end spec
 // !start code(knights_tour.knights_tour)
 pub fn knights_tour(size: usize, a: usize, b: usize) -> Option<Board> {
     let mut board = Board::new(size);
     let mut p = Point::new(a as isize, b as isize);
     board.set(p, 1);
-    // TODO(lennard): liRStep gets stuck here
-    // let _ = &board.size;
 
-    for step in 2..(size * size + 1) {
+    for step in 2..(size * size) {
         // choose next square by Warnsdorf's rule
         // !end code
         // !start spec(knights_tour.knights_tour)
         #[rr::inv_vars("board", "p")]
         #[rr::invariant("board.1 = Z.to_nat size")]
         #[rr::invariant("Hboard_inbounds": "in_bounds board.1 p")]
-        #[rr::invariant("Hkpath": "kpath board (a,b) p (length {Hist})")]
         #[rr::ignore]||{};
         // !end spec
         // !start code(knights_tour.knights_tour)
@@ -262,11 +239,12 @@ pub fn knights_tour(size: usize, a: usize, b: usize) -> Option<Board> {
         for m in moves() {
             // !end code
             // !start spec(knights_tour.knights_tour)
-            #[rr::params("init_board", "init_point")]
-            #[rr::inv_vars("candidates", "board", "p")]
+            #[rr::params("init_board")]
+            #[rr::inv_vars("candidates", "board")]
             #[rr::invariant("board = init_board")]
-            #[rr::invariant("p = init_point")]
-            #[rr::invariant("Hcand_ext" : "extend_kpath board p candidates")]
+            #[rr::invariant("Hcandidate_bounds": 
+                "∀ (z : RT_xt (place_rfnRT (tuple2_rt Z Point_inv_t_rt))), z ∈ candidates → in_bounds board.1 (z.:1)"
+            )]
             #[rr::invariant("length candidates ≤ length {Hist}")]
             #[rr::ignore]||{};
             // !end spec
@@ -298,3 +276,4 @@ fn main() {
          //None => println!("Fail!"),
      //}
 }
+

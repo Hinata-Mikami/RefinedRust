@@ -1,0 +1,7 @@
+Mapping for function cleanup_points_diverging_call:
+summary: total=4 mapped=4 unmapped=0
+
+bb0[0] StorageLive(_3) -> Source(bb0[0] StorageLive(_3))
+bb0[1] _3 = core::panicking::panic(const "not implemented") -> bb1 -> Source(bb0[1] _3 = core::panicking::panic(const "not implemented") -> bb1)
+bb1[0] drop(_1) -> [return: bb2, unwind terminate(cleanup)] -> Source(bb1[0] drop(_1) -> [return: bb2, unwind terminate(cleanup)])
+bb2[0] resume -> Source(bb2[0] resume)

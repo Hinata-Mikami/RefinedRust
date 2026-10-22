@@ -24,6 +24,7 @@ fn max_list_i32(v: &List<i32>) -> i32 {
 // - ...
 
 #[rr::returns("max_list_cmp {T::Ord} v None")]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn max_list<T>(v: &List<T>) -> Option<T> 
 where T: Ord + Copy
 {
@@ -46,7 +47,6 @@ fn max_list_abs(v: &List<i32>) -> Option<u32>
 {
     v.iter().map(#[rr::returns("Z.abs x")] |x| x.abs_diff(0)).max()
 }
-
 
 
 

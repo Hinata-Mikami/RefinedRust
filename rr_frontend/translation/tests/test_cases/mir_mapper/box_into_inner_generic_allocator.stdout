@@ -1,0 +1,16 @@
+Mapping for function box_into_inner:
+summary: total=9 mapped=9 unmapped=0
+
+bb0[0] _7 = copy (_1.0: std::ptr::Unique<Node<T>>) as *const Node<T> (BoxDerefTransmute) -> SplitFrom(bb0[0] _0 = move ((*_1).0: T))
+bb0[1] _0 = move ((*_7).0: T) -> SplitFrom(bb0[0] _0 = move ((*_1).0: T))
+bb0[2] _6 = copy ((_1.0: std::ptr::Unique<Node<T>>).0: std::ptr::NonNull<Node<T>>) as *const Node<T> (Transmute) -> Inserted
+bb0[3] _2 = &mut _1 -> Inserted
+bb0[4] _3 = <std::boxed::Box<Node<T>, A> as std::ops::Drop>::drop(move _2) -> [return: bb4, unwind: bb3] -> SplitFrom(bb0[1] drop(_1) -> [return: bb1, unwind: bb2])
+bb1[0] return -> Source(bb1[0] return)
+bb2[0] resume -> Source(bb2[0] resume)
+bb3[0] drop((_1.1: A)) -> [return: bb2, unwind terminate(cleanup)] -> SplitFrom(bb0[1] drop(_1) -> [return: bb1, unwind: bb2])
+bb4[0] drop((_1.1: A)) -> [return: bb1, unwind: bb2] -> SplitFrom(bb0[1] drop(_1) -> [return: bb1, unwind: bb2])
+
+Box deref aliases:
+_6 aliases *_1 (source: none)
+_7 aliases *_1 (source: bb0[0])

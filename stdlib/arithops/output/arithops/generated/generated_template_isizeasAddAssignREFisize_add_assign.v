@@ -1,0 +1,33 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.arithops.arithops Require Export generated_code_arithops generated_specs_arithops.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition isizeasAddAssignREFisize_add_assign_lemma (π : thread_id) : Prop :=
+  ∀ (isizeasAddAssign_add_assign_loc : loc) , 
+  isizeasAddAssign_add_assign_loc ◁ᵥ{π, MetaNone} isizeasAddAssign_add_assign_loc @ function_ptr [RefSynType; (IntSynType ISize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), let realization := (isizeasAddAssign_realization) in fn_spec_add_late_pre ((AddAssign_add_assign_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[] -[] -[] -[]))  -[late_lft_0] -[]) (λ π, (realization.(trait_ctx_wf) -[] -[] π))%I) -∗
+  typed_function π (isizeasAddAssignREFisize_add_assign_def isizeasAddAssign_add_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isizeasAddAssignREFisize_add_assign -[ulft_1; ulft_2] -[]) (λ π, (True)
+  ∗ ((trait_incl_of_isizeasAddAssignREFisize_add_assign-[ulft_1; ulft_2] -[]) π)
+  ∗ ((introduce_direct ((let realization := (isizeasAddAssign_realization) in realization.(trait_ctx_wf) -[] -[] π)))))).
+End proof.
+
+Ltac isizeasAddAssignREFisize_add_assign_prelude :=
+  unfold isizeasAddAssignREFisize_add_assign_lemma;
+  set (FN_NAME := FUNCTION_NAME "isizeasAddAssignREFisize_add_assign");
+  intros;
+  iStartProof;
+  let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
+  let ulft_1 := fresh "ulft_1" in
+  let ulft_2 := fresh "ulft_2" in
+  start_function "isizeasAddAssignREFisize_add_assign" ϝ fid ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? );
+  intros arg_self arg_other;
+  let π := get_π in
+  let Σ := get_Σ in
+  specialize (pose_bb_inv (PolyNil)) as loop_map;
+  init_lfts π fid (("ulft_1", ulft_1) :: ("ulft_2", ulft_2) :: ("_flft", ϝ) :: ("static", static) :: [] );
+  init_tyvars ( ∅ );
+  unfold_generic_inst; simpl.

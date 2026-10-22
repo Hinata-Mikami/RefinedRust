@@ -1,15 +1,3 @@
-Section box.
-  Context `{!LayoutAlg}.
-
-  (* Notation used for Rust's magic box deref *)
-  Definition magic_box_deref (T_st A_st : syn_type) (e : expr) : expr :=
-    (*b.0.pointer.pointer*)
-    (!{PtrOp} (((e at{Box_sls T_st A_st} "0") at{unique_Unique_sls T_st} "ptr") at{nonnull_NonNull_sls T_st} "pointer"))%E
-  .
-End box.
-#[export] Hint Unfold magic_box_deref : solve_into_place_unfold.
-Notation "'!box{' T_st ',' A_st '}' e" := (magic_box_deref T_st A_st e) (at level 9, format "!box{ T_st , A_st } e") : expr_scope.
-
 Section contractive.
   Context `{!refinedrustGS Σ}.
 
@@ -18,13 +6,11 @@ Section contractive.
     TypeContractive (λ ty, Box_inv_t T_rt A_rt A_attrs <TY> (T ty) <TY> A_ty <INST!>).
   Proof.
     intros X.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply ty_lft_morphism_to_direct.
-        apply X.
       + solve_proper_prepare.
         repeat solve_proper_step.
-      + solve_proper_prepare.
+      + solve_proper_prepare. simpl in *. prepare_initial_coq_context. simpl.
         repeat solve_proper_step.
     - cbn; apply _.
   Qed.
@@ -33,16 +19,37 @@ Section contractive.
     TypeNonExpansive (λ ty, Box_inv_t T_rt A_rt A_attrs <TY> (T ty) <TY> A_ty <INST!>).
   Proof. apply _. Qed.
 
+  Instance Box_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - done.
+    - done.
+  Defined.
+  Global Instance Box_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
+
   (** Resolve ghost: Resolve observations on the contained value. *)
   Lemma resolve_ghost_box {T_rt A_rt} A_attrs (T_ty : type T_rt) (A_ty : type A_rt) π E L r rm T :
-    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r T)
+    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r.1 (λ L2 r2 R prog,
+      T L2 (r2, r.2) R prog))
     ⊢ resolve_ghost_adt π E L rm r (Box_inv_t T_rt A_rt A_attrs <TY> T_ty <TY> A_ty <INST!>) T.
   Proof.
     rewrite /resolve_ghost_adt /resolve_ghost.
     iIntros "HT" (????) "#CTX #HE HL Hv".
-    iEval (rewrite /ty_own_val/=) in "Hv".
-    iDestruct "Hv" as ((l' & a & [])) "(Hinv & Hv)". simpl in *.
-    iDestruct "Hinv" as "(%l'' & %a'' & %Heq & Hl' & Halloc & _)".
+    rewrite ex_plain_t_unfold_val.
+    destruct r as [r a].
+    iDestruct "Hv" as ((l' & [])) "(Hinv & Hv)". simpl in *.
+    iDestruct "Hinv" as "(%l'' & %Heq & Hl' & Halloc & _)".
     inversion Heq. subst.
     unfold guarded. iDestruct "Hl'" as "(Hc & Hl')".
     iDestruct "Hc" as "((Hc1 & Hc) & Ht)".
@@ -52,7 +59,7 @@ Section contractive.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_intro_tr with "Ht").
     iModIntro. iIntros "Ht Hcreds' !> (Hl' & $)".
-    iEval (rewrite /ty_own_val/=).
+    rewrite ex_plain_t_unfold_val.
     iFrame. iR.
     rewrite /guarded. iFrame.
     iDestruct "Ht" as "(_ & $)".
@@ -66,21 +73,22 @@ Section contractive.
     rewrite /mut_subtype /subtype_adt.
     iIntros "(%HsubT & %HsubA & $)". iPureIntro.
     iIntros (?) "HL HE".
-    iPoseProof (full_subtype_acc_noend with "HE HL") as "#HinclT"; first apply HsubT.
-    iPoseProof (full_subtype_acc_noend with "HE HL") as "#HinclA"; first apply HsubA.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstT & #HinclT)"; first apply HsubT.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstA & #HinclA)"; first apply HsubA.
     iSplit; iModIntro.
-    - iIntros (? x r). simpl.
-      iIntros "(%l & %a & -> & Hl & Hperm)".
-      iExists _, _. iR.
-      iDestruct ("HinclT" $! inhabitant) as "(%Hst & _ )".
-      rewrite Hst. iFrame.
+    - iIntros (? x [r a]). simpl.
+      iIntros "(%l & -> & Hl & Hperm)".
+      iExists _. iR.
+      rewrite HstT. iFrame.
       iApply (guarded_mono with "[] Hl").
-      iIntros "Hl". by iApply type_incl_ltype_owned_wand.
-    - iIntros (? ? x r). simpl.
-      iIntros "(%l & %a & -> & Hl & Hperm)".
-      iExists _, _. iR. iL.
+      iIntros "Hl". iApply type_incl_ltype_owned_wand; [ | done..].
+      rewrite HstT//.
+    - iIntros (? ? x [r a]). simpl.
+      iIntros "(%l &  -> & Hl & Hperm)".
+      iExists _. iR. iL.
       iApply (guarded_mono with "[] Hl").
-      iIntros "Hl". by iApply type_incl_ltype_shared_wand.
+      iIntros "Hl". iApply type_incl_ltype_shared_wand; [ | done..].
+      rewrite HstT//.
   Qed.
   Definition subtype_box_inst := [instance @subtype_box].
   Global Existing Instance subtype_box_inst.

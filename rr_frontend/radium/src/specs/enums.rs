@@ -5,15 +5,16 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::RefCell;
-use std::fmt;
 use std::fmt::Write as _;
 use std::ops::Add;
+use std::{fmt, slice};
 
 use derive_more::{Constructor, Display};
-use indent_write::fmt::IndentWriter;
 
-use crate::specs::{GenericScope, GenericScopeInst, Type, structs, types};
-use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list};
+use crate::specs::bundles::BundleableType;
+use crate::specs::invariants::{generate_type_implicit_arg_flags, setup_type_section_context};
+use crate::specs::{GenericScope, GenericScopeInst, IncludeSelfReq, Type, invariants, structs, types};
+use crate::{coq, fmt_list, lang, model, push_str_list};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 /// Enum representation options supported by Radium
@@ -45,6 +46,8 @@ pub struct Spec {
     pub variant_patterns: Vec<(String, Vec<String>, String)>,
     /// true if the map from refinement to variants is partial
     pub is_partial: bool,
+    /// additional Coq context required by the enum definition
+    pub coq_params: Vec<coq::binder::Binder>,
 }
 
 /// Enum to represent large discriminants
@@ -99,20 +102,233 @@ pub struct Abstract<'def> {
     /// type of the integer discriminant
     discriminant_type: lang::IntType,
 
-    /// whether this is a recursive type
-    is_recursive: bool,
-
     /// these should be the same also across all the variants
     scope: GenericScope<'def>,
+
+    pub(crate) coq_params: Vec<coq::binder::Binder>,
 }
 
 pub type AbstractRef<'def> = &'def RefCell<Option<Abstract<'def>>>;
+
+impl<'def> BundleableType<'def> for Abstract<'def> {
+    fn ty_name(&self) -> String {
+        self.plain_ty_name.clone()
+    }
+
+    fn rt_name(&self) -> String {
+        self.plain_rt_name.clone()
+    }
+
+    fn bundle_rt_term(&self) -> String {
+        self.spec.rfn_type.to_string()
+    }
+
+    fn bundle_st_def_name(&self) -> String {
+        self.st_def_name.clone()
+    }
+
+    fn generate_bundle_layout_def(
+        &self,
+        _typarams: &coq::binder::BinderList,
+        shadow_st_names: &[String],
+    ) -> String {
+        self.generate_coq_els_def_core(shadow_st_names)
+    }
+
+    fn scope(&self) -> GenericScope<'def> {
+        self.scope.clone()
+    }
+
+    fn extra_coq_params(&self) -> Vec<coq::binder::Binder> {
+        self.coq_params.clone()
+    }
+
+    fn generate_recursive_prelude_entry(&self, doc: &mut coq::Document) {
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+        let mut recursive_prelude = String::new();
+
+        write!(recursive_prelude, "Let {}", self.plain_rt_name).unwrap();
+        for names in &all_ty_params.params {
+            write!(recursive_prelude, " (_{} : RT)", names.refinement_type()).unwrap();
+        }
+        writeln!(recursive_prelude, " := {}.", self.spec.rfn_type).unwrap();
+
+        let dummy_ty_name = format!("_{}", self.plain_ty_name);
+        writeln!(recursive_prelude, "Context ({dummy_ty_name} : type {}).", self.spec.rfn_type).unwrap();
+
+        write!(recursive_prelude, "Let {}", self.plain_ty_name).unwrap();
+        for names in &all_ty_params.params {
+            write!(recursive_prelude, " ({} : RT)", names.refinement_type()).unwrap();
+        }
+        writeln!(recursive_prelude, " := {} {dummy_ty_name}.", self.scope).unwrap();
+
+        doc.push(coq::command::Command::Literal(recursive_prelude));
+    }
+
+    fn generate_in_context(
+        &self,
+        doc: &mut coq::Document,
+        ty_name: &str,
+        rt_name: &str,
+        ty_context_names: &[String],
+        rt_context_names: &[String],
+    ) {
+        let pre_enum_def_name = if ty_name.ends_with("_pre_raw") {
+            format!("{}_pre_raw", self.enum_def_name)
+        } else {
+            format!("{}_pre", self.enum_def_name)
+        };
+
+        self.generate_coq_type_def_in_context(
+            doc,
+            &pre_enum_def_name,
+            ty_name,
+            rt_name,
+            ty_context_names,
+            rt_context_names,
+        );
+    }
+
+    fn set_flags(
+        &self,
+        doc: &mut coq::Document,
+        rt_context_names: &[String],
+        context_items: &[coq::binder::Binder],
+    ) {
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+
+        // make it Typeclasses Transparent
+        doc.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                self.plain_ty_name.clone(),
+            ))
+            .attributes("global"),
+        );
+        doc.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                self.plain_rt_name.clone(),
+            ))
+            .attributes("global"),
+        );
+
+        doc.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.enum_def_name.clone(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
+
+        generate_type_implicit_arg_flags(doc, &self.plain_rt_name, &all_ty_params, rt_context_names);
+        invariants::generate_semtype_implicit_arg_flags(
+            doc,
+            &self.plain_ty_name,
+            &all_ty_params,
+            context_items,
+        );
+
+        doc.push(coq::command::Command::Literal(format!(
+            "Global Hint Unfold {} : solve_protected_eq_db.",
+            self.plain_ty_name
+        )));
+    }
+
+    fn generate_bundle_projection(
+        &self,
+        doc: &mut coq::Document,
+        bundle_tys_name: &str,
+        index: usize,
+        _projection_names: &[String],
+    ) {
+        let attr_binders = self.scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_uses = attr_binders.make_using_terms();
+        let bundle_tys = coq::term::App::new(bundle_tys_name.to_owned(), attr_uses);
+        let scope_inst = self.scope.identity_instantiation_term();
+        let type_type = self
+            .scope
+            .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
+        doc.push(coq::command::Definition::new(
+            self.plain_ty_name.clone(),
+            attr_binders,
+            Some(type_type),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                "{} mut_type_project ({bundle_tys} {scope_inst}) {index} eq_refl",
+                self.scope,
+            ))),
+        ));
+    }
+
+    fn generate_bundle_post_projection(&self, doc: &mut coq::Document, projection_names: &[String]) {
+        let attr_binders = self.scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_uses = attr_binders.make_using_terms();
+        let scope_inst = self.scope.identity_instantiation_term();
+        let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
+            "enum ({})",
+            self.spec.rfn_type
+        ))));
+        let pre_enum_def_name = format!("{}_pre", self.enum_def_name);
+        let mut projection_inst = attr_uses.iter().map(ToString::to_string).collect::<Vec<_>>();
+        projection_inst.push(scope_inst.clone());
+        let projection_inst = projection_inst.join(" ");
+        let mut args = projection_names
+            .iter()
+            .map(|name| format!("({name} {projection_inst})"))
+            .collect::<Vec<_>>();
+        args.extend(attr_uses.into_iter().map(|term| term.to_string()));
+        args.push(scope_inst);
+        doc.push(coq::command::Definition::new(
+            self.enum_def_name.clone(),
+            attr_binders,
+            Some(enum_type),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                "{} {pre_enum_def_name} {}",
+                self.scope,
+                args.join(" "),
+            ))),
+        ));
+    }
+
+    fn generate_bundle_pre_wrapper(
+        &self,
+        doc: &mut coq::Document,
+        pre_ty_name: &str,
+        raw_pre_ty_name: &str,
+        projection_names: &[String],
+    ) {
+        let mut type_body = String::new();
+        let mut enum_body = String::new();
+        for projection_name in projection_names {
+            type_body.push_str(&format!("let _ := {projection_name} in\n"));
+            enum_body.push_str(&format!("let _ := {projection_name} in\n"));
+        }
+        type_body.push_str(raw_pre_ty_name);
+        enum_body.push_str(&format!("{}_pre_raw", self.enum_def_name));
+
+        doc.push(coq::command::Definition::new(
+            pre_ty_name.to_owned(),
+            coq::binder::BinderList::empty(),
+            None,
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(type_body)),
+        ));
+        doc.push(coq::command::Definition::new(
+            format!("{}_pre", self.enum_def_name),
+            coq::binder::BinderList::empty(),
+            None,
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(enum_body)),
+        ));
+    }
+}
 
 impl<'def> Abstract<'def> {
     /// Get the name of this enum.
     #[must_use]
     fn name(&self) -> &str {
         &self.name
+    }
+
+    #[must_use]
+    pub(crate) fn st_def_name(&self) -> &str {
+        &self.st_def_name
     }
 
     #[must_use]
@@ -140,12 +356,22 @@ impl<'def> Abstract<'def> {
     #[must_use]
     pub fn generate_coq_els_def(&self) -> String {
         let indent = "  ";
-
         let mut out = String::with_capacity(200);
 
         out.push_str(&format!("Section {}.\n", self.els_def_name));
         out.push_str(&format!("{indent}Context `{{RRGS : !refinedrustGS Σ}}.\n"));
         out.push('\n');
+        out.push_str(&self.generate_coq_els_def_core(slice::from_ref(&self.st_def_name)));
+        out.push_str(&format!("End {}.\n", self.els_def_name));
+
+        out
+    }
+
+    #[must_use]
+    pub(crate) fn generate_coq_els_def_core(&self, shadow_st_names: &[String]) -> String {
+        let indent = "  ";
+
+        let mut out = String::with_capacity(200);
 
         // add syntype parameters
         let all_ty_st_params = self.scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
@@ -156,8 +382,11 @@ impl<'def> Abstract<'def> {
             let vbor = v.borrow();
             let vbor = vbor.as_ref().unwrap();
 
+            let mut variant_shadow_st_names = vec![vbor.st_def_name().to_owned()];
+            variant_shadow_st_names
+                .extend(shadow_st_names.iter().filter(|name| *name != vbor.st_def_name()).cloned());
             out.push_str(
-                &vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params, Some(&self.st_def_name)),
+                &vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params, &variant_shadow_st_names),
             );
             out.push('\n');
         }
@@ -186,7 +415,7 @@ impl<'def> Abstract<'def> {
         out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_variants_eq. Qed.\n"));
         out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.\n"));
         out.push_str(&format!(
-            "{indent}Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.\n"
+            "{indent}Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.\n"
         ));
         out.push_str(&format!("{indent}Global Typeclasses Opaque {}.\n", self.els_def_name));
 
@@ -197,9 +426,6 @@ impl<'def> Abstract<'def> {
             self.els_def_name,
             fmt_list!(all_ty_st_params_uses, " ")
         ));
-
-        // finish
-        out.push_str(&format!("End {}.\n", self.els_def_name));
 
         out
     }
@@ -322,7 +548,7 @@ impl<'def> Abstract<'def> {
         let mut out = String::with_capacity(200);
         let spec = &self.spec;
 
-        write!(out, "λ rfn, match rfn with ").unwrap();
+        write!(out, "λ rfn, match rfn as x return RT_rt ({} x) with ", self.enum_rt_def_name()).unwrap();
         for ((_, _, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             write!(out, "| {} => {rfn}", coq::term::App::new(pat, apps.clone())).unwrap();
         }
@@ -349,150 +575,41 @@ impl<'def> Abstract<'def> {
                 let inj = format!("(λ '( {rfn}), {})", coq::term::App::new(pat, apps.clone()));
 
                 format!(
-                    "if (decide (variant = \"{name}\")) then Some $ mk_enum_tag_sem _ ({ty} {}) {inj}",
+                    "(\"{name}\", mk_enum_tag_sem _ ({ty} {}) {inj})",
                     v.scope.identity_instantiation_term()
                 )
             })
             .collect();
-        if conditions.is_empty() {
-            "λ variant, None".to_owned()
-        } else {
-            format!("λ variant, {} else None", conditions.join(" else "))
-        }
+        format!("[{}]", conditions.join("; "))
     }
 
-    fn generate_lfts(&self) -> String {
-        // TODO: probably should build this up modularly over the fields
-
-        let mut v: Vec<_> = self
-            .scope
-            .get_all_ty_params_with_assocs()
-            .params
-            .iter()
-            .map(|p| format!("(ty_lfts {})", p.type_term()))
-            .collect();
-
-        if self.is_recursive {
-            let rec_ty = format!(
-                "ty_lfts ({} {} {})",
-                self.plain_ty_name,
-                fmt_list!(
-                    self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
-                    " "
-                ),
-                self.scope.identity_instantiation().instantiation(true, true),
-            );
-            v.push(rec_ty);
-        }
-
-        v.push("[]".to_owned());
-        v.join(" ++ ")
-    }
-
-    fn generate_wf_elctx(&self) -> String {
-        // TODO: probably should build this up modularly over the fields
-        let mut v: Vec<_> = self
-            .scope
-            .get_all_ty_params_with_assocs()
-            .params
-            .iter()
-            .map(|p| format!("(ty_wf_E {})", p.type_term()))
-            .collect();
-
-        if self.is_recursive {
-            let rec_ty = format!(
-                "ty_wf_E ({} {} {})",
-                self.plain_ty_name,
-                fmt_list!(
-                    self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
-                    " "
-                ),
-                self.scope.identity_instantiation().instantiation(true, true),
-            );
-            v.push(rec_ty);
-        }
-
-        v.push("[]".to_owned());
-        v.join(" ++ ")
-    }
-
-    #[must_use]
-    fn generate_contractive_instance(&self, def_name: &str) -> String {
-        let mut out = String::with_capacity(200);
-
-        let ty_name = &self.plain_ty_name;
-        let sem_binders = self.scope.get_all_ty_params_with_assocs().get_semantic_ty_params();
-
-        writeln!(out, "{BASE_INDENT}Program Instance {ty_name}_contractive {sem_binders} : EnumContractive (λ {ty_name}, {def_name} {ty_name} {}).", self.scope.identity_instantiation().instantiation(true, true)).unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Qed.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Qed.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Defined.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Qed.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_dist. Qed.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_dist. Qed.").unwrap();
-
-        out
-    }
-
-    #[must_use]
-    pub fn generate_coq_type_def(&self) -> String {
-        let mut out = String::with_capacity(200);
-
-        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
-
-        let indent = "  ";
-        // the write_str impl will always return Ok.
-        write!(out, "Section {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
-
-        // add type parameters, and build a list of terms to apply the els def to
-        if !all_ty_params.params.is_empty() {
-            // first push the (implicit) refinement type parameters
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " {{{} : RT}}", names.refinement_type()).unwrap();
-            }
-            out.push_str(".\n");
-        }
-        out.push('\n');
-
-        let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
-
-        writeln!(out, "{indent}Section components.").unwrap();
-
-        let ty_context_names = if self.is_recursive {
-            // generate the recursive type prelude for wiring up the component type definitions
-            // correctly
-
-            write!(out, "{indent}Let {}", self.plain_rt_name).unwrap();
-            // add dummy binders
-            for names in &all_ty_params.params {
-                write!(out, " (_{} : RT)", names.refinement_type()).unwrap();
-            }
-            writeln!(out, " := {}.", self.spec.rfn_type).unwrap();
-
-            let dummy_ty_name = format!("_{}", self.plain_ty_name);
-            writeln!(out, "{indent}Context ({dummy_ty_name} : type {}).", self.spec.rfn_type).unwrap();
-
-            write!(out, "{indent}Let {}", self.plain_ty_name).unwrap();
-            // add dummy binders
-            for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
-            }
-            writeln!(out, " := {} {dummy_ty_name}.", self.scope).unwrap();
-
-            vec![dummy_ty_name]
-        } else {
-            vec![]
+    fn generate_coq_type_def_in_context(
+        &self,
+        document: &mut coq::Document,
+        enum_name: &str,
+        ty_name: &str,
+        rt_name: &str,
+        ty_context_names: &[String],
+        rt_context_names: &[String],
+    ) {
+        let ident = |name: &str| coq::term::Term::Ident(coq::Ident::new(name));
+        let app = |name: &str, args: Vec<coq::term::Term>| -> coq::term::Term {
+            coq::term::App::new(ident(name), args).into()
         };
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+        let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
 
         // define types and type abstractions for all the component types.
         for (_name, variant, _) in &self.variants {
             let v = variant.borrow();
             let v = v.as_ref().unwrap();
             // TODO: might also need to handle extra context items
-            write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.scope, &ty_context_names, &[]))
-                .unwrap();
+            v.variant_def.generate_coq_type_def_in_context(
+                document,
+                &v.scope,
+                ty_context_names,
+                rt_context_names,
+            );
 
             if let Some(inv) = &v.invariant {
                 let base_type = format!(
@@ -503,11 +620,13 @@ impl<'def> Abstract<'def> {
                 let inv_def = inv.generate_coq_type_def_core(
                     &base_type,
                     v.variant_def.plain_rt_def_name.as_str(),
+                    &inv.type_name(),
+                    &inv.rt_def_name(),
                     &rt_param_uses,
                     &v.scope,
-                    &[],
+                    rt_context_names,
                 );
-                write!(out, "{}\n", inv_def).unwrap();
+                document.append_document(inv_def);
             }
         }
 
@@ -515,45 +634,59 @@ impl<'def> Abstract<'def> {
         if let Some(ind) = &self.optional_inductive_def {
             let name = ind.get_name();
 
-            let mut document = coq::Document::default();
-
-            let mut out = IndentWriter::new(BASE_INDENT, &mut out);
-            writeln!(out).unwrap();
+            let mut doc = coq::Document::default();
 
             let comment = format!("Auto-generated representation of {}", name);
-            document.push(coq::Sentence::Comment(comment));
-            document.push(coq::command::Command::Inductive(ind.clone()));
-            // add the canonical structure declaration for the corresponding RT
-            let rt_name = format!("{name}RT");
-            let defn = coq::command::Definition {
-                program_mode: false,
-                name: rt_name.clone(),
-                params: coq::binder::BinderList::empty(),
-                ty: Some(coq::term::Type::RT),
-                body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::App(Box::new(
-                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("directRT")), vec![
-                        coq::term::Term::Ident(coq::Ident::new(name)),
-                    ]),
-                ))),
-            };
-            document.push(coq::command::CommandAttrs::new(defn));
-            document.push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(
-                &rt_name,
-            ))));
+            doc.push(coq::Sentence::Comment(comment));
+            doc.push(coq::command::Command::Inductive(ind.clone()));
+            for (pat, _, _) in &self.spec.variant_patterns {
+                doc.push(
+                    coq::command::CommandAttrs::new(coq::command::Arguments {
+                        name: pat.clone(),
+                        arguments_string: "{F}".to_owned(),
+                    })
+                    .attributes("global"),
+                );
+            }
+            if !self.variants.is_empty() {
+                // Prefer a nullary constructor; otherwise require an inhabitant of its payload.
+                let index =
+                    self.spec.variant_patterns.iter().position(|(_, apps, _)| apps.is_empty()).unwrap_or(0);
+                let (pat, apps, _) = &self.spec.variant_patterns[index];
+                let variant = self.variants[index].1.borrow();
+                let variant = variant.as_ref().unwrap();
+                let mut params = vec![coq::binder::Binder::new(
+                    Some("F".to_owned()),
+                    coq::term::Type::Function(vec![coq::term::Type::RT], Box::new(coq::term::Type::Type)),
+                )];
+                let witness = if apps.is_empty() {
+                    ident(pat)
+                } else {
+                    params.push(coq::binder::Binder::new_generalized(
+                        coq::binder::Kind::MaxImplicit,
+                        None,
+                        coq::term::Type::Term(Box::new(app("Inhabited", vec![app("F", vec![ident(
+                            &variant.public_rt_def_name(),
+                        )])]))),
+                    ));
+                    app(pat, vec![ident("inhabitant")])
+                };
+                doc.push(
+                    coq::command::CommandAttrs::new(coq::command::Instance {
+                        name: Some(format!("{name}_inhabited")),
+                        params: coq::binder::BinderList::new(params),
+                        ty: coq::term::Type::Term(Box::new(app("Inhabited", vec![app(name, vec![ident(
+                            "F",
+                        )])]))),
+                        body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                            proof.push(coq::ltac::LTac::Exact(app("populate", vec![witness])));
+                        }),
+                    })
+                    .attributes("global"),
+                );
+            }
 
-            document.push(
-                coq::command::CommandAttrs::new(coq::command::Instance {
-                    name: None,
-                    params: coq::binder::BinderList::empty(),
-                    ty: coq::term::Type::Literal(format!("Inhabited {}", name)),
-                    body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
-                        proof.push(model::LTac::SolveInhabited);
-                    }),
-                })
-                .attributes("global"),
-            );
-
-            writeln!(out, "{}", document).unwrap();
+            document.append_document(doc);
         }
 
         // build the els term applied to generics
@@ -565,34 +698,176 @@ impl<'def> Abstract<'def> {
         }
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);
 
-        write!(out, "{indent}{}\n", self.generate_enum_rt()).unwrap();
-        write!(out, "{indent}{}\n", self.generate_enum_ty()).unwrap();
+        document.push(self.generate_enum_rt());
+        document.push(self.generate_enum_ty());
 
-        let pre_enum_def_name = if self.is_recursive {
-            format!("{}_pre", self.enum_def_name)
-        } else {
-            self.enum_def_name.clone()
-        };
+        if let Some(ind) = &self.optional_inductive_def {
+            let name = ind.get_name();
+            let rt_name = format!("{name}RT");
+            let ordinary_type = coq::term::Type::Term(Box::new(app(name, vec![ident("RT_rt")])));
+            let canonical_type = coq::term::Type::Term(Box::new(app(name, vec![ident("RT_xt")])));
+            let mut branches = Vec::new();
+            for ((_, variant, _), (pat, apps, _)) in
+                self.variants.iter().zip(self.spec.variant_patterns.iter())
+            {
+                let variant = variant.borrow();
+                let variant = variant.as_ref().unwrap();
+                let result = if apps.is_empty() {
+                    ident(pat)
+                } else {
+                    app(pat, vec![app("RT_xrt", vec![ident(&variant.public_rt_def_name()), ident("x")])])
+                };
+                branches.push(coq::term::MatchBranch {
+                    constructor: coq::Ident::new(pat),
+                    binders: apps.iter().map(|name| coq::Ident::new(name)).collect(),
+                    body: result,
+                });
+            }
+            let embedding = coq::term::Term::Match(Box::new(ident("xr")), branches);
+            document.push(coq::command::Command::Option {
+                local: true,
+                enabled: false,
+                name: "Universe Minimization ToSet".to_owned(),
+            });
+            let embedding_name = format!("{name}_embed");
+            document.push(coq::command::Definition::new(
+                embedding_name.clone(),
+                coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                    Some("xr".to_owned()),
+                    canonical_type,
+                )]),
+                Some(ordinary_type),
+                coq::command::DefinitionBody::Term(embedding),
+            ));
+            let rt_body = app("mk_RT", vec![
+                app(name, vec![ident("RT_rt")]),
+                app(name, vec![ident("RT_xt")]),
+                ident(&embedding_name),
+            ]);
+            document.push(coq::command::Definition::new(
+                rt_name.clone(),
+                coq::binder::BinderList::empty(),
+                Some(coq::term::Type::RT),
+                coq::command::DefinitionBody::Term(rt_body),
+            ));
+            document.push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(
+                &rt_name,
+            ))));
+            for ((_, variant, _), (pat, apps, _)) in
+                self.variants.iter().zip(self.spec.variant_patterns.iter())
+            {
+                let variant = variant.borrow();
+                let variant = variant.as_ref().unwrap();
+                let mut params = Vec::new();
+                let value = if apps.is_empty() {
+                    ident(pat)
+                } else {
+                    params.push(coq::binder::Binder::new(
+                        Some("x".to_owned()),
+                        coq::term::Type::Term(Box::new(app("RT_rt", vec![ident(
+                            &variant.public_rt_def_name(),
+                        )]))),
+                    ));
+                    app(pat, vec![ident("x")])
+                };
+                let mut simpl_params = params.clone();
+                let conclusion = coq::term::Type::Term(Box::new(coq::term::Term::ExplicitApp(
+                    coq::Ident::new("IsXrfn"),
+                    vec![ident(&rt_name), value.clone()],
+                )));
+                let ty = if apps.is_empty() {
+                    conclusion
+                } else {
+                    coq::term::Type::Function(
+                        vec![coq::term::Type::Term(Box::new(coq::term::Term::ExplicitApp(
+                            coq::Ident::new("IsXrfn"),
+                            vec![ident(&variant.public_rt_def_name()), ident("x")],
+                        )))],
+                        Box::new(conclusion),
+                    )
+                };
+                document.push(
+                    coq::command::CommandAttrs::new(coq::command::Instance {
+                        name: Some(format!("{pat}_is_xrfn")),
+                        params: coq::binder::BinderList::new(params),
+                        ty,
+                        body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                            proof.push(coq::ltac::LTac::Literal("solve_enum_constructor_is_xrfn".to_owned()));
+                        }),
+                    })
+                    .attributes("global"),
+                );
+
+                // Invert a known constructor through the canonical embedding using
+                // Lithium's ordinary equality and existential simplification rules.
+                let canonical_type = coq::term::Type::Term(Box::new(app(name, vec![ident("RT_xt")])));
+                simpl_params.push(coq::binder::Binder::new(Some("xr".to_owned()), canonical_type.clone()));
+                let canonical_value = coq::term::Term::AsType(
+                    Box::new(if apps.is_empty() { ident(pat) } else { app(pat, vec![ident("xp")]) }),
+                    Box::new(canonical_type),
+                );
+                let constructor_eq = app("eq", vec![ident("xr"), canonical_value]);
+                let simplified = if apps.is_empty() {
+                    constructor_eq
+                } else {
+                    coq::term::Term::Exists(
+                        coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                            Some("xp".to_owned()),
+                            coq::term::Type::Term(Box::new(app("RT_xt", vec![ident(
+                                &variant.public_rt_def_name(),
+                            )]))),
+                        )]),
+                        Box::new(app("and", vec![
+                            constructor_eq,
+                            app("eq", vec![
+                                ident("x"),
+                                app("RT_xrt", vec![ident(&variant.public_rt_def_name()), ident("xp")]),
+                            ]),
+                        ])),
+                    )
+                };
+                document.push(
+                    coq::command::CommandAttrs::new(coq::command::Instance {
+                        name: Some(format!("{pat}_embed_simpl")),
+                        params: coq::binder::BinderList::new(simpl_params),
+                        ty: coq::term::Type::Term(Box::new(app("SimplBothRel", vec![
+                            ident("eq"),
+                            value,
+                            app(&embedding_name, vec![ident("xr")]),
+                            simplified,
+                        ]))),
+                        body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                            proof.push(coq::ltac::LTac::Literal("solve_enum_embed_simpl".to_owned()));
+                        }),
+                    })
+                    .attributes("global"),
+                );
+            }
+        }
 
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
+        let enum_rfn_type = self
+            .optional_inductive_def
+            .as_ref()
+            .map_or_else(|| self.spec.rfn_type.to_string(), |ind| format!("{}RT", ind.get_name()));
+        let enum_type = self
+            .scope
+            .get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!("enum ({})", enum_rfn_type))));
 
         // main def
-        #[expect(deprecated)]
-        write!(
-            out,
-            "{indent}Program Definition {pre_enum_def_name} : {} (enum ({})) := {} mk_enum\n\
-               {indent}{indent}_\n\
-               {indent}{indent}({els_app_term})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({} {})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}_ _ _.\n",
-            self.scope.get_all_type_term(),
-            self.spec.rfn_type,
+        let enum_body = format!(
+            "{} mk_enum\n\
+               _\n\
+               ({els_app_term})\n\
+               ({})\n\
+               ({})\n\
+               ({} {})\n\
+               ({})\n\
+               ({})\n\
+               _\n\
+               _\n\
+               _\n\
+               _",
             self.scope,
             self.generate_enum_tag(),
             self.enum_rt_def_name(),
@@ -600,83 +875,134 @@ impl<'def> Abstract<'def> {
             scope_inst,
             self.generate_enum_rfn(),
             self.generate_enum_match(),
-            self.generate_lfts(),
-            self.generate_wf_elctx(),
-        )
-        .unwrap();
-        write!(out, "{indent}Next Obligation. solve_inhabited. Defined.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
+        );
+        document.push(coq::command::Definition::program(
+            enum_name.to_owned(),
+            coq::binder::BinderList::empty(),
+            Some(enum_type),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(enum_body)),
+        ));
+        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_inhabited".to_owned()),
+            coq::proof::Terminator::Defined,
+        )));
+        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal(if self.optional_inductive_def.is_some() {
+                "solve_enum_is_xrfn_congr_auto".to_owned()
+            } else {
+                "solve_enum_is_xrfn_congr".to_owned()
+            }),
+            coq::proof::Terminator::Qed,
+        )));
+        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("done".to_owned()),
+            coq::proof::Terminator::Qed,
+        )));
+        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_mk_enum_tag_consistent".to_owned()),
+            coq::proof::Terminator::Defined,
+        )));
+        document.push(coq::command::Command::FinalObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_mk_enum_tag_inj_roundtrip".to_owned()),
+            coq::proof::Terminator::Defined,
+        )));
 
-        write!(out, "{indent}Global Arguments {pre_enum_def_name} : simpl never.\n\n").unwrap();
+        document.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: enum_name.to_owned(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
 
-        write!(out, "{indent}End components.\n").unwrap();
+        let type_type = self
+            .scope
+            .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
+        document.push(coq::command::Definition::new(
+            ty_name.to_owned(),
+            coq::binder::BinderList::empty(),
+            Some(type_type),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                "{} enum_t ({enum_name} {scope_inst})",
+                self.scope,
+            ))),
+        ));
 
-        if self.is_recursive {
-            writeln!(out, "{}", self.generate_contractive_instance(&pre_enum_def_name)).unwrap();
-        }
+        document.append_document(invariants::generate_normalized_rt_def(
+            rt_name,
+            ty_name,
+            &rt_param_uses,
+            rt_context_names,
+        ));
+    }
+
+    #[must_use]
+    pub fn generate_coq_type_def(&self) -> String {
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+
+        let mut section_context = setup_type_section_context(&all_ty_params);
+        let (context_names, context_names_without_sigma) =
+            invariants::format_extra_context_items(&self.coq_params, &mut section_context);
+
+        let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+
+        let mut components = coq::Document::default();
+
+        let pre_enum_def_name = self.enum_def_name.clone();
+        let pre_enum_ty_name = format!("{}_pre", self.plain_ty_name);
+        let pre_enum_rt_name = format!("{}_pre", self.plain_rt_name);
+
+        self.generate_coq_type_def_in_context(
+            &mut components,
+            &pre_enum_def_name,
+            &pre_enum_ty_name,
+            &pre_enum_rt_name,
+            &context_names,
+            &context_names_without_sigma,
+        );
+
+        section_context.push(coq::section::Section::new("components".to_owned(), |doc| {
+            doc.append_document(components);
+        }));
+
+        // locally needed for the EnumContractive solver
+        section_context.push(coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: "enum_ty".to_owned(),
+            arguments_string: ": simpl never".to_owned(),
+        }));
+
+        let type_type = self
+            .scope
+            .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
+        let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
 
         // define the actual type
-        if self.is_recursive {
-            let rec_ty_name = &self.plain_ty_name;
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {} : {} (type _) := {} type_fixpoint (λ {rec_ty_name}, enum_t ({pre_enum_def_name} {rec_ty_name} {})).\n",
-                self.plain_ty_name,
-                self.scope.get_all_type_term(),
+        section_context.push(coq::command::Definition::new(
+            self.plain_ty_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(type_type),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                "{} enum_t ({pre_enum_def_name} {scope_inst})",
                 self.scope,
-                scope_inst,
-            )
-            .unwrap();
-        } else {
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {} : {} (type _) := {} enum_t ({pre_enum_def_name} {}).\n",
-                self.plain_ty_name,
-                self.scope.get_all_type_term(),
-                self.scope,
-                scope_inst,
-            )
-            .unwrap();
-        }
+            ))),
+        ));
 
         // generate the refinement type definition
-        write!(out, "{indent}Definition {} : RT.\n", self.plain_rt_name).unwrap();
-        write!(
-            out,
-            "{indent}Proof using {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
-            fmt_list!(rt_param_uses, " "),
-            self.plain_ty_name
-        )
-        .unwrap();
+        section_context.append_document(invariants::generate_normalized_rt_def(
+            &self.plain_rt_name,
+            &self.plain_ty_name,
+            &rt_param_uses,
+            &context_names_without_sigma,
+        ));
 
-        // generate the enum definition with recursive knots tied
-        if self.is_recursive {
-            #[expect(deprecated)]
-            writeln!(out, "{indent}Definition {} : {} (enum ({})) := {} {pre_enum_def_name} ({} {scope_inst}) {scope_inst}.",
-                self.enum_def_name,
-                self.scope.get_all_type_term(),
-                self.spec.rfn_type,
-                self.scope,
-                self.plain_ty_name,
-                ).unwrap();
-        }
+        let mut out = coq::Document::default();
+        out.push(coq::section::Section::new(self.plain_ty_name.clone(), |doc| {
+            doc.append_document(section_context);
+        }));
 
-        // make it Typeclasses Transparent
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n\n", self.plain_rt_name).unwrap();
+        self.set_flags(&mut out, &context_names_without_sigma, &self.coq_params);
 
-        write!(out, "End {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Arguments {} : simpl never.\n", self.enum_def_name).unwrap();
-        write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_name).unwrap();
-        write!(out, "Global Arguments {} : clear implicits.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Arguments {} {{_ _}}.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Hint Unfold {} : solve_protected_eq_db.\n", self.plain_ty_name).unwrap();
-
-        out
+        out.to_string()
     }
 
     /// Make a literal type.
@@ -689,6 +1015,10 @@ impl<'def> Abstract<'def> {
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name().to_owned()),
             syn_type: lang::SynType::Literal(self.els_def_name().to_owned()),
+            raw_type: Some(types::RawLiteralType {
+                type_term: self.public_type_name().to_owned(),
+                refinement_type: coq::term::Type::Literal(self.public_rt_def_name().to_owned()),
+            }),
             info,
         }
     }
@@ -706,8 +1036,6 @@ pub struct Builder<'def> {
     discriminant_type: lang::IntType,
     /// representation options for the enum
     repr: Repr,
-    /// whether this is a recursive type
-    is_recursive: bool,
 }
 
 impl<'def> Builder<'def> {
@@ -719,7 +1047,6 @@ impl<'def> Builder<'def> {
         scope: GenericScope<'def>,
         discriminant_type: lang::IntType,
         repr: Repr,
-        is_recursive: bool,
     ) -> Self {
         Self {
             variants: Vec::new(),
@@ -727,7 +1054,6 @@ impl<'def> Builder<'def> {
             scope,
             discriminant_type,
             repr,
-            is_recursive,
         }
     }
 
@@ -738,11 +1064,13 @@ impl<'def> Builder<'def> {
         optional_inductive_def: Option<coq::inductive::Inductive>,
         spec: Spec,
     ) -> Abstract<'def> {
-        let els_def_name: String = format!("{}_els", &self.name);
-        let st_def_name: String = format!("{}_st", &self.name);
-        let plain_ty_name: String = format!("{}_ty", &self.name);
-        let plain_rt_name: String = format!("{}_rt", &self.name);
-        let enum_def_name: String = format!("{}_enum", &self.name);
+        let els_def_name: String = format!("{}_els", self.name);
+        let st_def_name: String = format!("{}_st", self.name);
+        let plain_ty_name: String = format!("{}_ty", self.name);
+        let plain_rt_name: String = format!("{}_rt", self.name);
+        let enum_def_name: String = format!("{}_enum", self.name);
+
+        let coq_params = spec.coq_params.clone();
 
         Abstract {
             variants: self.variants,
@@ -757,7 +1085,7 @@ impl<'def> Builder<'def> {
             scope: self.scope,
             discriminant_type: self.discriminant_type,
             repr: self.repr,
-            is_recursive: self.is_recursive,
+            coq_params,
         }
     }
 

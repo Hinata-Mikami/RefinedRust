@@ -1,0 +1,689 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "ops",
+        "ControlFlow",
+        "Break"
+      ],
+      "raw_type": {
+        "rtype": "(ControlFlow_Break_rt)",
+        "semtype": "ControlFlow_Break_ty"
+      },
+      "rtype": "(ControlFlow_Break_rt)",
+      "semtype": "ControlFlow_Break_ty",
+      "syntype": "ControlFlow_Break_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "ops",
+        "ControlFlow",
+        "Continue"
+      ],
+      "raw_type": {
+        "rtype": "(ControlFlow_Continue_rt)",
+        "semtype": "ControlFlow_Continue_ty"
+      },
+      "rtype": "(ControlFlow_Continue_rt)",
+      "semtype": "ControlFlow_Continue_ty",
+      "syntype": "ControlFlow_Continue_sls"
+    },
+    {
+      "info": {
+        "enum_name": "ControlFlow_enum",
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "ops",
+        "ControlFlow"
+      ],
+      "raw_type": {
+        "rtype": "(ControlFlow_rt)",
+        "semtype": "ControlFlow_ty"
+      },
+      "rtype": "(ControlFlow_rt)",
+      "semtype": "ControlFlow_ty",
+      "syntype": "ControlFlow_els"
+    },
+    {
+      "kind": "method",
+      "name": "ControlFlow_BC_break_value",
+      "path": [
+        "core",
+        "ops",
+        "ControlFlow",
+        "break_value"
+      ],
+      "spec": "type_of_ControlFlow_BC_break_value",
+      "trait_req_incl": "trait_incl_of_ControlFlow_BC_break_value"
+    },
+    {
+      "allowed_attrs": [
+        "AsMutFn",
+        "AsMutBackFn"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "as_mut": "trait_incl_of_convert_AsMut_as_mut"
+      },
+      "name": "convert_AsMut",
+      "path": [
+        "core",
+        "convert",
+        "AsMut"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "AsRefFn"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "as_ref": "trait_incl_of_convert_AsRef_as_ref"
+      },
+      "name": "convert_AsRef",
+      "path": [
+        "core",
+        "convert",
+        "AsRef"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "FromFn"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "from": "trait_incl_of_convert_From_from"
+      },
+      "name": "convert_From",
+      "path": [
+        "core",
+        "convert",
+        "From"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "IntoFn"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "into": "trait_incl_of_convert_Into_into"
+      },
+      "name": "convert_Into",
+      "path": [
+        "core",
+        "convert",
+        "Into"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "FromResidualFn"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "from_residual": "trait_incl_of_FromResidual_from_residual"
+      },
+      "name": "FromResidual",
+      "path": [
+        "core",
+        "ops",
+        "FromResidual"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "assoc_tys": [
+        "TryType"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Residual",
+      "path": [
+        "core",
+        "ops",
+        "Residual"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "FromOutputFn",
+        "BranchFn",
+        "ResidualValid",
+        "BranchValid",
+        "BranchLawResidual",
+        "BranchLawOutput"
+      ],
+      "assoc_tys": [
+        "Output",
+        "Residual"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "branch": "trait_incl_of_Try_branch",
+        "from_output": "trait_incl_of_Try_from_output"
+      },
+      "name": "Try",
+      "path": [
+        "core",
+        "ops",
+        "Try"
+      ]
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            "Never"
+          ],
+          "path": [
+            "core",
+            "ops",
+            "ControlFlow"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "ControlFlowBasResidualC",
+      "realization": "ControlFlowBasResidualC_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Residual"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "core",
+            "ops",
+            "ControlFlow"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "from_residual": {
+          "name": "ControlFlowBCasFromResidualControlFlowB_from_residual",
+          "spec": "type_of_ControlFlowBCasFromResidualControlFlowB_from_residual",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasFromResidualControlFlowB_from_residual"
+        }
+      },
+      "name": "ControlFlowBCasFromResidualControlFlowB",
+      "realization": "ControlFlowBCasFromResidualControlFlowB_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                {
+                  "Param": 0
+                },
+                "Never"
+              ],
+              "path": [
+                "core",
+                "ops",
+                "ControlFlow"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FromResidual"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "core",
+            "ops",
+            "ControlFlow"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "branch": {
+          "name": "ControlFlowBCasTry_branch",
+          "spec": "type_of_ControlFlowBCasTry_branch",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_branch"
+        },
+        "from_output": {
+          "name": "ControlFlowBCasTry_from_output",
+          "spec": "type_of_ControlFlowBCasTry_from_output",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_from_output"
+        }
+      },
+      "name": "ControlFlowBCasTry",
+      "realization": "ControlFlowBCasTry_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "ops",
+          "Try"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Param": 0
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "from": {
+          "name": "Tasconvert_FromT_from",
+          "spec": "type_of_Tasconvert_FromT_from",
+          "trait_req_incl": "trait_incl_of_Tasconvert_FromT_from"
+        }
+      },
+      "name": "Tasconvert_FromT",
+      "realization": "Tasconvert_FromT_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 0
+          }
+        ],
+        "path": [
+          "core",
+          "convert",
+          "From"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Param": 0
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "into": {
+          "name": "Tasconvert_IntoU_into",
+          "spec": "type_of_Tasconvert_IntoU_into",
+          "trait_req_incl": "trait_incl_of_Tasconvert_IntoU_into"
+        }
+      },
+      "name": "Tasconvert_IntoU",
+      "realization": "Tasconvert_IntoU_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "convert",
+          "Into"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            "Never"
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "std_option_OptionasResidualT",
+      "realization": "std_option_OptionasResidualT_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 0
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Residual"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "from_residual": {
+          "name": "std_option_OptionTasFromResidual_from_residual",
+          "spec": "type_of_std_option_OptionTasFromResidual_from_residual",
+          "trait_req_incl": "trait_incl_of_std_option_OptionTasFromResidual_from_residual"
+        }
+      },
+      "name": "std_option_OptionTasFromResidual",
+      "realization": "std_option_OptionTasFromResidual_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                "Never"
+              ],
+              "path": [
+                "std",
+                "option",
+                "Option"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FromResidual"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "branch": {
+          "name": "std_option_OptionTasTry_branch",
+          "spec": "type_of_std_option_OptionTasTry_branch",
+          "trait_req_incl": "trait_incl_of_std_option_OptionTasTry_branch"
+        },
+        "from_output": {
+          "name": "std_option_OptionTasTry_from_output",
+          "spec": "type_of_std_option_OptionTasTry_from_output",
+          "trait_req_incl": "trait_incl_of_std_option_OptionTasTry_from_output"
+        }
+      },
+      "name": "std_option_OptionTasTry",
+      "realization": "std_option_OptionTasTry_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "ops",
+          "Try"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            "Never",
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "std",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "std_result_ResultEasResidualT",
+      "realization": "std_result_ResultEasResidualT_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 0
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Residual"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "std",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "branch": {
+          "name": "std_result_ResultTEasTry_branch",
+          "spec": "type_of_std_result_ResultTEasTry_branch",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTEasTry_branch"
+        },
+        "from_output": {
+          "name": "std_result_ResultTEasTry_from_output",
+          "spec": "type_of_std_result_ResultTEasTry_from_output",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTEasTry_from_output"
+        }
+      },
+      "name": "std_result_ResultTEasTry",
+      "realization": "std_result_ResultTEasTry_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "ops",
+          "Try"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 2
+            }
+          ],
+          "path": [
+            "std",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "from_residual": {
+          "name": "std_result_ResultTFasFromResidualstd_result_ResultE_from_residual",
+          "spec": "type_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual"
+        }
+      },
+      "name": "std_result_ResultTFasFromResidualstd_result_ResultE",
+      "realization": "std_result_ResultTFasFromResidualstd_result_ResultE_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                "Never",
+                {
+                  "Param": 1
+                }
+              ],
+              "path": [
+                "std",
+                "result",
+                "Result"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FromResidual"
+        ]
+      }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_ControlFlow",
+          "spec": "type_of_drop_glue_ControlFlow",
+          "trait_req_incl": "trait_incl_of_drop_glue_ControlFlow"
+        }
+      },
+      "name": "drop_glue_ControlFlow",
+      "path": [
+        "core",
+        "ops",
+        "ControlFlow"
+      ],
+      "realization": "drop_glue_ControlFlow_realization"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.option.option.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_controlflow",
+  "refinedrust_name": "controlflow",
+  "refinedrust_path": "rrstd.controlflow.controlflow.generated"
+}

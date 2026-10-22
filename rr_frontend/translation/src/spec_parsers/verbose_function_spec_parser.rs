@@ -14,11 +14,46 @@ use radium::{coq, fmt_list, model, push_str_list, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::hir::place;
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, Projection, Projections, RRCoqContextItem, RRParam,
-    RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
+    CoqLiteralError, IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, Projection, Projections,
+    RRCoqContextItem, RRParam, RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
 };
+
+pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
+    "params",
+    "args",
+    "returns",
+    "requires",
+    "ensures",
+    "observe",
+    "capture",
+    "exists",
+    "tactics",
+    "unsafe_elctx",
+    "context",
+    "verify",
+    "ok",
+    "instantiate",
+    "may_unwind_if",
+];
+
+pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] = &[
+    "code_shim",
+    "export_as",
+    "inline",
+    "only_spec",
+    "raw_mut_self",
+    "verify",
+    "trust_me",
+    "use_panic_abort",
+    "ensures_on_unwind",
+];
+
+pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] =
+    &["capture", "only_spec", "verify", "trust_me", "use_panic_abort"];
 
 pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     /// the closure kind
@@ -32,29 +67,52 @@ pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     pub closure_lifetime: Option<specs::Lft>,
 }
 
-/// Specifies that a trait attribute requirement on a function can be attached to a scope.
-pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
-    /// Determine the trait requirement for `typaram` and `attr`.
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>>;
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
+    #[display("could not find name")]
+    CouldNotFindName,
+    #[display("expected {} function arguments, found a different count", _0)]
+    WrongFunctionArgumentCount(usize),
+    #[display("linktime assumptions are not allowed on closures")]
+    LinktimeAssumptionsNotAllowedOnClosures,
+    #[display("non-pure requires clause after rr::ok")]
+    NonPureRequiresClauseAfterOk,
+    #[display("non-pure ensures clause after rr::ok")]
+    NonPureEnsuresClauseAfterOk,
+    #[display("Did not expect postcondition {:?} for by-value capture", _0)]
+    DidNotExpectPostconditionForByValueCapture(String),
+    #[display("Closure captures ByUse, which is not supported")]
+    ClosureCapturesByUseNotSupported,
+    AmbiguousCapture(String),
+    #[display("specified rr::returns and rr::ok at the same time")]
+    SpecifiedReturnsAndOkAtSameTime,
+    #[display("unknown closure attribute: {}", _0)]
+    UnknownClosureAttribute(String),
+    #[display("unknown function attribute: {}", _0)]
+    UnknownFunctionAttribute(String),
+    #[display("{}", _0)]
+    Builder(String),
+}
 
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>>;
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
 }
 
 pub(crate) struct ClosureSpecInfo {
     // the encoded pre and postconditions
+    pub params_encoded: coq::term::Term,
     pub pre_encoded: coq::term::Term,
     pub post_encoded: coq::term::Term,
-    // only if this closure is FnMut or Fn
-    pub post_mut_encoded: Option<coq::term::Term>,
+    pub post_mut_encoded: coq::term::Term,
+    pub unwind_condition_encoded: coq::term::Term,
 }
 impl ClosureSpecInfo {
     fn new_from_parsed_spec<'def>(
@@ -67,19 +125,33 @@ impl ClosureSpecInfo {
         // - disallow attributes that we cannot fit into this
         // - disallow overriding types
         //
-        // Pre self args :=
-        //  ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ precond
+        // Pre ext_params self args :=
+        //  ∃ params, ext_params = *[...] ∧ self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ precond
         //
-        // Post self args ret :=
-        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
+        // Post ext_params self args ret :=
+        // ∃ params, ext_params = *[...] ∧ self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
         //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
         //      (observes for the mutable captures?)
         //
-        // PostMut self args ret self' :=
-        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
+        // PostMut ext_params self args ret self' :=
+        // ∃ params, ext_params = *[...] ∧ self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
         //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
         //    self' = post_pattern
         //
+
+        // get all the params that will be a part of the `Params` type
+        let ext_params = coq::binder::BinderList::new(
+            parsed_spec.params.iter().filter_map(|(x, b)| b.then_some(x.0.clone())).collect(),
+        );
+        let ext_params_tys: Vec<_> = ext_params.0.iter().map(|x| x.get_type().unwrap().to_owned()).collect();
+        let ext_params_ty = coq::term::Type::UserDefined(model::Type::PList(
+            "id".to_owned(),
+            ext_params_tys,
+            "Type".to_owned(),
+        ));
+
+        let params_var = "_params";
+        let params_binder = coq::binder::Binder::new(Some(params_var.to_owned()), ext_params_ty.clone());
 
         let self_var = "_self";
         let self_binder = coq::binder::Binder::new(Some(self_var.to_owned()), coq::term::RocqType::Infer);
@@ -96,7 +168,7 @@ impl ClosureSpecInfo {
             parsed_spec
                 .params
                 .iter()
-                .map(|x| x.0.clone())
+                .map(|(x, _)| x.0.clone())
                 .chain(parsed_captures.params.iter().cloned())
                 .chain(extra_params)
                 .collect(),
@@ -107,6 +179,10 @@ impl ClosureSpecInfo {
         } else {
             format!("{args_var} = *[ {} ]", fmt_list!(&parsed_spec.args, "; ", |x| { x.1.clone() }))
         };
+
+        // the clause for destructuring the external params
+        let ext_params_rfn_clause =
+            format!("{params_var} = *[ {} ]", fmt_list!(&ext_params.0, "; ", |x| { x.get_name() }));
 
         let all_existentials = coq::binder::BinderList::new(
             parsed_spec.existentials.iter().map(|x| x.0.clone()).chain(extra_existentials).collect(),
@@ -141,6 +217,40 @@ impl ClosureSpecInfo {
             coq::term::RocqType::UserDefined(model::Type::ThreadId),
         );
 
+        let unwind_condition_encoded = if parsed_spec.unwind_conditions.is_empty() {
+            coq::term::Term::Lambda(
+                coq::binder::BinderList::new(vec![
+                    self_binder.clone(),
+                    params_binder.clone(),
+                    args_binder.clone(),
+                ]),
+                Box::new(coq::term::Term::Literal("False".to_owned())),
+            )
+        } else {
+            let unwind_condition = if parsed_spec.unwind_conditions.len() == 1 {
+                parsed_spec.unwind_conditions[0].clone()
+            } else {
+                coq::term::Term::Infix("∨".to_owned(), parsed_spec.unwind_conditions.clone())
+            };
+            let unwind_condition = coq::term::Term::Exists(
+                all_params.clone(),
+                Box::new(coq::term::Term::Infix("∧".to_owned(), vec![
+                    coq::term::Term::Literal(ext_params_rfn_clause.clone()),
+                    coq::term::Term::Literal(pre_self_rfn_clause.clone()),
+                    coq::term::Term::Literal(pre_args_rfn_clause.clone()),
+                    unwind_condition,
+                ])),
+            );
+            coq::term::Term::Lambda(
+                coq::binder::BinderList::new(vec![
+                    self_binder.clone(),
+                    params_binder.clone(),
+                    args_binder.clone(),
+                ]),
+                Box::new(unwind_condition),
+            )
+        };
+
         // assemble precondition
         let mut pre_clauses: Vec<coq::iris::IProp> =
             parsed_spec.preconditions.iter().map(|x| x.clone().into()).collect();
@@ -152,10 +262,21 @@ impl ClosureSpecInfo {
             0,
             coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_args_rfn_clause.clone()))),
         );
+        pre_clauses.insert(
+            0,
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(ext_params_rfn_clause.clone()))),
+        );
+        // make sure it's in goal shape
+        pre_clauses.push(coq::iris::IProp::True);
         let pre = coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(pre_clauses)));
         let pre = pre.purify();
         let pre_encoded = coq::term::Term::Lambda(
-            coq::binder::BinderList::new(vec![tid_binder.clone(), self_binder.clone(), args_binder.clone()]),
+            coq::binder::BinderList::new(vec![
+                tid_binder.clone(),
+                params_binder.clone(),
+                self_binder.clone(),
+                args_binder.clone(),
+            ]),
             Box::new(coq::term::Term::UserDefined(model::Term::IProp(pre))),
         );
 
@@ -165,9 +286,12 @@ impl ClosureSpecInfo {
             Box::new(coq::iris::IProp::Sep(post_ex_clauses)),
         );
         let post_clauses = vec![
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(ext_params_rfn_clause.clone()))),
             coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_self_rfn_clause.clone()))),
             coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_args_rfn_clause.clone()))),
             post_ex_clause,
+            // make sure it's in goal shape
+            coq::iris::IProp::True,
         ];
         let post =
             coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(post_clauses)));
@@ -175,6 +299,7 @@ impl ClosureSpecInfo {
         let post_encoded = coq::term::Term::Lambda(
             coq::binder::BinderList::new(vec![
                 tid_binder.clone(),
+                params_binder.clone(),
                 self_binder.clone(),
                 args_binder.clone(),
                 ret_binder.clone(),
@@ -186,9 +311,12 @@ impl ClosureSpecInfo {
         let post_mut_ex_clause =
             coq::iris::IProp::Exists(all_existentials, Box::new(coq::iris::IProp::Sep(post_ex_clauses_mut)));
         let post_mut_clauses = vec![
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(ext_params_rfn_clause))),
             coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_self_rfn_clause))),
             coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_args_rfn_clause))),
             post_mut_ex_clause,
+            // make sure it's in goal shape
+            coq::iris::IProp::True,
         ];
         let post_mut =
             coq::iris::IProp::Exists(all_params, Box::new(coq::iris::IProp::Sep(post_mut_clauses)));
@@ -196,6 +324,7 @@ impl ClosureSpecInfo {
         let post_mut_encoded = coq::term::Term::Lambda(
             coq::binder::BinderList::new(vec![
                 tid_binder,
+                params_binder,
                 self_binder,
                 args_binder,
                 self_post_binder,
@@ -207,9 +336,11 @@ impl ClosureSpecInfo {
         // Note: make sure to mangle the arg names of the generated lambdas, so we don't collide
         // with names in the specification (e.g. ret)
         Self {
+            params_encoded: coq::term::RocqTerm::Type(Box::new(ext_params_ty)),
             pre_encoded,
             post_encoded,
-            post_mut_encoded: Some(post_mut_encoded),
+            post_mut_encoded,
+            unwind_condition_encoded,
         }
     }
 }
@@ -222,7 +353,7 @@ pub(crate) trait FunctionSpecParser<'def> {
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
         builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
-    ) -> Result<(), String>;
+    ) -> Result<(), SpannedError<ParserError>>;
 
     /// Parse a set of attributes into a closure spec.
     /// The implementation can assume the `attrs` to be prefixed by the tool prefix (e.g. `rr`) and
@@ -233,7 +364,7 @@ pub(crate) trait FunctionSpecParser<'def> {
         builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: F,
-    ) -> Result<ClosureSpecInfo, String>
+    ) -> Result<ClosureSpecInfo, SpannedError<ParserError>>
     where
         F: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>;
 }
@@ -298,8 +429,6 @@ enum MetaIProp {
     Observe(String, Option<String>, String),
     /// `#[rr::requires(#linktime "st_size {st_of T} < MaxInt isize")]`
     Linktime(String),
-    /// `#[rr::requires(#trait T::Pre := "...")]`
-    Trait(String, String, String),
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
@@ -309,20 +438,29 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
             let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "type" => {
+                    let loc_span = stream.pos().unwrap_or(DUMMY_SP);
                     let loc_str: parse::LitStr = stream.parse(meta)?;
-                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
+                    let (loc_str, mut annot_meta) = meta
+                        .process_coq_literal(loc_span, &loc_str.value())
+                        .map_err(|err| parse::Error::OtherErr(loc_span, err.to_string()))?;
 
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
                     let rfn_str: parse::LitStr = stream.parse(meta)?;
-                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
+                    let (rfn_str, annot_meta2) = meta
+                        .process_coq_literal(rfn_span, &rfn_str.value())
+                        .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta2);
 
                     stream.parse::<_, MToken![@]>(meta)?;
 
+                    let type_span = stream.pos().unwrap_or(DUMMY_SP);
                     let type_str: parse::LitStr = stream.parse(meta)?;
-                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
+                    let (type_str, annot_meta3) = meta
+                        .process_coq_literal(type_span, &type_str.value())
+                        .map_err(|err| parse::Error::OtherErr(type_span, err.to_string()))?;
                     annot_meta.join(&annot_meta3);
 
                     let spec = specs::TyOwnSpec::new(loc_str, rfn_str, type_str, false, annot_meta);
@@ -336,31 +474,24 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     let gname: parse::LitStr = stream.parse(meta)?;
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let term_span = stream.pos().unwrap_or(DUMMY_SP);
                     let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta.process_coq_literal(&term.value());
+                    let (term, _meta) = meta
+                        .process_coq_literal(term_span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
 
                     Ok(Self::Observe(gname.value(), None, term))
                 },
                 "linktime" => {
+                    let term_span = stream.pos().unwrap_or(DUMMY_SP);
                     let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta.process_coq_literal(&term.value());
+                    let (term, _meta) = meta
+                        .process_coq_literal(term_span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
                     Ok(Self::Linktime(term))
                 },
-                "trait" => {
-                    let type_param: parse::Ident = stream.parse(meta)?;
-                    stream.parse::<_, MToken![::]>(meta)?;
-                    let attr: parse::Ident = stream.parse(meta)?;
-
-                    stream.parse::<_, MToken![:]>(meta)?;
-                    stream.parse::<_, MToken![=]>(meta)?;
-
-                    let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta.process_coq_literal(&term.value());
-
-                    Ok(Self::Trait(type_param.value(), attr.value(), term))
-                },
                 _ => Err(parse::Error::OtherErr(
-                    stream.pos().unwrap(),
+                    stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
@@ -372,14 +503,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 
                 stream.parse::<_, MToken![:]>(meta)?;
 
+                let pure_span = stream.pos().unwrap_or(DUMMY_SP);
                 let pure_prop: parse::LitStr = stream.parse(meta)?;
-                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
+                let (pure_str, _annot_meta) = meta
+                    .process_coq_literal(pure_span, &pure_prop.value())
+                    .map_err(|err| parse::Error::OtherErr(pure_span, err.to_string()))?;
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
+                let lit_span = stream.pos().unwrap_or(DUMMY_SP);
+                let (lit, _) = meta
+                    .process_coq_literal(lit_span, &name_or_prop_str.value())
+                    .map_err(|err| parse::Error::OtherErr(lit_span, err.to_string()))?;
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -408,7 +545,7 @@ impl From<MetaIProp> for coq::iris::IProp {
                     Self::Atom(format!("gvar_pobs {name} ({term})"))
                 }
             },
-            MetaIProp::Linktime(_) | MetaIProp::Trait(..) => Self::True,
+            MetaIProp::Linktime(_) => Self::True,
         }
     }
 }
@@ -430,9 +567,6 @@ impl TryFrom<MetaIProp> for coq::term::Term {
 
 /// The main parser.
 pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
-    /// name prefix for this function
-    name_prefix: &'a str,
-
     /// argument types with substituted type parameters
     arg_types: &'a [specs::Type<'def>],
     /// return types with substituted type parameters
@@ -453,16 +587,6 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     make_literal: F,
 
     fn_requirements: FunctionRequirements,
-
-    /// specializations of trait assumptions we assume
-    //trait_specializations: Vec<specs::functions::SpecTraitReqSpecialization<'def>>,
-
-    // specialized trait specs we assume.
-    // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
-    trait_specs: BTreeMap<
-        *const u8,
-        (specs::traits::LiteralSpecUseRef<'def>, BTreeMap<String, specs::traits::SpecAttrInst>),
-    >,
 }
 
 /// State for assembling fallible specs
@@ -510,13 +634,12 @@ impl<'a, 'def, F, T> From<VerboseFunctionSpecParser<'a, 'def, F, T>> for Functio
     }
 }
 
-impl<'a, 'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'a, 'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
 where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Type parameters must already have been substituted in the given types.
     pub(crate) fn new(
-        name_prefix: &'a str,
         arg_types: &'a [specs::Type<'def>],
         ret_type: &'a specs::Type<'def>,
         ret_is_option: bool,
@@ -526,7 +649,6 @@ where
         make_literal: F,
     ) -> Self {
         VerboseFunctionSpecParser {
-            name_prefix,
             arg_types,
             ret_type,
             ret_is_option,
@@ -535,7 +657,6 @@ where
             make_literal,
             scope,
             fn_requirements: FunctionRequirements::default(),
-            trait_specs: BTreeMap::new(),
         }
     }
 
@@ -557,6 +678,7 @@ where
                 type_term: lit_ty.to_owned(),
                 refinement_type: coq::term::Type::Infer,
                 syn_type: ty.into(),
+                raw_type: None,
                 info: specs::types::AdtShimInfo::empty(),
             };
             let lit_ref = (self.make_literal)(lit_ty);
@@ -570,18 +692,21 @@ where
             if lit.raw == specs::structs::TypeIsRaw::Yes {
                 ty.make_raw();
             }
-            // TODO should use the xt?
-            let rt = ty.get_rfn_type();
+            let rt = ty.get_xt_type();
             (specs::TypeWithRef::new(ty, lit.rfn.to_string()), Some(rt))
         }
     }
 }
 
 struct ParsedSpecInfo<'def> {
-    params: Vec<RRParam>,
+    // boolean flag indicates whether this is a param explicitly added via a rr::params clause or
+    // not
+    params: Vec<(RRParam, bool)>,
     args: Vec<specs::TypeWithRef<'def>>,
     preconditions: Vec<MetaIProp>,
     postconditions: Vec<MetaIProp>,
+    unwind_conditions: Vec<coq::term::Term>,
+    unwind_postconditions: Vec<MetaIProp>,
     existentials: Vec<RRParam>,
     ret: Option<specs::TypeWithRef<'def>>,
     unsafe_lifetime_constraints: Vec<String>,
@@ -598,6 +723,8 @@ impl<'def> ParsedSpecInfo<'def> {
             args: Vec::new(),
             preconditions: Vec::new(),
             postconditions: Vec::new(),
+            unwind_conditions: Vec::new(),
+            unwind_postconditions: Vec::new(),
             existentials: Vec::new(),
             ret: None,
             unsafe_lifetime_constraints: Vec::new(),
@@ -610,7 +737,7 @@ impl<'def> ParsedSpecInfo<'def> {
         &self,
         builder: &mut specs::functions::LiteralSpecBuilder<'def>,
     ) -> Result<(), String> {
-        for param in &self.params {
+        for (param, _) in &self.params {
             builder.add_param(param.clone().into())?;
         }
 
@@ -626,6 +753,14 @@ impl<'def> ParsedSpecInfo<'def> {
         for post in &self.postconditions {
             let post = post.to_owned();
             builder.add_postcondition(post.into());
+        }
+
+        for condition in &self.unwind_conditions {
+            builder.add_unwind_condition(condition.to_owned());
+        }
+
+        for post in &self.unwind_postconditions {
+            builder.add_unwind_postcondition(post.to_owned().into());
         }
 
         for ex in &self.existentials {
@@ -650,8 +785,13 @@ impl<'def> ParsedSpecInfo<'def> {
 
     /// add a coq type annotation for a parameter when no type is currently known.
     /// this can e.g. be used to later on add knowledge about the type of a refinement.
-    fn add_param_type_annot(&mut self, name: &String, ty: coq::term::Type) -> Result<(), String> {
-        for param in &mut self.params {
+    fn add_param_type_annot(
+        &mut self,
+        span: Span,
+        name: &String,
+        ty: coq::term::Type,
+    ) -> Result<(), SpannedError<ParserError>> {
+        for (param, _) in &mut self.params {
             let Some(param_name) = param.0.get_name_ref() else {
                 continue;
             };
@@ -667,24 +807,23 @@ impl<'def> ParsedSpecInfo<'def> {
                 return Ok(());
             }
         }
-        Err("could not find name".to_owned())
+        Err(spanned_error(span, ParserError::CouldNotFindName))
     }
 
     /// Assemble a fallible specification.
     fn assemble_fallible_spec(
         &mut self,
+        span: Span,
         ret_name: &str,
         ret_is_option: bool,
         ret_is_result: bool,
-    ) -> Result<(), String> {
+    ) -> Result<(), SpannedError<ParserError>> {
         let ok_spec = mem::replace(&mut self.ok_spec, OkSpec::new());
 
         // now assemble the ok-specification
         if ok_spec.ok_mode {
             if !(ret_is_option || ret_is_result) {
-                return Err(
-                    "specified rr::ok but the return type is neither an Option nor a Result".to_owned()
-                );
+                return Err(spanned_error(span, ParserError::SpecifiedReturnsAndOkAtSameTime));
             }
 
             let conjoined_postconds = coq::term::Term::Exists(
@@ -781,39 +920,43 @@ impl<'def> ParsedClosureSpecInfo<'def> {
     }
 }
 
-impl<'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
+impl<'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Handles attributes common among functions/methods and closures.
-    fn handle_common_attributes<X: TraitReqHandler<'def>>(
+    fn handle_common_attributes<X>(
         &mut self,
+        span: Span,
         name: &str,
         buffer: &parse::Buffer,
         builder: &mut ParsedSpecInfo<'def>,
         scope: &X,
         in_closure: bool,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, SpannedError<ParserError>>
+    where
+        X: ParamLookup<'def>,
+    {
         match name {
             "ok" => {
                 builder.ok_spec.ok_mode = true;
             },
             "params" => {
-                let params = RRParams::parse(buffer, scope).map_err(str_err)?;
+                let params = RRParams::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 for param in params.params {
-                    builder.params.push(param);
+                    builder.params.push((param, true));
                 }
             },
             "param" => {
-                let param = RRParam::parse(buffer, scope).map_err(str_err)?;
-                builder.params.push(param);
+                let param = RRParam::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
+                builder.params.push((param, true));
             },
             "args" => {
-                let args = RRArgs::parse(buffer, scope).map_err(str_err)?;
+                let args = RRArgs::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 if self.arg_types.len() != args.args.len() {
-                    return Err(format!(
-                        "wrong number of function arguments given: expected {} args",
-                        self.arg_types.len()
+                    return Err(spanned_error(
+                        span,
+                        ParserError::WrongFunctionArgumentCount(self.arg_types.len()),
                     ));
                 }
                 builder.got_args = true;
@@ -824,48 +967,26 @@ where
                         // potentially add a typing hint to the refinement
                         if let IdentOrTerm::Ident(i) = arg.rfn {
                             info!("Trying to add a typing hint for {}", i);
-                            builder.add_param_type_annot(&i, cty)?;
+                            builder.add_param_type_annot(span, &i, cty)?;
                         }
                     }
                 }
             },
             "requires" => {
-                let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
+                let iprop = MetaIProp::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 info!("parsed iprop: {iprop:?}");
                 if let MetaIProp::Linktime(assum) = iprop {
                     if in_closure {
-                        return Err("linktime assumptions are not allowed on closures".to_owned());
+                        return Err(spanned_error(
+                            span,
+                            ParserError::LinktimeAssumptionsNotAllowedOnClosures,
+                        ));
                     }
                     self.fn_requirements.proof_info.linktime_assumptions.push(assum);
-                } else if let MetaIProp::Trait(for_ty, attr, term) = iprop {
-                    if in_closure {
-                        return Err("assumptions on trait attributes are not allowed on closures".to_owned());
-                    }
-
-                    if let Some(req) = scope.determine_trait_attr_requirement_origin(&for_ty, &attr) {
-                        let (_, entries) = self
-                            .trait_specs
-                            .entry((&raw const *req).cast())
-                            .or_insert_with(|| (req, BTreeMap::new()));
-
-                        if entries
-                            .insert(
-                                attr.clone(),
-                                specs::traits::SpecAttrInst::Term(coq::term::Term::Literal(term)),
-                            )
-                            .is_some()
-                        {
-                            return Err(format!("multiple specializations for {attr} were specified"));
-                        }
-                    } else {
-                        return Err(
-                            "could not find trait requirement to attach trait specialization to".to_owned()
-                        );
-                    }
                 } else if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
-                        return Err("non-pure requires clause after rr::ok".to_owned());
+                        return Err(spanned_error(span, ParserError::NonPureRequiresClauseAfterOk));
                     }
                     let term = iprop.try_into().unwrap();
                     builder.ok_spec.ok_requires.push(term);
@@ -874,12 +995,12 @@ where
                 }
             },
             "ensures" => {
-                let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
+                let iprop = MetaIProp::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
 
                 if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
-                        return Err("non-pure ensures clause after rr::ok".to_owned());
+                        return Err(spanned_error(span, ParserError::NonPureEnsuresClauseAfterOk));
                     }
                     builder.ok_spec.ok_ensures.push(iprop.try_into().unwrap());
                 } else {
@@ -892,20 +1013,22 @@ where
                     buffer.parse::<_, MToken![:]>(scope)?;
 
                     let term: parse::LitStr = buffer.parse(scope)?;
-                    let (term, _) = scope.process_coq_literal(&term.value());
+                    let (term, _) = scope
+                        .process_coq_literal(span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
                     Ok(MetaIProp::Observe(gname.value(), None, term))
                 };
-                let m = m().map_err(str_err)?;
+                let m = m().map_err(|err| parse_err(span, err))?;
                 builder.postconditions.push(m);
             },
             "returns" => {
-                let tr = LiteralTypeWithRef::parse(buffer, scope).map_err(str_err)?;
+                let tr = LiteralTypeWithRef::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 // convert to type
                 let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
                 builder.ret = Some(ty);
             },
             "exists" => {
-                let params = RRParams::parse(buffer, scope).map_err(str_err)?;
+                let params = RRParams::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
 
                 if builder.ok_spec.ok_mode {
                     for param in params.params {
@@ -918,19 +1041,22 @@ where
                 }
             },
             "tactics" => {
-                let tacs = parse::LitStr::parse(buffer, scope).map_err(str_err)?;
+                let tacs = parse::LitStr::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 let tacs = tacs.value();
                 self.fn_requirements.proof_info.sidecond_tactics.push(tacs);
             },
             "unsafe_elctx" => {
                 // TODO: do not allow this on closures.
-                let term = parse::LitStr::parse(buffer, scope).map_err(str_err)?;
-                let (term, _) = scope.process_coq_literal(&term.value());
+                let term = parse::LitStr::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
+                let (term, _) = scope
+                    .process_coq_literal(span, &term.value())
+                    .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                 builder.unsafe_lifetime_constraints.push(term);
             },
             "context" => {
                 // TODO: do not allow this on closures?
-                let context_item = RRCoqContextItem::parse(buffer, scope).map_err(str_err)?;
+                let context_item =
+                    RRCoqContextItem::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 let at_end = context_item.at_end;
                 let param = context_item.into();
                 if at_end {
@@ -941,6 +1067,26 @@ where
             },
             "verify" => {
                 // accept the attribute, but do not adjust the spec
+            },
+            "may_unwind_if" => {
+                let invalid_argument = || {
+                    spanned_error(
+                        span,
+                        ParserError::Parse("may_unwind_if expects exactly one string literal".to_owned()),
+                    )
+                };
+                let condition = parse::LitStr::parse(buffer, scope).map_err(|_err| invalid_argument())?;
+                if buffer.pos().is_some() {
+                    return Err(invalid_argument());
+                }
+                let (condition, _) = scope
+                    .process_coq_literal(span, &condition.value())
+                    .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
+                builder.unwind_conditions.push(coq::term::Term::Literal(condition));
+            },
+            "ensures_on_unwind" => {
+                let iprop = MetaIProp::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
+                builder.unwind_postconditions.push(iprop);
             },
             _ => {
                 return Ok(false);
@@ -956,10 +1102,11 @@ where
     /// `builder`: the function builder to push new specification components to
     fn merge_capture_information<H>(
         &self,
+        span: Span,
         capture_specs: &CaptureSpecMap,
         meta: ClosureMetaInfo<'_, '_, 'def>,
         mut make_tuple: H,
-    ) -> Result<ParsedClosureSpecInfo<'def>, String>
+    ) -> Result<ParsedClosureSpecInfo<'def>, SpannedError<ParserError>>
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
@@ -994,6 +1141,12 @@ where
         for (capture, ty) in meta.captures.iter().zip(meta.capture_tys.iter()) {
             let projections = compute_projection(&capture.place);
             let base = capture.var_ident.name.as_str();
+            let projection_suffix = projections.to_string();
+            let capture_ghost_name = if projection_suffix.is_empty() {
+                format!("_γcapture_{base}_g")
+            } else {
+                format!("_γcapture_{base}_{projection_suffix}_g")
+            };
             let place = RustPlace {
                 base: base.to_owned(),
                 proj: projections,
@@ -1004,20 +1157,27 @@ where
                     ty::UpvarCapture::ByValue => {
                         // full ownership
                         let (processed_ty, _) = self.make_type_with_ref(pre, ty);
+                        let rfn = processed_ty.1.clone();
                         pre_types.push(processed_ty);
 
                         if let Some(post) = post {
                             // this should not contain any post
-                            return Err(format!(
-                                "Did not expect postcondition {:?} for by-value capture",
-                                post
+                            return Err(spanned_error(
+                                span,
+                                ParserError::DidNotExpectPostconditionForByValueCapture(format!(
+                                    "{:?}",
+                                    post
+                                )),
                             ));
                         }
+
+                        // to make things well-typed in the PostMut definition
+                        post_patterns.push(CapturePostRfn::ImmutOrConsume(rfn));
                     },
                     ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable) => {
                         // shared borrow
                         // if there's a manually specified type, we need to wrap it in the reference
-                        if let specs::Type::ShrRef(box auto_type, lft) = ty {
+                        if let specs::Type::ShrRef(deref!(auto_type), lft) = ty {
                             let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a shared reference again
                             let altered_ty = specs::Type::ShrRef(Box::new(processed_ty.0), lft.clone());
@@ -1033,16 +1193,17 @@ where
                         // we handle ty::BorrowKind::Mutable and ty::BorrowKind::UniqueImmutable
                         // the same way, as they are not really different for RefinedRust's type
                         // system
-                        if let specs::Type::MutRef(box auto_type, lft) = ty {
+                        if let specs::Type::MutRef(deref!(auto_type), lft) = ty {
                             let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a mutable reference again
                             // we create a ghost variable
-                            let ghost_var = format!("_γ{base}");
+                            let ghost_var = capture_ghost_name;
                             new_ghost_vars.push(ghost_var.clone());
                             let altered_ty = specs::Type::MutRef(Box::new(processed_ty.0), lft.clone());
                             let altered_rfn = format!("(({}), {ghost_var})", processed_ty.1);
                             pre_types.push(specs::TypeWithRef::new(altered_ty, altered_rfn));
 
+                            // NB: needs the rfn type, not the xt type.
                             let type_hint = auto_type.get_rfn_type().to_string();
                             if let Some(post) = post {
                                 post_patterns.push(CapturePostRfn::Mut(
@@ -1058,11 +1219,11 @@ where
                     },
                     ty::UpvarCapture::ByUse => {
                         // The semantics of this are not really clear yet
-                        return Err("Closure captures ByUse, which is not supported".to_owned());
+                        return Err(spanned_error(span, ParserError::ClosureCapturesByUseNotSupported));
                     },
                 }
             } else {
-                return Err(format!("ambiguous specification of capture {:?}", capture));
+                return Err(spanned_error(span, ParserError::AmbiguousCapture(format!("{:?}", capture))));
             }
         }
 
@@ -1182,13 +1343,19 @@ where
 
     /// In case we didn't get a specification of argument and return types, add the default types,
     /// and add binders to refer to them by their Rust name
-    fn add_default_spec(&self, spec: &mut ParsedSpecInfo<'def>) -> Result<(), String> {
+    fn add_default_spec(
+        &self,
+        span: Span,
+        spec: &mut ParsedSpecInfo<'def>,
+    ) -> Result<(), SpannedError<ParserError>> {
         if !spec.got_args
             && let Some(arg_names) = self.arg_names
         {
             for (arg, ty) in arg_names.iter().zip(self.arg_types) {
-                spec.params
-                    .push(RRParam(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer)));
+                spec.params.push((
+                    RRParam(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer)),
+                    false,
+                ));
                 let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
                 spec.args.push(ty_with_ref);
             }
@@ -1220,9 +1387,9 @@ where
 
         if spec.ok_spec.ok_mode {
             if !is_implicit_ret {
-                return Err("specified rr::returns and rr::ok at the same time".to_owned());
+                return Err(spanned_error(span, ParserError::SpecifiedReturnsAndOkAtSameTime));
             }
-            spec.assemble_fallible_spec(implicit_ret_name, self.ret_is_option, self.ret_is_result)?;
+            spec.assemble_fallible_spec(span, implicit_ret_name, self.ret_is_option, self.ret_is_result)?;
         }
         Ok(())
     }
@@ -1263,29 +1430,8 @@ where
         }
     }
 }
-impl<'def, T> TraitReqHandler<'def> for ClosureCaptureScope<'_, T>
-where
-    T: TraitReqHandler<'def>,
-{
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        self.scope.determine_trait_attr_requirement_origin(typaram, attr)
-    }
 
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
-        self.scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
-    }
-}
-
-impl<'def, F, T: TraitReqHandler<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
+impl<'def, F, T: ParamLookup<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
@@ -1295,10 +1441,11 @@ where
         builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: H,
-    ) -> Result<ClosureSpecInfo, String>
+    ) -> Result<ClosureSpecInfo, SpannedError<ParserError>>
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
+        let span = attrs.first().map_or(DUMMY_SP, |a| a.span);
         let mut spec = ParsedSpecInfo::new();
 
         let mut capture_spec_map: CaptureSpecMap = BTreeMap::new();
@@ -1314,20 +1461,17 @@ where
 
             let capture_ty = if matches!(kind, ty::UpvarCapture::ByRef(_)) {
                 if let specs::Type::MutRef(ty, _) = ty {
-                    ty.get_rfn_type()
+                    ty.get_xt_type()
                 } else if let specs::Type::ShrRef(ty, _) = ty {
-                    ty.get_rfn_type()
+                    ty.get_xt_type()
                 } else {
                     unreachable!();
                 }
             } else {
-                ty.get_rfn_type()
+                ty.get_xt_type()
             };
 
-            let capture_binder = coq::binder::Binder::new(
-                Some(capture_name),
-                coq::term::Type::UserDefined(model::Type::RTXT(Box::new(capture_ty.clone()))),
-            );
+            let capture_binder = coq::binder::Binder::new(Some(capture_name), capture_ty.clone());
             let pre_ty = LiteralTypeWithRef {
                 rfn: IdentOrTerm::Term(capture_binder.get_name_ref().as_ref().unwrap().to_owned()),
                 ty: None,
@@ -1357,10 +1501,14 @@ where
         }
 
         for param in &param_binders {
-            builder.add_param(param.to_owned())?;
+            builder
+                .add_param(param.to_owned())
+                .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
         }
         for param in &ex_binders {
-            builder.add_existential(param.to_owned())?;
+            builder
+                .add_existential(param.to_owned())
+                .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
         }
 
         let scope = ClosureCaptureScope {
@@ -1368,8 +1516,11 @@ where
             map: &capture_spec_map,
         };
 
-        let capture_spec = self.merge_capture_information(&capture_spec_map, closure_meta, make_tuple)?;
-        capture_spec.push_to_builder(builder)?;
+        let capture_spec =
+            self.merge_capture_information(span, &capture_spec_map, closure_meta, make_tuple)?;
+        capture_spec
+            .push_to_builder(builder)
+            .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -1379,19 +1530,19 @@ where
                 let buffer = parse::Buffer::new(&attr_args_tokens(args));
                 let name = seg.as_str();
 
-                match self.handle_common_attributes(name, &buffer, &mut spec, &scope, true) {
-                    Ok(b) => {
-                        if !b
-                            && name != "capture"
-                            && name != "only_spec"
-                            && name != "verify"
-                            && name != "trust_me"
-                        {
-                            return Err(format!("unknown closure attribute: {name}"));
-                        }
-                    },
-
-                    Err(e) => return Err(e),
+                let handled =
+                    self.handle_common_attributes(it.span, name, &buffer, &mut spec, &scope, true)?;
+                if !handled
+                    && name != "capture"
+                    && name != "only_spec"
+                    && name != "verify"
+                    && name != "trust_me"
+                    && name != "use_panic_abort"
+                {
+                    return Err(spanned_error(
+                        it.span,
+                        ParserError::UnknownClosureAttribute(name.to_owned()),
+                    ));
                 }
             }
         }
@@ -1399,8 +1550,9 @@ where
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
         // IMPORTANT: We do this after pushing the `capture_spec`
-        self.add_default_spec(&mut spec)?;
-        spec.push_to_builder(builder)?;
+        self.add_default_spec(span, &mut spec)?;
+        spec.push_to_builder(builder)
+            .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
 
         let spec_info =
             ClosureSpecInfo::new_from_parsed_spec(&spec, &capture_spec, param_binders, ex_binders);
@@ -1412,7 +1564,8 @@ where
         &mut self,
         attrs: &[&hir::AttrItem],
         builder: &mut specs::functions::LiteralSpecBuilder<'def>,
-    ) -> Result<(), String> {
+    ) -> Result<(), SpannedError<ParserError>> {
+        let span = attrs.first().map_or(DUMMY_SP, |a| a.span);
         let mut spec = ParsedSpecInfo::new();
 
         for &it in attrs {
@@ -1425,16 +1578,22 @@ where
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
             let name = seg.as_str();
-            match self.handle_common_attributes(name, &buffer, &mut spec, self.scope, false) {
+            match self.handle_common_attributes(it.span, name, &buffer, &mut spec, self.scope, false) {
                 Ok(b) => {
                     if !b
                         && name != "code_shim"
                         && name != "export_as"
+                        && name != "inline"
                         && name != "only_spec"
+                        && name != "raw_mut_self"
                         && name != "verify"
                         && name != "trust_me"
+                        && name != "use_panic_abort"
                     {
-                        return Err(format!("unknown function attribute: {name}"));
+                        return Err(spanned_error(
+                            it.span,
+                            ParserError::UnknownFunctionAttribute(name.to_owned()),
+                        ));
                     }
                 },
                 Err(e) => {
@@ -1445,21 +1604,10 @@ where
 
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
-        self.add_default_spec(&mut spec)?;
+        self.add_default_spec(span, &mut spec)?;
 
-        spec.push_to_builder(builder)?;
-
-        // process trait specializations
-        let mut defs = Vec::new();
-        for (spec_use, terms) in self.trait_specs.values() {
-            if let Some(def) = self.scope.attach_trait_attr_requirement(self.name_prefix, spec_use, terms) {
-                defs.push(def);
-            } else {
-                return Err("unable to attach trait attr requirement".to_owned());
-            }
-        }
-
-        builder.provide_specialized_trait_attrs(defs);
+        spec.push_to_builder(builder)
+            .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
 
         Ok(())
     }

@@ -1,0 +1,28 @@
+Mapping for function cleanup_points_extend:
+summary: total=19 mapped=19 unmapped=0
+
+bb0[0] StorageLive(_3) -> Source(bb0[0] StorageLive(_3))
+bb0[1] StorageLive(_4) -> Source(bb0[1] StorageLive(_4))
+bb0[2] StorageLive(_5) -> Source(bb0[2] StorageLive(_5))
+bb0[3] _5 = &mut _1 -> Source(bb0[3] _5 = &mut _1)
+bb0[4] _4 = &mut (*_5) -> Source(bb0[4] _4 = &mut (*_5))
+bb0[5] StorageLive(_6) -> Source(bb0[5] StorageLive(_6))
+bb0[6] StorageLive(_7) -> Source(bb0[6] StorageLive(_7))
+bb0[7] _7 = move _2 -> Source(bb0[7] _7 = move _2)
+bb0[8] _6 = <std::vec::Vec<u32> as std::iter::IntoIterator>::into_iter(move _7) -> [return: bb1, unwind: bb3] -> Source(bb0[8] _6 = <std::vec::Vec<u32> as std::iter::IntoIterator>::into_iter(move _7) -> [return: bb1, unwind: bb6])
+bb1[0] StorageDead(_7) -> Source(bb1[0] StorageDead(_7))
+bb1[1] _3 = <std::vec::Vec<u32> as std::iter::Extend<u32>>::extend::<std::vec::IntoIter<u32>>(move _4, move _6) -> [return: bb2, unwind: bb3] -> Source(bb1[1] _3 = <std::vec::Vec<u32> as std::iter::Extend<u32>>::extend::<std::vec::IntoIter<u32>>(move _4, move _6) -> [return: bb2, unwind: bb5])
+bb2[0] StorageDead(_6) -> Source(bb2[0] StorageDead(_6))
+bb2[1] StorageDead(_4) -> Source(bb2[1] StorageDead(_4))
+bb2[2] StorageDead(_5) -> Source(bb2[2] StorageDead(_5))
+bb2[3] StorageDead(_3) -> Source(bb2[3] StorageDead(_3))
+bb2[4] _0 = move _1 -> Source(bb2[4] _0 = move _1)
+bb2[5] return -> FoldedFrom(bb4[0] return)
+bb3[0] drop(_1) -> [return: bb4, unwind terminate(cleanup)] -> Inserted
+bb4[0] resume -> Inserted
+
+Inserted terminator point mappings:
+bb3[0] drop(_1) -> [return: bb4, unwind terminate(cleanup)] Start -> bb8[0] drop(_1) -> [return: bb9, unwind terminate(cleanup)] Start
+bb3[0] drop(_1) -> [return: bb4, unwind terminate(cleanup)] Mid -> bb8[0] drop(_1) -> [return: bb9, unwind terminate(cleanup)] Start
+bb4[0] resume Start -> bb9[0] resume Start
+bb4[0] resume Mid -> bb9[0] resume Start

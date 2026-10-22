@@ -26,8 +26,6 @@ Proof.
   - apply Hbound in Hmem. lia.
   - specialize Hbound with x'1 s.
     apply Hbound in Hmem. lia.
-  - rename select (∀ a b : Z, _ -> (Z.abs (0 - a) = 2 ∧ _) ∨ _) into Hkmove.
-    specialize Hkmove with x'1 s. solve_goal.
   (* !end proof *)
 Qed.
 End proof.

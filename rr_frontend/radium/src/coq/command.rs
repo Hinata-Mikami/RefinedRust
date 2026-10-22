@@ -37,7 +37,10 @@ impl fmt::Display for CommandAttrs {
 
 impl CommandAttrs {
     #[must_use]
-    pub fn new<I: Into<Command>>(command: I) -> Self {
+    pub fn new<I>(command: I) -> Self
+    where
+        I: Into<Command>,
+    {
         Self {
             attributes: None,
             command: command.into(),
@@ -45,7 +48,10 @@ impl CommandAttrs {
     }
 
     #[must_use]
-    pub fn attributes<I: Into<Attribute>>(self, attributes: I) -> Self {
+    pub fn attributes<I>(self, attributes: I) -> Self
+    where
+        I: Into<Attribute>,
+    {
         let attributes = Some(attributes.into());
 
         Self { attributes, ..self }
@@ -78,7 +84,10 @@ impl fmt::Display for QueryCommandAttrs {
 
 impl QueryCommandAttrs {
     #[must_use]
-    pub fn new<I: Into<QueryCommand>>(command: I) -> Self {
+    pub fn new<I>(command: I) -> Self
+    where
+        I: Into<QueryCommand>,
+    {
         Self {
             attributes: None,
             natural: None,
@@ -87,7 +96,10 @@ impl QueryCommandAttrs {
     }
 
     #[must_use]
-    pub fn attributes<I: Into<Attribute>>(self, attributes: I) -> Self {
+    pub fn attributes<I>(self, attributes: I) -> Self
+    where
+        I: Into<Attribute>,
+    {
         let attributes = Some(attributes.into());
 
         Self { attributes, ..self }
@@ -99,6 +111,20 @@ impl QueryCommandAttrs {
 /// [command]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-command
 #[derive(Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum Command {
+    /// Literal Rocq command strings for syntax not modeled by the AST yet.
+    #[display("{}", _0)]
+    #[from(ignore)]
+    Literal(String),
+
+    /// Set or unset a named Rocq option.
+    #[display("{} {} {}.", if *local { "Local" } else { "Global" }, if *enabled { "Set" } else { "Unset" }, name)]
+    #[from(ignore)]
+    Option {
+        local: bool,
+        enabled: bool,
+        name: String,
+    },
+
     /// The [`From ... Require`] command.
     ///
     /// [`From ... Require`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
@@ -122,6 +148,9 @@ pub enum Command {
     /// [`Instance`]: https://rocq-prover.org/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
     #[display("{}", _0)]
     Instance(Instance),
+
+    #[display("{}", _0)]
+    ExistingInstance(ExistingInstance),
 
     /// The [`Open Scope`] command.
     ///
@@ -156,8 +185,15 @@ pub enum Command {
     /// The [`Next Obligation`] command.
     ///
     /// [`Next Obligation`]: https://rocq-prover.org/doc/v8.20/refman/addendum/program.html?highlight=next%20obligation#coq:cmd.Next-Obligation
-    #[display("{}", _0)]
+    #[display("Next {}", _0)]
     NextObligation(ObligationProof),
+
+    /// The [`Final Obligation`] command.
+    ///
+    /// [`Final Obligation`]: https://rocq-prover.org/doc/v8.20/refman/addendum/program.html#coq:cmd.Final-Obligation
+    #[display("Final {}", _0)]
+    #[from(ignore)]
+    FinalObligation(ObligationProof),
 
     /// The [`Section`] command.
     ///
@@ -203,6 +239,12 @@ pub struct Context {
     items: binder::BinderList,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[display("Existing Instance {}.", name)]
+pub struct ExistingInstance {
+    pub name: String,
+}
+
 impl Context {
     #[must_use]
     pub const fn new(items: binder::BinderList) -> Self {
@@ -231,6 +273,40 @@ pub struct Definition {
     pub ty: Option<term::Type>,
     pub body: DefinitionBody,
     pub program_mode: bool,
+}
+
+impl Definition {
+    #[must_use]
+    pub const fn new(
+        name: String,
+        params: binder::BinderList,
+        ty: Option<term::Type>,
+        body: DefinitionBody,
+    ) -> Self {
+        Self {
+            name,
+            params,
+            ty,
+            body,
+            program_mode: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn program(
+        name: String,
+        params: binder::BinderList,
+        ty: Option<term::Type>,
+        body: DefinitionBody,
+    ) -> Self {
+        Self {
+            name,
+            params,
+            ty,
+            body,
+            program_mode: true,
+        }
+    }
 }
 
 impl fmt::Display for Definition {
@@ -290,9 +366,24 @@ pub struct ObligationProof {
     pub terminator: proof::Terminator,
 }
 
+impl ObligationProof {
+    #[must_use]
+    pub fn new<I>(ltac: I, terminator: proof::Terminator) -> Self
+    where
+        I: Into<coq::ltac::LTac>,
+    {
+        let mut content = coq::ProofDocument::default();
+        content.push(ltac.into());
+        Self {
+            content,
+            terminator,
+        }
+    }
+}
+
 impl fmt::Display for ObligationProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Next Obligation.")?;
+        writeln!(f, "Obligation.")?;
         write!(f, "{}", (&self.content).indented(BASE_INDENT))?;
         writeln!(f, "{}.", self.terminator)
     }
@@ -333,4 +424,17 @@ pub struct CanonicalDecl(pub Ident);
 pub struct Arguments {
     pub name: String,
     pub arguments_string: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats_obligation_commands() {
+        let proof = ObligationProof::new(coq::ltac::LTac::Literal("done".to_owned()), proof::Terminator::Qed);
+
+        assert_eq!(Command::NextObligation(proof.clone()).to_string(), "Next Obligation.\n  done.\nQed.\n");
+        assert_eq!(Command::FinalObligation(proof).to_string(), "Final Obligation.\n  done.\nQed.\n");
+    }
 }

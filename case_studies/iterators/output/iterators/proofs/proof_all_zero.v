@@ -13,9 +13,11 @@ Proof.
   all_zero_prelude.
 
   repeat liRStep; liShow.
+  (* !start proof(all_zero) *)
   { rewrite fmap_app; rep liRStep. }
   rewrite snd_zip; last solve_goal.
   repeat liRStep; liShow.
+  (* !end proof *)
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

@@ -1,6 +1,7 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![rr::package("evenint")]
 #![rr::include("option")]
@@ -40,7 +41,7 @@ fn get_even_int_from_user() -> Option<EvenInt> {
 #[rr::refined_by("x" : "Z")]
 #[rr::invariant("Zeven x")]
 struct EvenInt {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     num: i32,
 }
 
@@ -87,10 +88,12 @@ impl EvenInt {
     }
 
     /// Internal function. Unsafely add 1, making the integer odd.
-    #[rr::params("i", "γ")]
-    #[rr::args(#raw "((-[i]), γ)")]
+    #[rr::raw_mut_self]
+    #[rr::params("l", "i" : "Z")]
+    #[rr::args("l" @ "alias_ref_t")]
+    #[rr::requires(#type "l" : "-[ #i]" @ "EvenInt_ty -[] -[]")]
     #[rr::requires("(i+1 ≤ MaxInt i32)%Z")]
-    #[rr::observe("γ": "-[ #(i+1)] : plistRT [_]")]
+    #[rr::ensures(#type "l" : "-[ #(i+1)]" @ "EvenInt_ty -[] -[]")]
     unsafe fn add(&mut self) {
         self.num += 1;
     }

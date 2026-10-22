@@ -1,0 +1,6 @@
+(rocq.theory
+ (name lithium.benchmarks)
+ (package refinedrust)
+ (synopsis "Lithium benchmarks")
+ (generate_project_file)
+ (theories lithium))

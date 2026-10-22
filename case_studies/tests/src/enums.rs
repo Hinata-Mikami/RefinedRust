@@ -1,12 +1,32 @@
 #![rr::import("refinedrust.extra_proofs.tests", "enums")]
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 enum Option<T> {
     #[rr::pattern("None")]
     None,
     #[rr::pattern("Some" $ "x")]
     #[rr::refinement("*[x]")]
     Some(T)
+}
+
+#[rr::refined_by("option (place_rfn {rt_of T})")]
+#[rr::context("EqDecision {xt_of T}")]
+#[rr::skip(drop_glue)]
+enum Contextual<T> {
+    #[rr::pattern("None")]
+    None,
+    #[rr::pattern("Some" $ "x")]
+    #[rr::refinement("*[x]")]
+    Some(T),
+}
+
+#[rr::context("EqDecision {xt_of T}")]
+impl<T> Contextual<T> {
+    #[rr::returns("None")]
+    fn new() -> Self {
+        Self::None
+    }
 }
 
 impl<T> Option<T> {
@@ -25,6 +45,7 @@ impl<T> Option<T> {
 
 
 #[rr::refined_by("result (place_rfn {rt_of T}) (place_rfn {rt_of U})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {U::DropGlueUnwind}")]
 enum Result<T, U> {
     #[rr::pattern("Ok" $ "x")]
     #[rr::refinement("*[x]")]
@@ -71,6 +92,10 @@ impl Anon {
     }
 }
 
+// TODO: handle drop glue for auto-generated enums.
+// We need to fix the RT handling for that.
+// (Also needed for derived impls e.g. for Ord)
+#[rr::skip(drop_glue)]
 enum Anon2<T> {
     ABitAnon(T),
     ReallyAnon
@@ -80,9 +105,8 @@ impl<T> Anon2<T> {
     // TODO: should have a way to escape and interpret this name by writing {anon::ABitAnon}
     #[rr::params("x")]
     #[rr::args("x")]
-    #[rr::returns("enums_Anon2_ABitAnon -[# $# x]")]
+    #[rr::returns("enums_Anon2_ABitAnon *[x]")]
     pub fn new(x: T) -> Self {
         Self::ABitAnon(x)
     }
 }
-

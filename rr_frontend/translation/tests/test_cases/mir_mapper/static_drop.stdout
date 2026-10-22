@@ -1,0 +1,10 @@
+Mapping for function static_drop:
+summary: total=7 mapped=7 unmapped=0
+
+bb0[0] StorageLive(_1) -> Source(bb0[0] StorageLive(_1))
+bb0[1] _1 = std::boxed::Box::<u32>::new(const 0_u32) -> [return: bb1, unwind continue] -> Source(bb0[1] _1 = std::boxed::Box::<u32>::new(const 0_u32) -> [return: bb1, unwind: bb3])
+bb1[0] _0 = const () -> Source(bb1[1] _0 = const ())
+bb1[1] drop(_1) -> [return: bb2, unwind: bb3] -> Source(bb1[2] drop(_1) -> [return: bb2, unwind: bb3])
+bb2[0] StorageDead(_1) -> Source(bb2[0] StorageDead(_1))
+bb2[1] return -> Source(bb2[1] return)
+bb3[0] resume -> Source(bb3[0] resume)

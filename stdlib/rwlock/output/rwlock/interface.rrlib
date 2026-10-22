@@ -1,0 +1,98 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "std",
+        "sync",
+        "RwLock"
+      ],
+      "raw_type": {
+        "rtype": "(RwLock_rt)",
+        "semtype": "RwLock_ty"
+      },
+      "rtype": "(RwLock_inv_t_rt)",
+      "semtype": "RwLock_inv_t",
+      "syntype": "RwLock_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "std",
+        "sync",
+        "RwLockReadGuard"
+      ],
+      "raw_type": {
+        "rtype": "(RwLockReadGuard_rt)",
+        "semtype": "RwLockReadGuard_ty"
+      },
+      "rtype": "(RwLockReadGuard_inv_t_rt)",
+      "semtype": "RwLockReadGuard_inv_t",
+      "syntype": "RwLockReadGuard_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "std",
+        "sync",
+        "RwLockWriteGuard"
+      ],
+      "raw_type": {
+        "rtype": "(RwLockWriteGuard_rt)",
+        "semtype": "RwLockWriteGuard_ty"
+      },
+      "rtype": "(RwLockWriteGuard_inv_t_rt)",
+      "semtype": "RwLockWriteGuard_inv_t",
+      "syntype": "RwLockWriteGuard_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "std",
+        "sync",
+        "poison",
+        "PoisonError"
+      ],
+      "raw_type": {
+        "rtype": "(PoisonError_rt)",
+        "semtype": "PoisonError_ty"
+      },
+      "rtype": "(PoisonError_inv_t_rt)",
+      "semtype": "PoisonError_inv_t",
+      "syntype": "PoisonError_sls"
+    },
+    {
+      "kind": "method",
+      "name": "RwLock_T_new",
+      "path": [
+        "std",
+        "sync",
+        "RwLock",
+        "new"
+      ],
+      "spec": "type_of_RwLock_T_new",
+      "trait_req_incl": "trait_incl_of_RwLock_T_new"
+    }
+  ],
+  "module_dependencies": [],
+  "refinedrust_module": "generated_specs_rwlock",
+  "refinedrust_name": "rwlock",
+  "refinedrust_path": "rrstd.rwlock.rwlock.generated"
+}
