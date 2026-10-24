@@ -17,6 +17,7 @@
 
 #![rr::import("hinata_mikami.extra_proofs.gc", "heap_lemmas")]
 #![rr::import("hinata_mikami.extra_proofs.gc", "gc_defs")]
+#![rr::import("hinata_mikami.extra_proofs.gc", "sweep_contract")]
 
 
 use std::ptr;
@@ -105,7 +106,7 @@ impl Node{
 // Needed to ensure we can turn ownership into a Box again for deallocation.
 #[rr::inv("Hnot_null" : "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 struct Heap {
-    #[rr::field("<#> locs")]
+    #[rr::field("#(<#> locs)")]
     all_nodes: Vec<*mut Node>,
 }
 
@@ -317,7 +318,17 @@ impl Heap {
     // A[true] → B[false] でBを解放するとdangling pointerになる
     #[rr::requires("marks_closed locs nexts marks")]
 
-    /* 事後条件 */
+    /* 事後条件
+     * sweep_post の読み方（locs/nexts/marks は開始時のスナップショット）:
+     *   - 残る iff 開始時に marked。
+     *   - mark が正確（marked iff reachable）なら、残る iff 開始時に reachable。
+     *   - root が marked なら、生存ノードのアドレスで表す reachable は前後で同じ。
+     * marked ビット自体は false に戻すので、不変とはしない。
+     */
+    #[rr::ensures("sweep_post locs nexts marks
+        (keep_marked locs marks) (keep_marked nexts marks)")]
+    #[rr::ensures("sweep_fields_preserved vals locs nexts marks")]
+    #[rr::ensures("all_unmarked (replicate (length (keep_marked locs marks)) false)")]
     /* keep_marked xs marks ... xs のうち marks が true のものだけを残す */
     // 終了後の locs' は locs[i] のうち marks[i] が true のもの
     #[rr::observe("γ": "
@@ -394,19 +405,9 @@ impl Heap {
 
         while i > 0 {
             let _ =
-                #[rr::params("γnodes" : "gname")]
-                #[rr::exists("ic" : "Z")]
-                #[rr::inv_var("i" : "#ic")]
-                /*
-                * local_nodes の実際の refinement は概ね
-                *
-                *   # (
-                *       # (<#> <$#> current_locs),
-                *       γnodes
-                *     )
-                *
-                * という形。
-                */
+                #[rr::params("γnodes" : "gname")] //可変参照nodesの管理用
+                #[rr::exists("ic" : "Z")]         //ic
+                #[rr::inv_var("i" : "#ic")]       //ローカル変数iのrefinementは#ic(# は PlaceIn, 「現在のrefinementが具体的にこの値だ」)
                 #[rr::inv_var("nodes" : "
                     # (
                         # (<#> <$#>
@@ -417,7 +418,7 @@ impl Heap {
                         γnodes
                     )
                 ")]
-                #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]
+                #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]  //添字の条件
                 #[rr::inv(#iris "
                     sweep_nodes_inv
                         (Z.to_nat ic)

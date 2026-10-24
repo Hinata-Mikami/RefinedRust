@@ -1,0 +1,853 @@
+--- before/hinata_mikami/extra_proofs/gc/sweep_contract.v
++++ after/hinata_mikami/extra_proofs/gc/sweep_contract.v
+@@ -0,0 +1,348 @@
++From radium Require Import lang notation.
++From refinedrust Require Import typing.
++From hinata_mikami.extra_proofs.gc Require Import gc_defs heap_lemmas.
++
++(** Address-based statements remain meaningful when Vec deletion changes indices.
++    All occurrences of [marks] below refer to the snapshot BEFORE sweep. *)
++Definition reachable_loc (locs nexts : list loc) (l : loc) : Prop :=
++  ∃ i, locs !! i = Some l ∧ reachable locs nexts i.
++
++Definition marking_exact (locs nexts : list loc) (marks : list bool) : Prop :=
++  ∀ i, marks !! i = Some true ↔ reachable locs nexts i.
++
++Definition keep_unmarked {A} (xs : list A) (marks : list bool) : list A :=
++  keep_marked xs (negb <$> marks).
++
++(** These are candidate Drop arguments, not certificates of physical deallocation.
++    The implementation scans the initial Vec from right to left. *)
++Definition sweep_drop_targets (locs : list loc) (marks : list bool) : list loc :=
++  reverse (keep_unmarked locs marks).
++
++Definition sweep_kept_exact (locs : list loc) (marks : list bool)
++    (remaining : list loc) : Prop :=
++  ∀ i l, locs !! i = Some l →
++    (l ∈ remaining ↔ marks !! i = Some true).
++
++Definition sweep_reachable_exact (locs nexts remaining : list loc) : Prop :=
++  ∀ l, l ∈ remaining ↔ reachable_loc locs nexts l.
++
++Definition sweep_reachability_preserved
++    (locs nexts remaining remaining_nexts : list loc) : Prop :=
++  ∀ l, reachable_loc remaining remaining_nexts l ↔ reachable_loc locs nexts l.
++
++Lemma elem_of_keep_unmarked {A} (x : A) xs marks :
++  x ∈ keep_unmarked xs marks ↔
++  ∃ i, xs !! i = Some x ∧ marks !! i = Some false.
++Proof.
++  rewrite /keep_unmarked elem_of_keep_marked.
++  split.
++  - intros (i & Hi & Hm).
++    apply list_lookup_fmap_Some in Hm as (m & Hm & Hneg).
++    destruct m; simpl in Hneg; try discriminate. eauto.
++  - intros (i & Hi & Hm). exists i. split; first done.
++    rewrite list_lookup_fmap Hm. done.
++Qed.
++
++Lemma sweep_kept_exact_filter locs marks :
++  NoDup locs → sweep_kept_exact locs marks (keep_marked locs marks).
++Proof.
++  intros Hnd i l Hi. rewrite elem_of_keep_marked.
++  split.
++  - intros (j & Hj & Hmarked).
++    have Heq : j = i by (eapply NoDup_lookup; eassumption).
++    by subst j.
++  - intros Hmarked. eauto.
++Qed.
++
++Lemma sweep_reachable_exact_filter locs nexts marks :
++  marking_exact locs nexts marks →
++  sweep_reachable_exact locs nexts (keep_marked locs marks).
++Proof.
++  intros Hexact l. rewrite elem_of_keep_marked.
++  split.
++  - intros (i & Hi & Hprop). exists i. split; first done. by apply Hexact.
++  - intros (i & Hi & Hprop). exists i. split; first done. by apply Hexact.
++Qed.
++
++Lemma sweep_partition (locs : list loc) marks :
++  length locs = length marks →
++  ∀ l, l ∈ locs ↔ l ∈ keep_marked locs marks ∨ l ∈ keep_unmarked locs marks.
++Proof.
++  intros Hlen l. rewrite elem_of_keep_marked elem_of_keep_unmarked.
++  split.
++  - intros (i & Hi)%list_elem_of_lookup_1.
++    have Hbound : (i < length marks)%nat.
++    { rewrite -Hlen. eapply lookup_lt_Some. exact Hi. }
++    destruct (lookup_lt_is_Some_2 marks i Hbound) as [m Hm].
++    destruct m; [left | right]; eauto.
++  - intros [(i & Hi & _) | (i & Hi & _)]; eapply list_elem_of_lookup_2; eauto.
++Qed.
++
++Lemma sweep_partition_disjoint (locs : list loc) marks :
++  NoDup locs →
++  ∀ l, l ∈ keep_marked locs marks → l ∉ keep_unmarked locs marks.
++Proof.
++  intros Hnd l Hlive Hdead.
++  apply elem_of_keep_marked in Hlive as (i & Hi & Hmi).
++  apply elem_of_keep_unmarked in Hdead as (j & Hj & Hmj).
++  have Heq : i = j by (eapply NoDup_lookup; eassumption).
++  subst j. congruence.
++Qed.
++
++Lemma sweep_drop_targets_exact locs marks l :
++  l ∈ sweep_drop_targets locs marks ↔
++  ∃ i, locs !! i = Some l ∧ marks !! i = Some false.
++Proof. rewrite /sweep_drop_targets elem_of_reverse elem_of_keep_unmarked. done. Qed.
++
++Lemma sweep_drop_targets_nodup locs marks :
++  NoDup locs → NoDup (sweep_drop_targets locs marks).
++Proof.
++  intros Hnd. rewrite /sweep_drop_targets reverse_Permutation.
++  apply keep_marked_NoDup. exact Hnd.
++Qed.
++
++Lemma sweep_drop_targets_unreachable locs nexts marks l :
++  length locs = length marks → NoDup locs →
++  marking_exact locs nexts marks →
++  (l ∈ sweep_drop_targets locs marks ↔
++    l ∈ locs ∧ ¬ reachable_loc locs nexts l).
++Proof.
++  intros Hlen Hnd Hexact. rewrite sweep_drop_targets_exact.
++  split.
++  - intros (i & Hi & Hfalse). split.
++    + eapply list_elem_of_lookup_2; eauto.
++    + intros (j & Hj & Hreach).
++      have Heq : i = j by (eapply NoDup_lookup; eassumption).
++      subst j. apply Hexact in Hreach. congruence.
++  - intros (Hmem & Hnot).
++    apply list_elem_of_lookup_1 in Hmem as (i & Hi).
++    have Hbound : (i < length marks)%nat.
++    { rewrite -Hlen. eapply lookup_lt_Some. exact Hi. }
++    destruct (lookup_lt_is_Some_2 marks i Hbound) as [m Hm].
++    destruct m; last eauto.
++    exfalso. apply Hnot. exists i. split; first done. by apply Hexact.
++Qed.
++
++(** Filtering several lists with the same mask keeps their fields aligned. *)
++Lemma keep_marked_lookup_pair {A B} (xs : list A) (ys : list B) marks j x y :
++  keep_marked xs marks !! j = Some x →
++  keep_marked ys marks !! j = Some y →
++  ∃ i, xs !! i = Some x ∧ ys !! i = Some y ∧ marks !! i = Some true.
++Proof.
++  revert ys marks j.
++  induction xs as [|a xs IH]; intros [|b ys] [|m marks] j Hx Hy;
++    simpl in Hx, Hy; try discriminate.
++  destruct m.
++  - destruct j as [|j]; simpl in Hx, Hy.
++    + exists 0%nat. by simplify_eq.
++    + destruct (IH ys marks j Hx Hy) as (i & Hi & Hj & Hm).
++      exists (S i). done.
++  - destruct (IH ys marks j Hx Hy) as (i & Hi & Hj & Hm).
++    exists (S i). done.
++Qed.
++
++Lemma keep_marked_lookup_pair_intro {A B}
++    (xs : list A) (ys : list B) marks i x y :
++  xs !! i = Some x → ys !! i = Some y → marks !! i = Some true →
++  ∃ j, keep_marked xs marks !! j = Some x ∧
++       keep_marked ys marks !! j = Some y.
++Proof.
++  revert xs ys marks.
++  induction i as [|i IH]; intros [|a xs] [|b ys] [|m marks] Hx Hy Hm;
++    simpl in Hx, Hy, Hm; try discriminate.
++  - simplify_eq. exists 0%nat. done.
++  - destruct (IH xs ys marks Hx Hy Hm) as (j & Hjx & Hjy).
++    destruct m; [exists (S j) | exists j]; done.
++Qed.
++
++Lemma sweep_unprocessed_marks_unchanged cut marks :
++  (cut ≤ length marks)%nat →
++  take cut (sweep_marks cut marks) = take cut marks.
++Proof.
++  intros Hcut. rewrite /sweep_marks take_app length_take_le; last done.
++  rewrite Nat.sub_diag take_0 app_nil_r take_take Nat.min_id. done.
++Qed.
++
++Lemma sweep_reset_all_unmarked (locs : list loc) marks :
++  all_unmarked (replicate (length (keep_marked locs marks)) false).
++Proof. apply Forall_replicate. done. Qed.
++
++Lemma keep_marked_lookup_origin {A} (xs : list A) marks j x :
++  keep_marked xs marks !! j = Some x →
++  ∃ i, xs !! i = Some x ∧ marks !! i = Some true.
++Proof.
++  intros Hlookup. apply elem_of_keep_marked.
++  eapply list_elem_of_lookup_2. exact Hlookup.
++Qed.
++
++Lemma keep_marked_root (locs : list loc) marks root :
++  locs !! 0%nat = Some root → marks !! 0%nat = Some true →
++  keep_marked locs marks !! 0%nat = Some root.
++Proof.
++  destruct locs as [|l locs], marks as [|m marks]; simpl;
++    intros Hloc Hmark; try discriminate. by simplify_eq.
++Qed.
++
++(** Forward direction: every path from a retained root is retained.  The
++    induction transports indices; it never assumes that deletion preserves them. *)
++Lemma reachable_filter_forward locs nexts marks :
++  NoDup locs → length nexts = length locs → length marks = length locs →
++  marks !! 0%nat = Some true → marks_closed locs nexts marks →
++  ∀ i, reachable locs nexts i →
++    ∃ j l, locs !! i = Some l ∧
++      keep_marked locs marks !! j = Some l ∧
++      reachable (keep_marked locs marks) (keep_marked nexts marks) j ∧
++      marks !! i = Some true.
++Proof.
++  intros Hnd Hnext_len Hmark_len Hroot Hclosed i Hreach.
++  unfold reachable in Hreach |- *.
++  induction Hreach as [|i q n Hreach IH Hnext Hnonnull Hloc].
++  - have Hbound : (0 < length locs)%nat.
++    { rewrite -Hmark_len. eapply lookup_lt_Some. exact Hroot. }
++    destruct (lookup_lt_is_Some_2 locs 0 Hbound) as [root Hloc].
++    exists 0%nat, root. split; first done.
++    split; first by eapply keep_marked_root.
++    split; [constructor | done].
++  - destruct IH as (j & l & Hli & Hlj & Hreachj & Hmi).
++    have Hmq : marks !! q = Some true.
++    { eapply Hclosed; eassumption. }
++    destruct (keep_marked_lookup_pair_intro locs nexts marks i l n
++      Hli Hnext Hmi) as (j' & Hlj' & Hnj').
++    have Hndf : NoDup (keep_marked locs marks) by (apply keep_marked_NoDup; done).
++    have Heq : j' = j by (eapply NoDup_lookup; eassumption).
++    subst j'.
++    have Hmem : n ∈ keep_marked locs marks.
++    { apply elem_of_keep_marked. eauto. }
++    apply list_elem_of_lookup_1 in Hmem as (k & Hnk).
++    exists k, n. split; first done. split; first done. split; last done.
++    eapply reachable_from_step; eassumption.
++Qed.
++
++(** Backward direction: filtering cannot create a new path. *)
++Lemma reachable_filter_backward locs nexts marks :
++  NoDup locs → length nexts = length locs → length marks = length locs →
++  marks !! 0%nat = Some true →
++  ∀ j, reachable (keep_marked locs marks) (keep_marked nexts marks) j →
++    ∃ i l, locs !! i = Some l ∧
++      keep_marked locs marks !! j = Some l ∧ reachable locs nexts i.
++Proof.
++  intros Hnd Hnext_len Hmark_len Hroot j Hreach.
++  unfold reachable in Hreach |- *.
++  induction Hreach as [|j q n Hreach IH Hnext Hnonnull Hloc].
++  - have Hbound : (0 < length locs)%nat.
++    { rewrite -Hmark_len. eapply lookup_lt_Some. exact Hroot. }
++    destruct (lookup_lt_is_Some_2 locs 0 Hbound) as [root Hloc].
++    exists 0%nat, root. split; first done.
++    split; [by eapply keep_marked_root | constructor].
++  - destruct IH as (i & l & Hli & Hlj & Hreachi).
++    destruct (keep_marked_lookup_pair locs nexts marks j l n Hlj Hnext)
++      as (i' & Hli' & Hni' & Hmarked).
++    have Heq : i' = i by (eapply NoDup_lookup; eassumption).
++    subst i'.
++    destruct (keep_marked_lookup_origin locs marks q n Hloc) as (k & Hnk & Hmk).
++    exists k, n. split; first done. split; first done.
++    eapply reachable_from_step; eassumption.
++Qed.
++
++Theorem sweep_preserves_reachability locs nexts marks :
++  NoDup locs → length nexts = length locs → length marks = length locs →
++  marks !! 0%nat = Some true → marks_closed locs nexts marks →
++  sweep_reachability_preserved locs nexts
++    (keep_marked locs marks) (keep_marked nexts marks).
++Proof.
++  intros Hnd Hnext_len Hmark_len Hroot Hclosed l. split.
++  - intros (j & Hloc & Hreach).
++    destruct (reachable_filter_backward locs nexts marks Hnd Hnext_len
++      Hmark_len Hroot j Hreach) as (i & l' & Hi & Hj & Hri).
++    simplify_eq. exists i. done.
++  - intros (i & Hloc & Hreach).
++    destruct (reachable_filter_forward locs nexts marks Hnd Hnext_len
++      Hmark_len Hroot Hclosed i Hreach) as (j & l' & Hi & Hj & Hrj & Hmi).
++    simplify_eq. exists j. done.
++Qed.
++
++(** A single readable summary, in addition to the existing ownership postcondition.
++    Exact reachability is conditional: [marks_closed] alone permits over-marking. *)
++Definition sweep_post (locs nexts : list loc) (marks : list bool)
++    (remaining remaining_nexts : list loc) : Prop :=
++  sweep_kept_exact locs marks remaining ∧
++  (marking_exact locs nexts marks →
++    sweep_reachable_exact locs nexts remaining) ∧
++  (marks !! 0%nat = Some true →
++    sweep_reachability_preserved locs nexts remaining remaining_nexts).
++
++Theorem sweep_post_filter locs nexts marks :
++  NoDup locs → length nexts = length locs → length marks = length locs →
++  marks_closed locs nexts marks →
++  sweep_post locs nexts marks (keep_marked locs marks) (keep_marked nexts marks).
++Proof.
++  intros Hnd Hnext_len Hmark_len Hclosed. split.
++  - by apply sweep_kept_exact_filter.
++  - split.
++    + by apply sweep_reachable_exact_filter.
++    + intros Hroot. eapply sweep_preserves_reachability; eassumption.
++Qed.
++
++(** Contract-level composition with mark; this does not claim to verify collect. *)
++Theorem mark_sweep_exact locs nexts marks_before marks_after :
++  NoDup locs → all_unmarked marks_before →
++  mark_from_rel locs nexts marks_before 0%nat marks_after →
++  sweep_reachable_exact locs nexts (keep_marked locs marks_after).
++Proof.
++  intros Hnd Hunmarked Hmark. apply sweep_reachable_exact_filter.
++  unfold marking_exact. intros i. eapply mark_from_rel_exact_root; eassumption.
++Qed.
++
++Lemma mark_from_rel_length locs nexts before after start :
++  mark_from_rel locs nexts before start after → length after = length before.
++Proof.
++  intros Hrel. induction Hrel as
++    [marks i Hmarked
++    |marks i l Hfalse Hnext Hnull
++    |marks new i j l Hfalse Hnext Hnonnull Hloc Hrel IH].
++  - done.
++  - apply length_insert.
++  - rewrite IH length_insert. done.
++Qed.
++
++Theorem mark_sweep_reachability_preserved locs nexts before after :
++  NoDup locs → length nexts = length locs → length before = length locs →
++  all_unmarked before → mark_from_rel locs nexts before 0%nat after →
++  sweep_reachability_preserved locs nexts
++    (keep_marked locs after) (keep_marked nexts after).
++Proof.
++  intros Hnd Hnext_len Hmark_len Hunmarked Hmark.
++  have Hafter_len : length after = length locs.
++  { rewrite (mark_from_rel_length _ _ _ _ _ Hmark). done. }
++  have Hroot : after !! 0%nat = Some true.
++  { eapply mark_from_rel_marks_start. exact Hmark. }
++  have Hclosed : marks_closed locs nexts after.
++  { eapply mark_from_rel_final_closed_unmarked; eassumption. }
++  eapply sweep_preserves_reachability; eassumption.
++Qed.
++
++(** Retained records keep their original value and next pointer, despite reindexing. *)
++Definition sweep_fields_preserved (vals : list Z) (locs nexts : list loc)
++    (marks : list bool) : Prop :=
++  ∀ j l v n,
++    keep_marked locs marks !! j = Some l →
++    keep_marked vals marks !! j = Some v →
++    keep_marked nexts marks !! j = Some n →
++    ∃ i, locs !! i = Some l ∧ vals !! i = Some v ∧
++      nexts !! i = Some n ∧ marks !! i = Some true.
++
++Lemma sweep_fields_preserved_filter vals locs nexts marks :
++  NoDup locs → sweep_fields_preserved vals locs nexts marks.
++Proof.
++  intros Hnd j l v n Hloc Hval Hnext.
++  destruct (keep_marked_lookup_pair _ _ _ _ _ _ Hloc Hval)
++    as (i & Hli & Hvi & Hmi).
++  destruct (keep_marked_lookup_pair _ _ _ _ _ _ Hloc Hnext)
++    as (k & Hlk & Hnk & Hmk).
++  have Heq : k = i by (eapply NoDup_lookup; eassumption).
++  subst k. exists i. done.
++Qed.
++
++(** A non-vacuous reset example: sweep does NOT preserve the physical mark bit. *)
++Example sweep_resets_mark_example : sweep_marks 0 [true] = [false].
++Proof. reflexivity. Qed.
+--- before/hinata_mikami/gc/audit/README.txt
++++ after/hinata_mikami/gc/audit/README.txt
+@@ -0,0 +1,43 @@
++GC の追加検査（2026-10-23）
++
++主要な事後条件は ../src/main.rs の sweep と、
++../../extra_proofs/gc/sweep_contract.v にある。
++このディレクトリは生成されたコードを独立に検査するためのもの。
++生成ファイルは編集しない。
++GC の生成 theory は output/dune-project の私有 theory なので、
++それを読む手書きの検査 theory も output/gc/audit/ に配置している。
++この audit ディレクトリは自動生成される generated/ とは別物。
++
++../output/gc/audit/drop_calls.v が証明すること:
++  * 既存の Radium stmt_step に一意の Call 観測を付けられる。
++    観測は実際の成功した Call 遷移と関数表の解決を必要とする。
++    観測を消すと元の意味論の遷移に戻る。
++  * 実際の Heap_sweep_def の未マーク分岐の通常経路は
++    remove -> from_raw -> Drop の順に呼ぶ。生存分岐は set_marked を呼ぶ。
++    ここで「通常経路」は各 callee が正常復帰する方を選んだ静的な射影。
++  * from_raw の返す Box のスロット __20 が Drop の引数である。
++    from_raw の引数 __21 に、選択済み node_ptr をコピーすることも検査する。
++    Box のスロットのアドレスと、Node のアロケーションのアドレスは異なる。
++  * Drop ブロックを jump に替えた変異では、3呼出という検査が成立しない。
++
++これらは、sweep 全体の実行履歴や物理的な Free の証明ではない。
++sweep_drop_targets の重複なし等は数学的な候補列に関する補題であり、
++各対象の Drop が実行済みであることは表していない。
++全ループの実行と観測列の対応には、追加の意味論的な接続証明が必要。
++Box::drop / allocator 等の only_spec の本体検証も別途必要。
++
++再実行（bash）:
++
++  cd /home/mikam/RefinedRust/hinata_mikami/gc
++  source ./activate.sh
++  cargo refinedrust -- --locked --offline
++  dune build
++  python3 audit/check_assumptions.py \
++    --report verification_assumptions_20261023.txt \
++    --raw-output /tmp/gc-assumptions.txt
++
++check_assumptions.py は、手動ソースが Dune 内のコピーと一致し、通常の
++.vo が存在することを確認してから Print Assumptions を実行する。
++許可した関数外延性・証明無関係性以外の公理が現れれば失敗する。
++ただし only_spec の呼び出し先契約は定理の前提であり、この監査で
++ライブラリ本体の検証が済むわけではない。
+--- before/hinata_mikami/gc/audit/check_assumptions.py
++++ after/hinata_mikami/gc/audit/check_assumptions.py
+@@ -0,0 +1,129 @@
++"""Audit the native Dune artifacts after sourcing ../activate.sh and dune build.
++
++Print Assumptions checks logical axioms. Callee contracts (including only_spec)
++remain premises of the typing lemmas and are a separate trust boundary.
++"""
++
++import argparse
++import hashlib
++import pathlib
++import re
++import shlex
++import subprocess
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--report", type=pathlib.Path)
++    parser.add_argument("--raw-output", type=pathlib.Path)
++    options = parser.parse_args()
++    root = pathlib.Path(__file__).resolve().parents[3]
++    proofs = root / "hinata_mikami/gc/output/gc/proofs"
++    build = root / "_build/default"
++    project = build / proofs.relative_to(root) / "_RocqProject"
++    args = []
++    for line in project.read_text().splitlines():
++        tokens = shlex.split(line, comments=True)
++        if not tokens:
++            continue
++        if tokens[0] == "-arg":
++            args.extend(tokens[1:])
++        elif tokens[0] in ("-Q", "-R", "-I"):
++            path = pathlib.Path(tokens[1])
++            if not path.is_absolute():
++                path = (proofs / path).resolve()
++            args.extend([tokens[0], str(path), *tokens[2:]])
++    args.extend([
++        "-Q", str(build / "hinata_mikami/gc/output/gc/audit"), "hinata_mikami.gc.audit"
++    ])
++
++    queries = ["From Stdlib Require Import Strings.String."]
++    names, sources = [], []
++    for folder, prefix in [
++        (root / "hinata_mikami/extra_proofs/gc", "hinata_mikami.extra_proofs.gc"),
++        (proofs, "refinedrust.examples.gc.proofs"),
++        (root / "hinata_mikami/gc/output/gc/audit", "hinata_mikami.gc.audit"),
++    ]:
++        for source in sorted(folder.glob("*.v")):
++            built_source = build / source.relative_to(root)
++            if not built_source.with_suffix(".vo").exists():
++                raise RuntimeError(f"Native .vo missing: {source}; run dune build")
++            if source.read_bytes() != built_source.read_bytes():
++                raise RuntimeError(f"Stale Dune source: {source}; run dune build")
++            sources.append(source)
++            queries.append(f"From {prefix} Require Import {source.stem}.")
++            for name in re.findall(
++                r"^(?:Lemma|Theorem|Example)\s+([\w']+)",
++                source.read_text(), flags=re.M,
++            ):
++                qualified = f"{prefix}.{source.stem}.{name}"
++                names.append(qualified)
++                queries.extend([
++                    f'Eval compute in "RR-BEGIN|{qualified}"%string.',
++                    f"Print Assumptions {qualified}.",
++                    f'Eval compute in "RR-END|{qualified}"%string.',
++                ])
++    result = subprocess.run(
++        ["rocq", "repl", "-quiet", *args], cwd=proofs,
++        input="\n".join(queries + ["Quit."]) + "\n", text=True,
++        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
++    )
++    if options.raw_output:
++        options.raw_output.write_text(result.stdout)
++    if result.returncode or "Error:" in result.stdout:
++        raise RuntimeError("Rocq audit failed; inspect --raw-output")
++
++    allowed = {
++        "FunctionalExtensionality.functional_extensionality_dep",
++        "ProofIrrelevance.proof_irrelevance",
++    }
++    lines = [
++        "RefinedRust GC 証明依存関係監査（仕様強化後、2026-10-23）",
++        f"対象: {len(names)} 件（補助補題・GC 型付け定理・Drop 検査）",
++        "全対象の通常 .vo と Dune 内ソースの一致を確認。",
++        "許可する基盤公理: functional_extensionality_dep, proof_irrelevance のみ。",
++        "注意: only_spec 等の呼び出し先契約は型付け定理の前提であり、",
++        "この公理監査はライブラリ実装や物理解放の証明を意味しない。",
++        "Drop 検査は静的 CFG と単一遷移の観測器。sweep 全実行の履歴ではない。",
++        "", "定理ごとの監査結果:",
++    ]
++    for name in names:
++        match = re.search(
++            r'=\s*"RR-BEGIN\|' + re.escape(name) + r'"(?:%string)?\s*:\s*string(.*?)'
++            r'=\s*"RR-END\|' + re.escape(name) + r'"',
++            result.stdout, flags=re.S,
++        )
++        if not match:
++            raise RuntimeError(f"Missing audit result: {name}")
++        block = match.group(1)
++        if "Closed under the global context" in block:
++            axioms = set()
++        else:
++            axiom_block = re.search(r"Axioms:\s*(.*?)(?:\nRocq <|\Z)", block, re.S)
++            if not axiom_block:
++                raise RuntimeError(f"Unknown assumptions output: {name}")
++            axioms = set(re.findall(r"^([\w.']+)\s*:", axiom_block.group(1), re.M))
++            if not axioms:
++                raise RuntimeError(f"Unparsed axiom list: {name}")
++        if axioms - allowed:
++            raise RuntimeError(f"Unexpected axioms for {name}: {sorted(axioms - allowed)}")
++        status = ", ".join(sorted(axioms)) or "Closed under the global context"
++        lines.append(f"{name}: {status}")
++    lines.extend(["", "対象手動ソースの SHA256:"])
++    sources.extend([
++        root / "hinata_mikami/gc/src/main.rs",
++        root / "hinata_mikami/gc/RefinedRust.toml",
++        root / "hinata_mikami/gc/output/gc/generated/generated_code_gc.v",
++        root / "hinata_mikami/gc/output/gc/generated/generated_specs_gc.v",
++    ])
++    for source in sources:
++        digest = hashlib.sha256(source.read_bytes()).hexdigest()
++        lines.append(f"{digest}  {source.relative_to(root)}")
++    report = "\n".join(lines) + "\n"
++    if options.report:
++        options.report.write_text(report)
++    print(report, end="")
++
++
++if __name__ == "__main__":
++    main()
+--- before/hinata_mikami/gc/output/gc/audit/drop_calls.v
++++ after/hinata_mikami/gc/output/gc/audit/drop_calls.v
+@@ -0,0 +1,139 @@
++From radium Require Import lang notation.
++From refinedrust.examples.gc.generated Require Import generated_code_gc.
++Open Scope expr_scope.
++
++(** A conservative observer of an EXISTING Radium statement transition.
++    It cannot record an arbitrary ghost event: entering a callee requires
++    the original operational step, including function resolution and arguments.
++    This is a small semantic building block, not a trace theorem for sweep. *)
++Record call_entry := CallEntry {
++  entry_callee : val;
++  entry_arguments : list expr;
++}.
++
++Definition call_observation (s : stmt) (result : runtime_expr) : option call_entry :=
++  match s, result with
++  | Call (Val vf) args _ _ _, CallFrame _ _ _ _ _ _ =>
++      Some (CallEntry vf args)
++  | _, _ => None
++  end.
++
++Section observer.
++Context `{RC : RadiumConfig}.
++
++Definition observed_stmt_step s π caller σ κ event result σ' spawned : Prop :=
++  stmt_step s π caller σ κ result σ' spawned ∧
++  event = call_observation s result.
++
++Lemma observed_step_erases s π caller σ κ event result σ' spawned :
++  observed_stmt_step s π caller σ κ event result σ' spawned →
++  stmt_step s π caller σ κ result σ' spawned.
++Proof. by intros [Hstep _]. Qed.
++
++Lemma every_step_has_unique_observation s π caller σ κ result σ' spawned :
++  stmt_step s π caller σ κ result σ' spawned →
++  exists! event, observed_stmt_step s π caller σ κ event result σ' spawned.
++Proof.
++  intros Hstep. exists (call_observation s result). split; first done.
++  by intros event [_ ->].
++Qed.
++
++Lemma observed_call_resolves vf vs destination normal unwind π caller σ κ
++    result σ' spawned :
++  observed_stmt_step (Call (Val vf) (Val <$> vs) destination normal unwind)
++    π caller σ κ (Some (CallEntry vf (Val <$> vs))) result σ' spawned →
++  ∃ a fn,
++    val_to_loc vf = Some (fn_loc a) ∧ σ.(st_fntbl) !! a = Some fn ∧
++    result = CallFrame π caller destination normal unwind
++      (to_rtstmt π fn (Goto fn.(f_init))).
++Proof.
++  intros [Hstep Hevent]. inversion Hstep; subst; simpl in Hevent;
++    try discriminate. eauto 8.
++Qed.
++End observer.
++
++(** Separate, STATIC certificates about the actual generated CFG.
++    They follow normal call continuations, not callee bodies or unwinding.
++    They do not assert that a run exists, terminates, or physically frees memory. *)
++Record call_site := CallSite {
++  site_callee : expr;
++  site_arguments : list expr;
++  site_destination : option (order * op_type * expr);
++}.
++
++Fixpoint normal_calls_until (fuel : nat) (code : gmap label stmt)
++    (stop : label) (s : stmt) : option (list call_site) :=
++  match fuel with
++  | O => None
++  | S fuel =>
++      match s with
++      | Goto b =>
++          if decide (b = stop) then Some []
++          else code !! b ≫= normal_calls_until fuel code stop
++      | Call f args dest normal _ =>
++          (cons (CallSite f args dest)) <$> normal_calls_until fuel code stop normal
++      | Assign _ _ _ _ rest | Free _ _ _ rest | SkipS rest | ExprS _ rest
++      | LocalLive _ _ rest | LocalDead _ rest =>
++          normal_calls_until fuel code stop rest
++      | _ => None
++      end
++  end.
++
++Fixpoint assignments_before_call (s : stmt) : option (list (op_type * expr * expr)) :=
++  match s with
++  | Call _ _ _ _ _ => Some []
++  | Assign _ ot lhs rhs rest =>
++      (cons (ot, lhs, rhs)) <$> assignments_before_call rest
++  | SkipS rest | ExprS _ rest | LocalLive _ _ rest | LocalDead _ rest =>
++      assignments_before_call rest
++  | _ => None
++  end.
++
++Section generated_sweep.
++Context `{!LayoutAlg}.
++Variables raw setmark len remove drop panic index : loc.
++
++Local Definition sweep_code :=
++  (Heap_sweep_def raw setmark len remove drop panic index).(f_code).
++
++Lemma sweep_dead_branch_calls :
++  (site_callee <$> default []
++    (normal_calls_until 128 sweep_code "_bb2" (Goto "_bb8"))) =
++  [Val (l2v remove); Val (l2v raw); Val (l2v drop)].
++Proof. reflexivity. Qed.
++
++Lemma sweep_live_branch_calls :
++  (site_callee <$> default []
++    (normal_calls_until 128 sweep_code "_bb2" (Goto "_bb6"))) =
++  [Val (l2v setmark)].
++Proof. reflexivity. Qed.
++
++Lemma sweep_from_raw_uses_selected_pointer :
++  assignments_before_call (default StuckS (sweep_code !! "_bb9")) =
++    Some [(PtrOp, SkipE (SkipE (Var "__21")), copy{ PtrOp } ("node_ptr"))].
++Proof. reflexivity. Qed.
++
++(** The Box constructed from node_ptr is placed in __20, and precisely that
++    local Box slot is passed to drop glue. The slot is not the Node allocation. *)
++Lemma sweep_from_raw_and_drop_share_box_slot :
++  normal_calls_until 128 sweep_code "_bb2" (Goto "_bb9") = Some [
++    CallSite (Val (l2v raw)) [move{ PtrOp } ("__21")]
++      (Some (Na1Ord, use_op_alg' (Box_sls Node_st Global_sls), Var "__20"));
++    CallSite (Val (l2v drop)) [&raw{ PRef, Mut } ("__20")] None].
++Proof. reflexivity. Qed.
++
++(** Regression check: replacing the generated Drop block by a jump removes
++    one call and is rejected by the three-call certificate above. *)
++Local Definition without_drop := <["_bb10" := Goto "_bb11"]> sweep_code.
++
++Lemma sweep_without_drop_has_two_calls :
++  length (default []
++    (normal_calls_until 128 without_drop "_bb2" (Goto "_bb8"))) = 2%nat.
++Proof. reflexivity. Qed.
++
++Lemma sweep_without_drop_rejected :
++  length (default []
++    (normal_calls_until 128 without_drop "_bb2" (Goto "_bb8"))) ≠ 3%nat.
++Proof. rewrite sweep_without_drop_has_two_calls. lia. Qed.
++
++End generated_sweep.
+--- before/hinata_mikami/gc/output/gc/audit/dune
++++ after/hinata_mikami/gc/output/gc/audit/dune
+@@ -0,0 +1,21 @@
++(rocq.theory
++ (name hinata_mikami.gc.audit)
++ (generate_project_file)
++ (flags -w -notation-overridden -w -redundant-canonical-projection)
++ (theories
++  stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib
++  hinata_mikami.extra_proofs.gc
++  rrstd.alloc.alloc.generated rrstd.alloc.theories
++  rrstd.arithops.arithops.generated rrstd.boxed.boxed.generated
++  rrstd.clone.clone.generated rrstd.closures.closures.generated
++  rrstd.closures.theories rrstd.cmp.cmp.generated rrstd.cmp.theories
++  rrstd.controlflow.controlflow.generated rrstd.index.index.generated
++  rrstd.iterator.iterator.generated rrstd.iterator.theories
++  rrstd.mem.mem.generated rrstd.mem.theories rrstd.num.num.generated
++  rrstd.option.option.generated rrstd.ptr.ptr.generated rrstd.ptr.theories
++  rrstd.ptr_advanced.ptr_advanced.generated rrstd.range.range.generated
++  rrstd.result.result.generated rrstd.result.theories
++  rrstd.rr_internal.rr_internal.generated rrstd.rr_internal.theories
++  rrstd.sized.sized.generated rrstd.stdlib.stdlib.generated
++  rrstd.vec.theories rrstd.vec.vec.generated
++  refinedrust.examples.gc.generated))
+--- before/hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v
++++ after/hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v
+@@ -1,7 +1,7 @@
+ From radium Require Import lang notation.
+ From refinedrust Require Import typing shims.
+ From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_sweep.
+-From hinata_mikami.extra_proofs.gc Require Import heap_lemmas.
++From hinata_mikami.extra_proofs.gc Require Import heap_lemmas sweep_contract.
+ 
+ Set Default Proof Using "Type".
+ 
+@@ -282,6 +282,13 @@
+   all: try (apply keep_marked_Forall; assumption).
+   all: try (eapply marks_closed_keep_marked_next_valid;
+     [lia|assumption|assumption|assumption]).
++  all: try (eapply sweep_post_filter; [assumption|lia|lia|assumption]).
++  all: try (apply sweep_kept_exact_filter; assumption).
++  all: try (apply sweep_reachable_exact_filter; assumption).
++  all: try (eapply sweep_preserves_reachability;
++    [assumption|lia|lia|assumption|assumption]).
++  all: try (apply sweep_fields_preserved_filter; assumption).
++  all: try (apply sweep_reset_all_unmarked).
+   all: try rewrite -list_fmap_delete.
+   all: try (
+     match goal with
+--- before/hinata_mikami/gc/src/main.rs
++++ after/hinata_mikami/gc/src/main.rs
+@@ -17,6 +17,7 @@
+ 
+ #![rr::import("hinata_mikami.extra_proofs.gc", "heap_lemmas")]
+ #![rr::import("hinata_mikami.extra_proofs.gc", "gc_defs")]
++#![rr::import("hinata_mikami.extra_proofs.gc", "sweep_contract")]
+ 
+ 
+ use std::ptr;
+@@ -317,7 +318,17 @@
+     // A[true] → B[false] でBを解放するとdangling pointerになる
+     #[rr::requires("marks_closed locs nexts marks")]
+ 
+-    /* 事後条件 */
++    /* 事後条件
++     * sweep_post の読み方（locs/nexts/marks は開始時のスナップショット）:
++     *   - 残る iff 開始時に marked。
++     *   - mark が正確（marked iff reachable）なら、残る iff 開始時に reachable。
++     *   - root が marked なら、生存ノードのアドレスで表す reachable は前後で同じ。
++     * marked ビット自体は false に戻すので、不変とはしない。
++     */
++    #[rr::ensures("sweep_post locs nexts marks
++        (keep_marked locs marks) (keep_marked nexts marks)")]
++    #[rr::ensures("sweep_fields_preserved vals locs nexts marks")]
++    #[rr::ensures("all_unmarked (replicate (length (keep_marked locs marks)) false)")]
+     /* keep_marked xs marks ... xs のうち marks が true のものだけを残す */
+     // 終了後の locs' は locs[i] のうち marks[i] が true のもの
+     #[rr::observe("γ": "
+--- before/hinata_mikami/gc/sweep_contract_report_20261023.txt
++++ after/hinata_mikami/gc/sweep_contract_report_20261023.txt
+@@ -0,0 +1,101 @@
++GC sweep の仕様強化と教授コメントへの対応（2026-10-23）
++
++最終確認: cargo refinedrust と dune build は成功。追加条件を含む sweep の
++通常 .vo と、検査を含む計29個の Rocq モジュールのソース一致を確認した。
++79件の公理監査も成功。補助・検査67件は global context に対して閉じ、
++GC 型付け12件は既存の関数外延性・証明無関係性のみに依存する。
++新しい Admitted / admit / 公理 / 検証を回避する ignore は追加していない。
++
++今回追加した仕様
++
++開始時のノード・next・mark の列を L0, N0, M0 とし、終了時の列を
++L1 = keep_marked L0 M0, N1 = keep_marked N0 M0 とする。
++Reach(L,N,l) は、root（L の先頭）からアドレス l に到達できること。
++添字は Vec::remove により変わるため、前後の比較にはアドレスを使う。
++
++  (1) 元のノード l が残る iff その開始時の mark が true。
++  (2) 開始時に marked iff reachable が成立するなら、
++        l ∈ L1 iff Reach(L0,N0,l)。
++  (3) 開始時に root が marked なら、
++        Reach(L1,N1,l) iff Reach(L0,N0,l)。
++  (4) 保持された各ノードの value と next は、開始時の同じアドレスの
++      ノードの value と next に等しい。
++  (5) 終了時の全保持ノードの mark ビットは false。
++
++(1)-(3) を sweep_post としてまとめ、(4) を sweep_fields_preserved、
++(5) を all_unmarked として main.rs の ensures に追加した。
++既存の observe、ノードの所有権・freeable_nz、長さ・NoDup・next の妥当性の
++事後条件は保持した。これらが上記の数学的な列と実際の残ったノードを結ぶ。
++Rust の sweep 本体、mark 本体、collect 本体は変更していない。
++
++説明例（a, b, c は異なる非 NULL アドレス）:
++  開始時: locs = [a,b,c], nexts = [c,NULL,NULL], marks = [true,false,true]
++           root a -> c。b は非到達。
++  終了時: locs = [a,c],   nexts = [c,NULL],      marks = [false,false]
++  reachable なアドレスは前後とも {a,c}。c の添字は 2 から 1 へ変わる。
++  元の mark スナップショットは保持判定に使うが、実ビットはリセットされる。
++
++教授コメントへの判断
++
++「reachable なものがぴったり残る、という両方向の検証」:
++  妥当。(2) で両方向を明記した。ただし sweep 単独の既存の事前条件は
++  marks_closed であり、reachable でないノードへの過剰マークを許す。
++  この条件だけで (2) を無条件に主張することはできない。
++  事前条件を強めず、mark の結論を使う条件付き結論にした。
++  mark_sweep_exact により mark_from_rel と初期 all_unmarked から導出した。
++  これは仕様の論理的な合成であり、collect 本体の型付け証明ではない。
++
++「事後条件の結論が分かりにくい」:
++  sweep_post と main.rs の日本語コメントで、保持 iff 開始時 marked、
++  正確な mark の下では保持 iff reachable、という結論を先に読めるようにした。
++  メモリ所有権を記述する既存の細かい事後条件は削っていない。
++
++「sweep によって元の mark, reachable が変わらない」:
++  mark の物理的なビットは、生存ノードで true -> false に変わる。
++  そのためビットの不変を要求すると現在の実装と矛盾する。
++  代わりに、未処理部分のビットは開始時のままであること
++  (sweep_unprocessed_marks_unchanged) と、終了時の全ビットの false を示した。
++  M0 という開始時スナップショットと、メモリ上の現在の mark は区別する。
++  reachable については (3) を両方向に証明した。元のグラフから
++  フィルタ後のグラフへ経路を写す証明と、その逆の経路の証明を行った。
++  mark_sweep_reachability_preserved により、mark の後であれば root marked
++  と marks_closed が満たされ、この保存性が使えることも示した。
++  これはゴーストの元の値を固定するだけの自明な等式ではない。
++
++その他の補助補題
++
++  保持集合と除去集合が元の集合の完全な分割であること、両集合の排他性、
++  逆順に走査する未マーク対象候補列の NoDup、正確な mark の下で候補集合が
++  元の非到達ノードの集合と一致することを証明した。
++
++Drop / 解放についての適用範囲
++
++  output/gc/audit/drop_calls.v は実際の生成 Heap_sweep_def の通常経路について、
++  未マーク分岐の remove -> from_raw -> Drop の順序、
++  生存分岐の set_marked、from_raw と Drop の Box スロットの一致を検査する。
++  選択済み node_ptr を from_raw の引数の一時変数にコピーする点も検査する。
++  Drop ブロックを削除した変異が、この検査に反することも証明している。
++  同ファイルの観測器は実際の Radium stmt_step を必要とし、
++  呼び出しの観測から関数表の解決と callee frame への遷移を導ける。
++
++  ただし、これは sweep の全周回を通した実行済みイベント列の証明ではない。
++  sweep_drop_targets は数学的な対象候補列であり、実行済み Drop の履歴ではない。
++  この列の NoDup から「実行済み Drop が各対象でちょうど1回」を主張しない。
++  観測器と loop の型付けを接続する意味論的な証明は未実装。
++  実際の Free と only_spec のライブラリ本体の検証も残る。
++  したがって、本変更をもって物理的解放まで完全に証明したとは扱わない。
++
++再現と監査
++
++  cd /home/mikam/RefinedRust/hinata_mikami/gc
++  source ./activate.sh
++  cargo refinedrust -- --locked --offline
++  dune build
++  python3 audit/check_assumptions.py \
++    --report verification_assumptions_20261023.txt \
++    --raw-output /tmp/gc-assumptions.txt
++
++実行の結果・所要時間は sweep_proof_log.md、定理ごとの公理依存とソースの
++SHA256 は verification_assumptions_20261023.txt を参照。
++only_spec の呼び出し先契約は型付け定理の前提なので、Print Assumptions の
++監査はライブラリ実装や whole-program linking/adequacy の証明とは異なる。

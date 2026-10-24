@@ -1,0 +1,19 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc 
+command: dune build -j 1 --display=short
+Entering directory '/home/mikam/RefinedRust'
+        rocq hinata_mikami/extra_proofs/gc/.hinata_mikami.extra_proofs.theory.d
+        rocq hinata_mikami/extra_proofs/gc/sweep_contract.{glob,vo} (exit 1)
+File "./hinata_mikami/extra_proofs/gc/sweep_contract.v", line 293, characters 9-33:
+Error:
+In environment
+locs, nexts : list loc
+marks_before, marks_after : list bool
+Hnd : NoDup locs
+Hunmarked : all_unmarked marks_before
+Hmark : mark_from_rel locs nexts marks_before 0 marks_after
+Unable to unify
+ "(?marks_new !! ?k = Some true → reachable ?locs ?nexts ?k)
+  ∧ (reachable ?locs ?nexts ?k → ?marks_new !! ?k = Some true)"
+with "∀ i : nat, marks_after !! i = Some true ↔ reachable locs nexts i".
+
+Leaving directory '/home/mikam/RefinedRust'

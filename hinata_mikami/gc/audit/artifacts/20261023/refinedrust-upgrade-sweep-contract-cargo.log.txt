@@ -1,0 +1,11 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/gc 
+command: cargo refinedrust -- --locked --offline
+    Checking gc v0.1.0 (/home/mikam/RefinedRust/hinata_mikami/gc)
+[WARN  translation] cannot find defid for shim ["iterator", "adapters", "zip", "Zip"], skipping
+[WARN  translation] cannot find defid for shim ["core", "slice", "index", "private_slice_index", "SliceIndex"], skipping
+[WARN  translation] cannot resolve Adt(PathWithArgs { path: ["core", "mem", "AlignmentEnum"], args: [] }) as a type, skipping shim
+[WARN  translation] cannot resolve Adt(PathWithArgs { path: ["core", "mem", "AlignmentEnum"], args: [] }) as a type, skipping shim
+[WARN  translation] cannot resolve ["iterator", "adapters", "zip", "Zip"] as an ADT, skipping virtual drop-glue shim
+[WARN  translation] cannot resolve PathWithArgs { path: ["core", "slice", "index", "private_slice_index", "SliceIndex"], args: [] } as a trait, skipping shim
+[WARN  translation] cannot resolve ["vec", "RawVecInner"] as an ADT, skipping virtual drop-glue shim
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.30s

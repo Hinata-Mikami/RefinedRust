@@ -1089,3 +1089,710 @@ Dropについて追加確認すると、`register_drop_shim_for`自体もTODOの
 - プロセスのスタック上限（soft, hard、byte単位。-1は無制限）: `(-1, -1)`
 - 子プロセスの最大RSS: 1956584 KiB
 - 詳細ログ: `/tmp/rr-sweep-verified-assumptions.log`
+
+
+## 2026-10-23：公式最新版への移行開始
+
+ユーザーの指示により RR 本体と依存環境の更新を実行する。公式 main はネットワーク経由で再確認し、`fd52421ed8cdada51bb911f69a7287ab2b3ac73d`（2026-10-12）だった。作業開始時の HEAD は `ce336481289897f353ff55ce6374dd97bbffbfa4`。未コミット変更は `gc/src/main.rs` のコメント変更のみ。
+
+更新前の全追跡ソース、hinata_mikami・stdlib の作業ツリー、未コミット差分、無視対象 dune-project、opam 9.1 switch の export、旧フロントエンドバイナリを `/tmp/refinedrust-upgrade-backup-20261023` に退避した。旧 switch `refinedrust-rocq91` と旧 nightly は保持する。専用ブランチ `codex/refinedrust-20261023` で公式 main を統合し、ローカルの統合コミットは `b15cbf2f`。旧サンプル等の競合48ファイルは各ステージと作業内容を退避し、対象を個別指定して公式最新版へ解決した。GC の手動証明には競合がなかった。
+
+新環境は nightly-2026-08-28、Rocq core 9.2.0、stdlib 9.1.0、Equations 1.3.2+9.2、および公式 manifest に固定された Iris/stdpp 等を使用する。opam switch は `refinedrust-rocq92-upgrade` として別に作成する。
+
+最新版は MIR Drop terminator を drop glue の Call に翻訳する。一方、Box Drop や allocator、Vec 等には only_spec / trust_me が残る。ビルド成功と Rust 標準ライブラリの実装検証・実際の全解放の証明は区別して監査する。
+
+既存の補助補題・関数証明の imports と手書き dune の依存名を caesium から radium に移行した。生成ファイルを直接編集して証明義務を消すことはしない。collect は変更しない。
+
+### 更新ビルド generate-stdlib (2026-10-23T03:22:38)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `make generate_stdlib`
+- 終了コード: 2、所要時間: 0.3秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-stdlib.log`
+
+### 更新ビルド generate-stdlib-02 (2026-10-23T03:23:40)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `make generate_stdlib`
+- 終了コード: 2、所要時間: 0.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-stdlib-02.log`
+
+### 更新ビルド generate-stdlib-03 (2026-10-23T03:24:20)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `make generate_stdlib`
+- 終了コード: 2、所要時間: 19.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-stdlib-03.log`
+
+### 更新ビルド generate-stdlib-04 (2026-10-23T03:24:53)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `make generate_stdlib`
+- 終了コード: 0、所要時間: 11.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-stdlib-04.log`
+
+### 更新ビルド generate-gc-01 (2026-10-23T03:25:11)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 終了コード: 0、所要時間: 0.3秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-gc-01.log`
+
+### 環境構築と仕様の再生成
+
+- `/usr/bin/rustup toolchain install nightly-2026-08-28 --profile minimal --component rustc-dev --component llvm-tools-preview` は成功。
+- `rr_frontend` で `./refinedrust build --locked` は依存取得のネットワーク制限を解除した再試行で成功（1分45秒）。`./refinedrust install` も成功し、退避済みの旧インストールを最新版に更新した。バージョン表示は nightly-2026-08-28 / b15cbf2f。
+- `make generate_stdlib` の初回は `missing field assoc_tys` で失敗。バイナリを新版へ統一しても再現し、`stdlib/*/target/verify` の旧 rrlib が再帰検索されることが原因と判明。12ディレクトリを削除せずバックアップへ移動した。
+- その後の stdlib 再生成は spin の依存取得でネットワーク制限に当たり、接続を許可した再試行で成功（11.1秒）。公式ライブラリの linking requirements は有効。
+- GC 側も `find_stdlib=false` にしてこの作業ツリーの stdlib を明示使用し、`generate_linking_requirements=true` を設定した。`generate_dune_project=false` として既存の研究用 Dune 構成を保持する。
+- GC で `cargo refinedrust -- --locked --offline` は成功（0.3秒）。生成された sweep の `_bb10` は `CallS drop_glue_Box_Node_std_alloc_Global_loc ... None` を含む。旧版の Drop 欠落はこの経路では解消している。
+- opam 新 switch の OCaml 4.14.2+flambda は導入成功。依存導入の ppxlib ネイティブコンパイルで `Command got signal SEGV` を検出した。まずスタック上限を解除した再試行で切り分ける。GC 証明の不成立とは別の事象。
+- 新 RR の `prove_with_subtype` には累積資源 `Acc` が追加されているため、既存の補助補題と呼び出しを資源を保持する形へ移植中。
+
+### 更新ビルド generate-ptr-advanced-05 (2026-10-23T03:30:04)
+
+- 実行場所: `/home/mikam/RefinedRust/stdlib/ptr_advanced`
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 終了コード: 0、所要時間: 0.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-ptr-advanced-05.log`
+
+### 更新ビルド index-probe (2026-10-23T03:33:01)
+
+- 実行場所: `/tmp/refinedrust-upgrade-index-probe`
+- コマンド: `cargo refinedrust -- --offline`
+- 終了コード: 101、所要時間: 0.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-index-probe.log`
+
+### Vec のインデックス実装の再確認
+
+`/tmp/refinedrust-upgrade-index-probe` に既存 vec_index と同じ仕様・本体を置き、only_spec を付けず `skip_unsupported_features=false` で `cargo refinedrust -- --offline` を実行した。結果は終了コード101。`core::slice::index::SliceIndex` の trait impl が未登録という翻訳エラーになった（`/tmp/refinedrust-upgrade-index-probe.log`）。したがって、この公式最新コミットと指定 nightly の組合せでは wrapper の本体検証は依然通らない。既存 wrapper の only_spec は保持し、その仕様と実装の対応は信頼境界として報告する。失敗した probe は研究ソースには追加していない。
+
+更新前バックアップは一時領域に加え `/home/mikam/RefinedRust-backups/20261023` に永続保存した。新公式から消えた Unique::empty の旧ローカル証明と旧テンプレートも退避し、現行 stdlib のビルド対象に混入させない。
+
+### 更新ビルド versions (2026-10-23T03:34:32)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `rustc --version; cargo refinedrust --version; dune --version; rocq --version`
+- 終了コード: 0、所要時間: 0.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-versions.log`
+
+### 依存ライブラリでの SIGSEGV の切り分け
+
+初回 opam 導入（終了31）は ppxlib のネイティブコンパイルと Stdlib `QArith/Qpower.vo` の Rocq コンパイルで SIGSEGV。`ulimit -S -s unlimited` を設定した再試行では ppxlib と Elpi は成功したが、Stdlib `ZArith/Zdiv.vo` が終了139となった（`/tmp/refinedrust-upgrade-opam-install-unlimited-stack.log`）。したがって、現時点でスタック制限だけが唯一の原因とは断定できない。
+
+失敗した Stdlib のビルドディレクトリで、`ulimit -S -s unlimited; opam exec --switch=refinedrust-rocq92-upgrade -- /bin/sh -c 'ulimit -S -s; rocq --version; make -j1 ZArith/Zdiv.vo'` を実行すると成功した。これは Rocq の証明を飛ばす実行ではなく通常の .vo コンパイルである。続けて `opam install --jobs=1 --reuse-build-dir` により並列数を下げ、成功した成果を再利用する。
+
+### Stdlib ビルドの並列数指定に関する追加調査
+
+Stdlib のトップレベル Makefile は `+$(MAKE) -j -C theories $@` を実行するため、`opam --jobs=1` だけでは内部の Rocq コンパイルは直列にならないことが判明した。内部 Makefile は `ROCQMAKEOPTIONS` を受け付けるので、厳密に制限する場合は `ROCQMAKEOPTIONS=-j1` も指定する。実行中の rocqworker の `/proc/<pid>/limits` から、スタックの soft/hard limit がともに unlimited であることも確認した。
+
+3回目（`--jobs=1 --reuse-build-dir`）の再試行で rocq-stdlib 9.1.0 の導入は成功し、Equations 1.3.2+9.2 の導入も成功した。これだけをもって SIGSEGV の単一の原因が確定したとは扱わない。
+
+### 新 opam 環境の導入完了
+
+3回目の opam 導入が終了コード0で完了した。指定された Rocq core 9.2.0 / stdlib 9.1.0 / Equations 1.3.2+9.2 / stdpp / Iris / iris-contrib / lifetime-logic の全パッケージが揃った。`_opam` のシンボリックリンクを新 switch へ切り替えた。旧 switch と旧 toolchain は残っている。
+
+新しい検査が旧 .vo や旧バイナリキャッシュに依存しないように、従来の `_build` とルート `.lia.cache` をバックアップへ移動し、空のビルド状態から検査する。GC `main.rs` は作業開始時の未コミットコメントを含め、一字一句保持されていることをバックアップと照合した。
+
+### 更新ビルド generate-gc-strict (2026-10-23T03:54:35)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 終了コード: 0、所要時間: 0.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-generate-gc-strict.log`
+
+### 未対応機能の黙示スキップを禁止した生成
+
+GC の `RefinedRust.toml` に `skip_unsupported_features=false` を設定して再生成し、終了0を確認した。翻訳できない検証対象関数を黙って除外して成功扱いにすることを避けるためであり、仕様を弱める変更ではない。既存の vec_index の明示的 only_spec は保持される。
+
+### 更新ビルド effective-config (2026-10-23T04:02:03)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `cargo refinedrust --show-config`
+- 終了コード: 0、所要時間: 0.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-effective-config.log`
+
+### 更新ビルド aux-direct-01 (2026-10-23T04:11:03)
+
+- 実行場所: `/tmp/refinedrust-gc-aux92`
+- コマンド: `rocq compile -w -notation-overridden -Q /home/mikam/RefinedRust/_build/default/theories/refinedrust/lithium lithium -Q /home/mikam/RefinedRust/_build/default/theories/refinedrust/radium radium -Q /home/mikam/RefinedRust/_build/default/theories/refinedrust/rust_typing refinedrust -Q . hinata_mikami.extra_proofs.gc gc_defs.v && rocq compile -w -notation-overridden -Q /home/mikam/RefinedRust/_build/default/theories/refinedrust/lithium lithium -Q /home/mikam/RefinedRust/_build/default/theories/refinedrust/radium radium -Q /home/mikam/RefinedRust/_build/default/theories/refinedrust/rust_typing refinedrust -Q . hinata_mikami.extra_proofs.gc heap_lemmas.v`
+- 終了コード: 0、所要時間: 8.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-aux-direct-01.log`
+
+### 更新ビルド typesystem-01 (2026-10-23T04:22:21)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `dune build -j 2 --display=short theories/refinedrust`
+- 終了コード: 0、所要時間: 1881.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-typesystem-01.log`
+
+### 更新ビルド aux-dune-01 (2026-10-23T04:24:02)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 0、所要時間: 6.3秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-aux-dune-01.log`
+
+### 更新ビルド gc-dune-01 (2026-10-23T04:32:31)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 512.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-01.log`
+
+### 更新ビルド ptr-gdb (2026-10-23T04:39:45)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-debug-ptr.py`
+- 終了コード: 1、所要時間: 254.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-ptr-gdb.log`
+
+### 更新ビルド stack-probe (2026-10-23T04:40:49)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `/bin/sh -c "ulimit -S -s"; /bin/bash -c "ulimit -S -s"; opam exec -- /bin/sh -c "ulimit -S -s"`
+- 終了コード: 0、所要時間: 0.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-stack-probe.log`
+
+### RR 本体・補助補題の新カーネル検査
+
+`dune build -j2 theories/refinedrust` は終了0、1881.8秒で成功した。最後の shims の汎用 tuple drop glue の検査だけでも長時間を要したが、CPU使用率とメモリ使用量を確認して待ち、証明省略なしで完了した。補助補題は一時ディレクトリでの直接 `rocq compile`（8.9秒）と、本来のディレクトリでの `dune build -j1`（6.3秒）の両方で成功した。
+
+### 新版の ptr 仕様での SIGSEGV
+
+初回の GC `dune build -j1` は512.4秒で終了1。GC の手動証明に到達する前に、stdlib ptr の `generated_specs_ptr.v` が signal SEGV となった。64変種 AlignmentEnum の証明を含むファイルであり、観測時に単一 rocqworker の RSS は6,802,076 KiBまで増えた。
+
+システムへのインストールは行わず、Ubuntu のパッケージから gdb と必要な共有ライブラリを /tmp に展開して診断した。生成ソースは変更せず、同じファイルを `-time` と gdb 下で単独検査すると約254秒で inferior は正常終了した。`solve_mk_enum_tag_inj_roundtrip` に約86秒かかることを確認した。診断スクリプトの終了1は、正常終了した inferior に対して後続の `info registers` が失敗したためであり、Rocq の証明失敗ではない。詳細は `/tmp/refinedrust-upgrade-ptr-gdb.log`。
+
+通常 Dune の再試行でも ptr の .vo コンパイルが成功した。実際の Dune 子 rocqworker について stack の soft/hard limit がともに unlimited であることも確認した。この再発はスタック上限の解除だけでは説明できず、根本原因は未確定。最新版に更新しただけで SIGSEGV が完全に直ったとは主張しない。生成コード・義務を削除する回避は行っていない。
+
+### 更新ビルド gc-dune-02 (2026-10-23T04:48:22)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 460.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-02.log`
+
+### 更新ビルド regenerate-gc-field (2026-10-23T04:50:25)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 終了コード: 0、所要時間: 1.0秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-regenerate-gc-field.log`
+
+### 更新ビルド gc-dune-03 (2026-10-23T04:50:29)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 3.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-03.log`
+
+### 更新ビルド rfn-probe (2026-10-23T04:52:57)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-rfn-probe.py`
+- 終了コード: 0、所要時間: 2.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-rfn-probe.log`
+
+### 更新ビルド rfn-probe-02 (2026-10-23T04:54:20)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-rfn-probe.py`
+- 終了コード: 0、所要時間: 2.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-rfn-probe-02.log`
+
+### 更新ビルド rfn-probe-03 (2026-10-23T04:55:29)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-rfn-probe.py`
+- 終了コード: 0、所要時間: 2.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-rfn-probe-03.log`
+
+### 更新ビルド gc-dune-04 (2026-10-23T05:01:43)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 309.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-04.log`
+
+### 更新ビルド debug-drop (2026-10-23T05:05:54)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop`
+- 終了コード: 0、所要時間: 15.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop.log`
+
+### 更新ビルド debug-mark-from (2026-10-23T05:06:17)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py mark_from`
+- 終了コード: 0、所要時間: 38.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-mark-from.log`
+
+### 更新ビルド debug-sweep-exit (2026-10-23T05:07:21)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py sweep`
+- 終了コード: 0、所要時間: 103.0秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-sweep-exit.log`
+
+### 更新ビルド debug-drop-unshelve (2026-10-23T05:13:11)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop 'Unshelve. all: try done. rep <-! liRStep; liShow. Close Scope rr_hidden.'`
+- 終了コード: 0、所要時間: 13.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop-unshelve.log`
+
+### 更新ビルド debug-drop-unit (2026-10-23T05:16:01)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop 'iApply type_val. iApply type_val_unit. rep <-! liRStep; liShow. Close Scope rr_hidden.'`
+- 終了コード: 0、所要時間: 14.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop-unit.log`
+
+### 更新ビルド debug-drop-guards (2026-10-23T05:20:03)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop 'apply_update updateable_strip_guards. iApply type_val. iApply type_val_unit. rep <-! liRStep; liShow. Close Scope rr_hidden.'`
+- 終了コード: 0、所要時間: 13.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop-guards.log`
+
+### 更新ビルド debug-drop-nodes (2026-10-23T05:24:35)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop @/tmp/refinedrust-drop-body.v`
+- 終了コード: 0、所要時間: 16.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop-nodes.log`
+
+### 更新ビルド debug-drop-nodes-02 (2026-10-23T12:25:20)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop @/tmp/refinedrust-drop-body.v`
+- 終了コード: 0、所要時間: 21.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop-nodes-02.log`
+
+### 更新ビルド gc-dune-05 (2026-10-23T12:25:24)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 130、所要時間: 26186.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-05.log`
+
+### 更新ビルド debug-drop-nodes-03 (2026-10-23T12:27:02)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py drop @/tmp/refinedrust-drop-body.v`
+- 終了コード: 0、所要時間: 23.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-drop-nodes-03.log`
+
+### 更新ビルド debug-mark-from-02 (2026-10-23T12:28:04)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py mark_from "Close Scope rr_hidden."`
+- 終了コード: 0、所要時間: 124.5秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-mark-from-02.log`
+
+### 更新ビルド drop-check-01 (2026-10-23T12:28:26)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-check.py proof_drop_glue_Heap`
+- 終了コード: 1、所要時間: 21.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-check-01.log`
+
+### 更新ビルド debug-mark-before (2026-10-23T12:28:44)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py mark_before "Close Scope rr_hidden."`
+- 終了コード: 0、所要時間: 61.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-mark-before.log`
+
+### 更新ビルド drop-check-02 (2026-10-23T12:30:02)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-check.py proof_drop_glue_Heap`
+- 終了コード: 1、所要時間: 21.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-check-02.log`
+
+### 更新ビルド drop-check-03 (2026-10-23T12:31:11)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-check.py proof_drop_glue_Heap`
+- 終了コード: 0、所要時間: 31.0秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-check-03.log`
+
+### 更新ビルド debug-mark-restore (2026-10-23T12:31:24)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py mark_before @/tmp/refinedrust-mark-restore.v`
+- 終了コード: 0、所要時間: 58.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-mark-restore.log`
+
+### 2026-10-23 続行時の証明診断
+
+- `gc-dune-05` の `Heap_mark_proof` は `.vo` を生成済み。長時間実行中だったのは `Heap_mark_from_proof` で、約7時間 CPU を使い続けていたため SIGINT により今回のチェックを中断した。未検証のまま成功とは扱わない。
+- 新しく利用可能となった `.agents/skills/refinedrust-{verification,specifications,proofs}/SKILL.md` を読んだ。proofs skill が指定する `ben-mcp_rocq_*` ツールは現在のツール一覧に存在しないため、同じ Rocq 9.2 の対話実行で代替する。
+- `mark_from` の既マーク分岐では、新版の `prove_with_subtype_stratify` がノード所有権を前提とする含意を生成する。これを処理せず big-separation アクセサ補題を適用すると、巨大な継続を含む単一化が長時間続く。所有権の再構成を明示する方針へ切り替えた。
+- `gc-alloc-06` で `Heap_alloc_proof` と `Heap_mark_one_proof` の Dune コンパイルが通った。sweep は続けて検査中。
+- 新規 `drop_glue_Heap` は、guarded な各ノード所有権の later を、保持されている正規の later credit によって外し、生成された ghost-drop 条件へ渡す。未解決条件の削除や仮定の追加は行わない。
+
+### 更新ビルド gc-alloc-06 (2026-10-23T12:31:54)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `dune build -j 1 --display=short hinata_mikami/gc/output/gc/proofs/proof_Heap_alloc.vo hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_one.vo hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.vo`
+- 終了コード: 1、所要時間: 301.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-alloc-06.log`
+
+### 更新ビルド mark-from-check-01 (2026-10-23T12:33:48)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-check.py proof_Heap_mark_from`
+- 終了コード: 1、所要時間: 76.0秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-mark-from-check-01.log`
+
+### 更新ビルド assumptions-partial (2026-10-23T12:36:13)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-upgrade-assumptions.py gc_defs heap_lemmas proof_Heap_alloc proof_Heap_mark proof_Heap_mark_one proof_Heap_new proof_Node_set_marked proof_Node_set_next proof_make_node proof_read_next_value`
+- 終了コード: 0、所要時間: 166.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-assumptions-partial.log`
+
+### 更新ビルド gc-sweep-drop-07 (2026-10-23T12:36:47)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `dune build -j 1 --display=short hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.vo hinata_mikami/gc/output/gc/proofs/proof_drop_glue_Heap.vo`
+- 終了コード: 1、所要時間: 224.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-sweep-drop-07.log`
+
+### 更新ビルド mark-from-check-02 (2026-10-23T12:37:15)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-check.py proof_Heap_mark_from`
+- 終了コード: 0、所要時間: 174.8秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-mark-from-check-02.log`
+
+### 更新ビルド debug-sweep-side (2026-10-23T12:38:58)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py sweep_side "Close Scope rr_hidden."`
+- 終了コード: 0、所要時間: 98.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-sweep-side.log`
+
+### 2026-10-23 証明と信頼境界の監査（継続中）
+
+`assumptions-partial` で補助35補題と GC 8関数の `Print Assumptions` を実行した。補助補題は global context に対して閉じていた。`alloc`, `mark`, `mark_one`, `new` は上流 `generated_specs_vec.resolve_ghost_Vec_T_owned`（`stdlib/vec/extra_specs.v` の Admitted）に依存していた。この依存を残さないよう、sweep と同じく未証明の Vec resolver hints をローカルで外し、証明済み `resolve_ghost_ofty_default` による具体的 refinement 用ルールへ切り替えた。`mark_from` にも適用し、全対象を再チェック中。上流の Admitted を新たに利用する回避はしない。
+
+`mark-from-check-02` は全分岐・副条件と `Qed` を通常の Rocq コンパイルで完了した（174.8秒）。以後の resolver 変更も含めた Dune 全体確認を実施する。`drop_glue_Heap` も Dune で通常の .vo を生成済み。
+
+更新前の作業ツリーを含む tar と `gc/src/main.rs` を比較した結果、Rust の差分は `Heap.all_nodes` の `#[rr::field("<#> locs")]` を `#[rr::field("#(<#> locs)")]` にする1行だけだった。ユーザーのコメント変更、実行本体、collect、vec_index wrapper、sweep の事後条件は保持した。
+
+`source /home/mikam/RefinedRust/hinata_mikami/gc/activate.sh` の後の実測は rustc 1.100.0-nightly (2026-08-27)、cargo 1.100.0-nightly、Rocq 9.2 / OCaml 4.14.2、Dune 3.23.1、switch refinedrust-rocq92-upgrade、soft stack unlimited。
+
+### 更新ビルド debug-sweep-side-02 (2026-10-23T12:42:24)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py sweep_side "Close Scope rr_hidden."`
+- 終了コード: 0、所要時間: 178.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-debug-sweep-side-02.log`
+
+### 更新ビルド gc-dune-08 (2026-10-23T12:46:44)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 532.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-08.log`
+
+### 2026-10-23 最新版で確認した適用範囲と残存する信頼境界
+
+1. 旧 MIR Drop 翻訳の欠落は最新版では解消されている。`rr_frontend/translation/src/body/function_translation/terminator.rs` の Drop 分岐は `needs_drop_raw` を調べ、drop glue の場所を登録し、通常継続と unwind 継続を持つ `Stmt::Call` を構築する。GC の `generated_code_gc.v` の `Heap_sweep_def`、`_bb10` に `CallS drop_glue_Box_Node_std_alloc_Global_loc` が実在する。古い `_drope` を捨てる実装に対する説明を、そのまま新版へ当てはめない。
+2. `only_spec` は廃止されていない。`stdlib/boxed/src/lib.rs` の `impl Drop for Box<T,A>` は今も `#[rr::only_spec]`。解放処理の Rust 本体はあるが、その本体の検証をこの設定では生成しない。Vec/RawVec 等にも only_spec / trust_me が残る。呼び出し元の型付け定理が通ることと、全ライブラリの Rust 実装まで証明済みであることを区別する。
+3. ユーザーの `wrappers::vec_index` も引き続き only_spec として保持している。削除した一時 probe は strict unsupported=false で `core::slice::index::SliceIndex` の trait impl 登録エラーとなった（index-probe ログ）。この実験は本体の wrapper を変更していない。
+4. 現在の定理は、各関数の事前条件と呼び出し先の仕様を前提とする Radium/Iris の関数型付け定理である。`generate_linking_requirements=true` で linking 条件も生成したが、whole-program の linking/adequacy 定理、Rust 全体の意味との接続、終了性、解放イベントの回数を数える定理は本研究の既存証明にはない。`Print Assumptions` だけでは only_spec 呼び出し先への依存は検出できない（呼び出し先の仕様は定理の前提に現れる）。
+5. sweep の既存の事後条件は維持している。マーク済みノードの順序・value・next の保持、marked=false、未マークノードの Vec からの除去、残存ノードの所有権/freeable、NoDup・非NULL・長さ・next の有効性が対象。実際の allocator による解放の完了まで無条件に証明した、という主張はしない。
+6. collect は当初の指示通り未検証・未変更。現在の mark は先頭1ノードを根とする等の事前条件を持つ。任意のルート集合や collect 全体の正当性へは自動的には一般化しない。Heap を最後に drop する際の生存ノードの漏れなしも主張しない。
+7. SIGSEGV はアップデート後にも依存導入と ptr 仕様のチェックで発生した。通常の再実行で通ったが原因は未確定であり、「更新だけで完治した」とは扱わない。生成された義務を削除したり、admit フラグを使ったりしていない。
+
+### 更新ビルド sweep-check-08 (2026-10-23T12:47:34)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-check.py proof_Heap_sweep`
+- 終了コード: 0、所要時間: 278.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-check-08.log`
+
+### 2026-10-23 最終ソースでの sweep 証明チェック
+
+`sweep-check-08` は通常の `rocq compile` によって `Time Qed` まで成功した。全体278.6秒、最後の kernel check は104.3秒。残っていた整数範囲0/1の副条件は `elem_of_int_type_0_to_127` で証明した。`Admitted`、新しい公理、義務の削除、事後条件の弱化はない。
+
+`gc-dune-08` では Vec の未証明 resolver を外した alloc・mark・mark_from・mark_one・new が全て .vo を生成した。この Dune 実行は開始時に取った古い sweep ソース（最終0/1補題の追加前）をチェックしたため、sweep の既知の範囲義務で終了1となった。元ソースと `_build/default/.../proof_Heap_sweep.v` の差を確認した。次の最終 Dune 実行で最新のソースを取り込む。
+
+ユーザー向けの `activate.sh` を source する実際の Bash 環境で、`cargo refinedrust -- --locked --offline` が終了0（cargo 表示0.75秒）だった。ログは `/tmp/refinedrust-upgrade-gc-final-generate.log`。SliceIndex/Zip 等の shim 登録警告は上流と現在の nightly の対応に関するもの。strict unsupported=false で対象関数の翻訳は成功しており、出力 proof modules と Drop 呼び出しを併せて監査する。
+
+### 2026-10-23 ユーザー向け通常コマンドの最終成功
+
+`activate.sh` を source した Bash で、次を順番に実行し、両方とも終了コード0だった。
+
+```bash
+cd /home/mikam/RefinedRust/hinata_mikami/gc
+source ./activate.sh
+cargo refinedrust -- --locked --offline
+dune build
+```
+
+- cargo ログ: `/tmp/refinedrust-upgrade-gc-final-generate.log`
+- Dune ログ: `/tmp/refinedrust-upgrade-gc-final-dune.log`
+- Dune は12:49開始・12:53終了。`Heap_sweep_proof` の最後の kernel check は100.876秒、通常の `.vo` は約10MB。`-vos`、admit、義務の削除による短縮は行っていない。
+- GC persistent proof modules 全12（既存10関数 + 新規 Heap drop glue + その subsumption）をチェック済み。補助35補題も通常の Dune でチェック済み。
+- 証明を使い回せる新しい環境を `activate.sh`、`rust-toolchain.toml`、`opam-rocq92.export`、root Dune project の控え `dune-project.root` に記録した。
+- この最終実行では SIGSEGV は発生していない。過去の更新作業中の再発と根本原因が未確定である事実は別途保持する。
+
+### 更新ビルド assumptions-final (2026-10-23T12:57:52)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-upgrade-assumptions.py`
+- 終了コード: 0、所要時間: 198.5秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-assumptions-final.log`
+
+### 更新ビルド gc-dune-drop-final (2026-10-23T12:59:16)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 0、所要時間: 23.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-gc-dune-drop-final.log`
+
+### 更新ビルド assumptions-drop-final (2026-10-23T13:00:10)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-upgrade-assumptions.py proof_drop_glue_Heap`
+- 終了コード: 0、所要時間: 20.5秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-assumptions-drop-final.log`
+
+## 2026-10-23 更新作業の最終結果
+
+- 公式 main `fd52421ed8cdada51bb911f69a7287ab2b3ac73d` を統合した `codex/refinedrust-20261023` 上で作業完了。統合コミット `b15cbf2f`。push は行っていない。
+- 新環境: Rust nightly-2026-08-28、Rocq core 9.2.0 / Stdlib 9.1.0、OCaml 4.14.2+flambda、Dune 3.23.1、opam switch `refinedrust-rocq92-upgrade`。旧 switch・旧 nightly・旧フロントエンドのバックアップを保持。
+- `cargo refinedrust -- --locked --offline` はユーザー向け activate.sh を source した環境で終了0。GC の通常 `dune build` も終了0。最後の drop-glue 修正後の全体 Dune も終了0（gc-dune-drop-final）。
+- 既存10関数の証明、新規 Heap drop glue、その仕様 subsumption の計12モジュール、および補助35補題が通常の .vo 生成で成功した。sweep の既存の事後条件は弱めていない。
+- 47件の `Print Assumptions` の監査では、最後に `drop_glue_Heap_proof` のみに未証明 Vec resolver 依存を検出した。この proof にもローカルで証明済み generic resolver を適用し、Dune（23.4秒）と当該定理の `Print Assumptions`（20.5秒）を再実行して依存を除去した。他の46件は変更していない。
+- 最終的に、補助35補題は global context に対して閉じ、GC12定理の公理は `FunctionalExtensionality.functional_extensionality_dep` と `ProofIrrelevance.proof_irrelevance` のみ。新規の公理・Admitted・admit・義務を消す ignore は追加していない。上流 Vec の2つの Admitted 自体は変更していないが、この GC の定理はそれらに依存しない。
+- 監査の定理別結果とソース SHA256 は `verification_assumptions_20261023.txt`。47件の生ログと Drop 修正後の生ログは元の検出結果も含めて保持する。
+- Rust 作業ツリーの差分は既存コメント変更を保持したうえで Heap field annotation の1行のみ（`<#> locs` → `#(<#> locs)`）。Rust の本体・sweep の事前/事後条件・vec_index wrapper・collect は元の作業ツリーと同一であることを tar との比較で確認した。
+- 実際の Drop 呼び出しを落とす旧フロントエンドの問題は新版では解消。Git 履歴では初期対応 `033fc28a`（2026-05-25, feature: initial handling for drop glue calls）があり、その後 unwind 対応も進んでいる。ただし Box::drop 等は現在も only_spec であり、呼び出し先仕様を前提とする関数型付けと、実装全体の解放イベントまで含む無条件の完全証明は区別する。collect、whole-program linking/adequacy、終了性、全体の漏れなしは未検証。
+- 更新作業中の SIGSEGV 再発は記録通り。最終ビルドは stack unlimited・DUNE_JOBS=1 で成功したが、根本原因の特定・完治を主張しない。
+- 更新前のソースと環境は `/home/mikam/RefinedRust-backups/20261023` に保持。更新後のソースと実行ログも同ディレクトリの `post-upgrade` に保存する。
+
+再実行コマンド:
+
+```bash
+cd /home/mikam/RefinedRust/hinata_mikami/gc
+source ./activate.sh
+cargo refinedrust -- --locked --offline
+dune build
+```
+
+ルートの dune-project は研究用 package を保持した既存ファイルを使う。控えは `gc/dune-project.root`。root Makefile の setup-dune で研究用 package を上書きしないこと。
+
+## 2026-10-23 sweep の仕様強化と教授コメントへの対応（開始）
+
+- 更新済みの通過済み証明を `/tmp/refinedrust-sweep-contract-backup-20261023` に保存した。既存の未コミット変更は保持する。
+- 方針: 保持対象と破棄対象の厳密な分割、保持 iff 開始時 marked、mark の完全性を仮定した保持 iff reachable、ノードのアドレスを使った到達可能性の保存を証明する。既存の sweep の事前条件は marks_closed であり、任意の過剰マークを許すため、保持 iff reachable は mark の結果を使う条件付き結論とする。
+- sweep は marked を false にリセットするため「物理的な mark ビットが不変」は仕様と矛盾する。代わりに、未処理部分の開始時マークの保存と、保持ノードの value/next・グラフ到達可能性の保存を扱う。削除後の添字の不変は主張しない。
+- only_spec のライブラリ本体検証は今回の対象外。Drop については、独立に更新できるゴーストログだけで実行済みを主張せず、生成された Call と Radium の遷移に結び付く小さな検査から進める。
+- RefinedRust verification/specifications/proofs skills を再確認した。指定の ben-mcp_rocq_* は現在も利用できないため、同じ Rocq の対話実行と通常コンパイルを用いる。
+
+### 追加仕様の意味と適用範囲
+
+- `extra_proofs/gc/sweep_contract.v` に `reachable_loc`（ノードの添字でなくアドレスを使う到達可能性）と `sweep_post` を追加した。
+- `sweep_post` の第一項は「元のリストのノードが残る iff 開始時の mark が true」。第二項は「開始時に marked iff reachable が成立するなら、残る iff 開始時に reachable」。第三項は「root が marked なら、終了後のグラフと開始時のグラフの到達可能なアドレス集合が同じ」。到達可能性の保存はフィルタ後の異なる添字の間で証明しており、同じスナップショットを両辺に置いた自明な等式ではない。
+- `sweep_fields_preserved` は、残った各レコードの value と next が元の同じアドレスのレコードと一致することを表す。実際のメモリとの対応は、既存の observe とノードの所有権に関する事後条件を保持して接続する。
+- marks_closed は過剰な mark を許す。この事前条件だけで reachable iff 保持を無条件に主張するのは誤り。既存の事前条件を強めず、正確な mark を入力とする条件付き結論を追加した。`mark_sweep_exact` と `mark_sweep_reachability_preserved` により、既存の mark_from_rel の結論からその条件を導いた。collect 本体の検証は行わない。
+- 元の物理的 mark が不変という要求は、sweep の false へのリセットと両立しない。`sweep_unprocessed_marks_unchanged` は未処理 prefix のみ開始時の mark と同じであることを示し、終了時には既存のメモリ事後条件に加えて `all_unmarked` を明記した。元の marks という数学的スナップショットと、変更されるメモリ上のビットを区別する。
+- 保持集合と除去集合の完全な分割・排他性、逆順の未マーク対象列の重複なし・元の非到達ノードとの一致も証明した。`sweep_drop_targets` は対象候補列であり、実行済み Drop/Free の履歴ではない。
+
+### Drop に関する小規模な接続検査
+
+- `gc/output/gc/audit/drop_calls.v` の `observed_stmt_step` は元の Radium の `stmt_step` と一意の観測を組にしたもの。観測を消すと元の遷移に戻ること、元の各遷移に一意の観測が付くこと、Call 観測が実際の関数解決・callee frame への遷移を伴うことを証明した。独立したゴースト更新だけでイベントを発行するものではない。
+- 同じファイルで生成済み `Heap_sweep_def` の静的な通常経路を検査した。未マーク分岐は remove/from_raw/Drop の3呼出、生存分岐は set_marked の1呼出。from_raw の返す Box のスロット `__20` が Drop に渡ることも検査した。
+- Drop の基本ブロックを次のブロックへの jump に置き換えた変異では呼出数が2となり、3呼出の検査に反することを通常の Rocq の補題として証明した。生成ファイルは直接変更していない。
+- ここで検査した CFG の通常経路は、callee の正常復帰を選ぶ静的射影であり、callee の本体や unwind、sweep の全実行を表す定理ではない。単一遷移の観測器と loop の Iris 型付けを結合した、全周回のイベント列の意味論的証明は未実装。したがって「各対象について実行済み Drop がちょうど1回」「Free が実行済み」という結論には格上げしない。
+- Box::drop / allocator 等の only_spec の実装検証を今回の対象外とする方針は維持する。この点は Rust の sweep が間違っている、という意味ではない。
+
+### 仕様追加作業の最終結果
+
+- `main.rs` に `sweep_contract` の import と、sweep_post / sweep_fields_preserved / all_unmarked の ensures を追加した。既存の事前条件・所有権の事後条件は維持した。開始時の控えとの比較で、Rust の sweep / mark / collect 本体、gc_defs.v と heap_lemmas.v の既存内容が変わっていないことを確認した。
+- 新しい `sweep_contract.v` の23件の補題・定理・例を通常コンパイルした。既存の mark の結論を使った正確な保持と到達可能性保存は、仕様の論理的な合成として証明した。collect の型付け証明は追加していない。
+- 新しい `output/gc/audit/drop_calls.v` の9件の検査・補題を通常コンパイルした。選択済み node_ptr を from_raw の引数 __21 にコピーする代入も、生成コードそのものについて検査した。
+- sweep の追加の純粋条件は sidecond_hammer_normalize により3条件へ分解されていた。元の sweep_post_filter の適用に加え、分解後の sweep_kept_exact / sweep_reachable_exact / sweep_reachability_preserved の各補題を適用して解決した。通常の Qed のカーネル検査は322.363秒かかったが完了した。
+- 途中の sweep-contract-dune-02 は、audit から私有の GC.generated theory が見えない配置の問題で終了1だったが、sweep の .vo 自体は正常生成された。GC は output/dune-project 内の別プロジェクトなので、手書きの audit theory を同プロジェクトの output/gc/audit/ に移し、package 指定を外した。generated/ や生成 dune は手動編集していない。
+- 最終の `cargo refinedrust -- --locked --offline`（sweep-contract-cargo-final、2.2秒）は終了0。再生成前後の SHA256 比較で、全手動 proof と Drop audit が保持されたことも確認した。
+- 最終の `dune build -j 1 --display=short`（sweep-contract-dune-final、5.6秒）は終了0。補助・生成・GC証明・audit の29ソースについて、_build 内コピーとの一致と、通常 .vo の存在を確認した。-vos は使用していない。
+- `audit/check_assumptions.py` で79件を監査した。初回は結果マーカーに使う文字列 scope の import 漏れを正しくエラーとして検出した。Print Assumptions 自体の結果は67件 closed + 12件の基盤公理だったが、集計を成功扱いにせず保存した。明示的な Stdlib Strings.String import を追加し、同じ RR import 後のマーカー動作を単独確認したうえで、全監査を再実行した。
+- 最終の全監査（sweep-contract-assumptions-final-02、303.5秒）は終了0。補助58件と audit9件の計67件は Closed under the global context。GC12定理は `FunctionalExtensionality.functional_extensionality_dep` と `ProofIrrelevance.proof_irrelevance` のみ。未証明 Vec resolver 依存は0件。新規の公理・Admitted・admit・義務を消す ignore は追加していない。
+- 定理別結果とソース SHA256 は `verification_assumptions_20261023.txt`、日本語の説明は `sweep_contract_report_20261023.txt`。新規作業の実行ログ・失敗した初回監査の出力・成功した最終監査の生出力・開始時の証明の控えは `audit/artifacts/20261023/` に保存する。Cargo が更新した追跡対象の target/.rustc_info.json は作業開始時と同じ HEAD の内容に戻した。
+- 適用範囲: 追加した機能的事後条件の証明は完了。Drop 候補列の数学的性質、生成 CFG、単一遷移観測の検査も完了。候補列を全ループの実行済み Drop 列に結び付ける証明、物理 Free の実行、only_spec 本体、collect / whole-program linking・adequacy・終了性は今回の成果に含めない。
+
+### 更新ビルド sweep-contract-01 (2026-10-23T14:07:43)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 6.0秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-01.log`
+
+### 更新ビルド sweep-contract-02 (2026-10-23T14:08:06)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 3.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-02.log`
+
+### 更新ビルド sweep-contract-03 (2026-10-23T14:09:26)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 4.9秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-03.log`
+
+### 更新ビルド sweep-contract-04 (2026-10-23T14:10:58)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 4.7秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-04.log`
+
+### 更新ビルド sweep-contract-05 (2026-10-23T14:11:37)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 3.5秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-05.log`
+
+### 更新ビルド sweep-contract-06 (2026-10-23T14:11:59)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 0、所要時間: 3.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-06.log`
+
+### 更新ビルド sweep-contract-07 (2026-10-23T14:13:28)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 7.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-07.log`
+
+### 更新ビルド sweep-contract-08 (2026-10-23T14:16:28)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 0、所要時間: 7.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-08.log`
+
+### 更新ビルド sweep-contract-cargo (2026-10-23T14:17:24)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 終了コード: 0、所要時間: 1.4秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-cargo.log`
+
+### 更新ビルド drop-audit-01 (2026-10-23T14:21:32)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /home/mikam/RefinedRust/hinata_mikami/gc/audit/drop_calls.v`
+- 終了コード: 1、所要時間: 4.5秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-audit-01.log`
+
+### 更新ビルド drop-audit-02 (2026-10-23T14:21:56)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /home/mikam/RefinedRust/hinata_mikami/gc/audit/drop_calls.v`
+- 終了コード: 1、所要時間: 6.0秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-audit-02.log`
+
+### 更新ビルド drop-audit-03 (2026-10-23T14:22:40)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /home/mikam/RefinedRust/hinata_mikami/gc/audit/drop_calls.v`
+- 終了コード: 0、所要時間: 4.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-audit-03.log`
+
+### 更新ビルド audit-format (2026-10-23T14:30:09)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `rocq repl -quiet < /tmp/refinedrust-audit-format.input`
+- 終了コード: 0、所要時間: 0.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-audit-format.log`
+
+### 更新ビルド sweep-contract-dune-01 (2026-10-23T14:33:39)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 952.7秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-dune-01.log`
+
+### 更新ビルド sweep-contract-debug-side (2026-10-23T14:35:41)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-proof-debug.py sweep_side`
+- 終了コード: 0、所要時間: 171.3秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-debug-side.log`
+
+### 更新ビルド drop-audit-final-local (2026-10-23T14:46:34)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /home/mikam/RefinedRust/hinata_mikami/gc/output/gc/audit/drop_calls.v`
+- 終了コード: 1、所要時間: 12.7秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-audit-final-local.log`
+
+### 更新ビルド sweep-contract-dune-02 (2026-10-23T14:47:16)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 1、所要時間: 653.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-dune-02.log`
+
+### 更新ビルド drop-audit-final-local-02 (2026-10-23T14:47:44)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /home/mikam/RefinedRust/hinata_mikami/gc/output/gc/audit/drop_calls.v`
+- 終了コード: 0、所要時間: 8.1秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-drop-audit-final-local-02.log`
+
+### 更新ビルド sweep-post-tactics-local (2026-10-23T14:48:53)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /tmp/test_sweep_post_tactics.v`
+- 終了コード: 0、所要時間: 3.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-post-tactics-local.log`
+
+### 更新ビルド sweep-contract-cargo-final (2026-10-23T14:49:47)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 終了コード: 0、所要時間: 2.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-cargo-final.log`
+
+### 更新ビルド sweep-contract-dune-final (2026-10-23T14:49:59)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `dune build -j 1 --display=short`
+- 終了コード: 0、所要時間: 5.6秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-dune-final.log`
+
+### 更新ビルド sweep-contract-assumptions-final (2026-10-23T14:55:30)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `python3 audit/check_assumptions.py --report verification_assumptions_20261023.txt --raw-output audit/artifacts/20261023/assumptions.raw.txt`
+- 終了コード: 1、所要時間: 315.3秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-assumptions-final.log`
+
+### 更新ビルド audit-marker-after-import (2026-10-23T14:58:16)
+
+- 実行場所: `/home/mikam/RefinedRust`
+- コマンド: `python3 /tmp/refinedrust-check-source.py /tmp/test_audit_marker.v`
+- 終了コード: 0、所要時間: 3.2秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-audit-marker-after-import.log`
+
+### 更新ビルド sweep-contract-assumptions-final-02 (2026-10-23T15:01:58)
+
+- 実行場所: `/home/mikam/RefinedRust/hinata_mikami/gc`
+- コマンド: `python3 audit/check_assumptions.py --report verification_assumptions_20261023.txt --raw-output audit/artifacts/20261023/assumptions.raw.txt`
+- 終了コード: 0、所要時間: 303.5秒
+- 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-assumptions-final-02.log`

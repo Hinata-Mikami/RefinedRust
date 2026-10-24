@@ -1,7 +1,7 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_sweep.
-From hinata_mikami.extra_proofs.gc Require Import heap_lemmas.
+From hinata_mikami.extra_proofs.gc Require Import heap_lemmas sweep_contract.
 
 Set Default Proof Using "Type".
 
@@ -27,12 +27,11 @@ Local Definition resolve_ghost_Vec_concrete_inst :=
 Local Existing Instance resolve_ghost_Vec_concrete_inst | 1.
 
 Local Lemma prove_with_subtype_stratify_opened
-    l E L pm Q T :
+    l E L pm Q A T :
   find_in_context (FindLoc l)
     (λ '(existT rt (lt, r, bk, π)),
       stratify_ltype
         π E L
-        StratMutNone
         StratNoUnfold
         StratRefoldOpened
         StratifyUnblockOp
@@ -42,8 +41,8 @@ Local Lemma prove_with_subtype_stratify_opened
             (l ◁ₗ[π, bk] r' @ lt' -∗
              R -∗
              Q)
-            T))
-  ⊢ prove_with_subtype E L true pm Q T.
+            A T))
+  ⊢ prove_with_subtype E L true pm Q A T.
 Proof.
   unfold find_in_context, FindLoc.
   simpl.
@@ -53,14 +52,14 @@ Proof.
   iDestruct "Ha" as "(Hl & HT)".
 
   rewrite /prove_with_subtype.
-  iIntros (F ???) "#CTX #HE HL".
+  iIntros (F Acc' ???) "#CTX #HE HL HA".
 
   rewrite /stratify_ltype.
   iMod ("HT" with "[//] [//] [//] CTX HE HL Hl")
     as "(%L2 & %R & %rt' & %lt' & %r' &
          HL & %Hst' & Hstep & HT)".
 
-  iMod ("HT" with "[//] [//] [//] CTX HE HL")
+  iMod ("HT" with "[//] [//] [//] CTX HE HL HA")
     as "(%L3 & %κs2 & %R' &
          Hstep' & HL & HT)".
 
@@ -72,7 +71,7 @@ Proof.
   iApply (logical_step_wand with "Hstep'").
 
   iModIntro.
-  iIntros "(Ha & $) (Hl & HR)".
+  iIntros "($ & Ha & $) (Hl & HR)".
 
   destruct pm.
   - iApply ("Ha" with "[$] [$]").
@@ -87,7 +86,7 @@ Qed.
 Ltac liRStepUntilBb2 :=
   repeat lazymatch goal with
   | |- environments.envs_entails _
-      (typed_stmt _ _ _ (Goto "_bb2") _ _ _) =>
+      (typed_stmt _ _ _ (Goto "_bb2") _ _ _ _) =>
       fail
   | _ =>
       liRStep
@@ -224,8 +223,11 @@ Proof.
         (Z.to_nat ic - 1)%nat = lc.
     { apply list_lookup_total_correct. exact Hactual. }
     have Hnonnull : loc_a lc ≠ 0.
-    { exact ((proj1 (Forall_lookup (λ l : loc, loc_a l ≠ 0) locs) H14)
-        _ _ Hlc). }
+    {
+      have Hnonall : Forall (λ l : loc, loc_a l ≠ 0) locs by assumption.
+      exact ((proj1 (Forall_lookup (λ l : loc, loc_a l ≠ 0) locs) Hnonall)
+        _ _ Hlc).
+    }
     rewrite -Hindex Hptr.
     iDestruct "Hnode" as "[Hguard Hfree]".
     apply_update updateable_strip_guards.
@@ -258,6 +260,11 @@ Proof.
         big_sepL_app) in "Hclose".
       iDestruct "Hclose" as "[Hprefix Hsuffix]".
       rep liRStep; liShow.
+  - (* Checked usize subtraction: the overflow path contradicts the bounds. *)
+    exfalso.
+    match goal with Hoverflow : ic - 1 ∉ usize |- _ => apply Hoverflow end.
+    change (MinInt usize ≤ ic - 1 ≤ MaxInt usize)%Z.
+    rewrite MinInt_eq /min_int /=. lia.
   - have Hzero : ic = 0 by lia. subst ic.
     iRename select (sweep_nodes_inv _ _ _ _ _ _) into "Hinv".
     iPoseProof (sweep_nodes_inv_done vals locs nexts marks _
@@ -275,6 +282,13 @@ Proof.
   all: try (apply keep_marked_Forall; assumption).
   all: try (eapply marks_closed_keep_marked_next_valid;
     [lia|assumption|assumption|assumption]).
+  all: try (eapply sweep_post_filter; [assumption|lia|lia|assumption]).
+  all: try (apply sweep_kept_exact_filter; assumption).
+  all: try (apply sweep_reachable_exact_filter; assumption).
+  all: try (eapply sweep_preserves_reachability;
+    [assumption|lia|lia|assumption|assumption]).
+  all: try (apply sweep_fields_preserved_filter; assumption).
+  all: try (apply sweep_reset_all_unmarked).
   all: try rewrite -list_fmap_delete.
   all: try (
     match goal with
@@ -294,6 +308,7 @@ Proof.
         (apply keep_marked_suffix_pred_false; [lia|lia|exact Hm]);
       rewrite Heq; done
     end).
+  all: try (apply (elem_of_int_type_0_to_127 _ usize); lia).
   Unshelve. all: done.
 Time Qed.
 End proof.

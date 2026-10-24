@@ -1,0 +1,17 @@
+cwd: /home/mikam/RefinedRust 
+command: python3 /tmp/refinedrust-check-source.py /tmp/test_sweep_post_tactics.v
+Chars 0 - 41 [From~radium~Require~Import~lan...] 1.747 secs (1.117u,0.624s)
+Chars 42 - 81 [From~refinedrust~Require~Impor...] 0.729 secs (0.627u,0.098s)
+Chars 82 - 167 [From~hinata_mikami.extra_proof...] 0.013 secs (0.005u,0.007s)
+Chars 168 - 449 [Lemma~check_post_tactics~(vals...] 0.005 secs (0.003u,0.001s)
+Chars 450 - 456 [Proof.] 0. secs (0.u,0.s)
+Chars 459 - 504 [intros~Hloclen~Hnextlen~Hmarkl...] 0.001 secs (0.u,0.s)
+Chars 507 - 525 [unfold~sweep_post.] 0.001 secs (0.u,0.s)
+Chars 526 - 542 [split;~[~~|~split~].] 0.001 secs (0.001u,0.s)
+Chars 545 - 562 [2:~intros~Hexact.] 0. secs (0.u,0.s)
+Chars 565 - 581 [3:~intros~Hroot.] 0. secs (0.u,0.s)
+Chars 584 - 653 [all:~try~(eapply~sweep_post_fi...] 0.026 secs (0.026u,0.s)
+Chars 656 - 709 [all:~try~(apply~sweep_kept_exa...] 0.002 secs (0.002u,0.s)
+Chars 712 - 770 [all:~try~(apply~sweep_reachabl...] 0.001 secs (0.001u,0.s)
+Chars 773 - 868 [all:~~try~~~(eapply~sweep_pres...] 0.006 secs (0.006u,0.s)
+Chars 869 - 873 [Qed.] 0.232 secs (0.232u,0.s)

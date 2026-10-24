@@ -1,0 +1,90 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/gc 
+command: dune build -j 1 --display=short
+Entering directory '/home/mikam/RefinedRust'
+        rocq hinata_mikami/gc/output/gc/generated/.refinedrust.examples.gc.theory.d
+        rocq hinata_mikami/gc/output/gc/proofs/.refinedrust.examples.gc.theory.d
+        rocq hinata_mikami/gc/output/gc/generated/generated_specs_gc.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Heap_alloc.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Heap_mark.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Heap_mark_from.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Heap_mark_one.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Heap_new.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Heap_sweep.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Node_set_marked.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_Node_set_next.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_drop_glue_Heap.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_make_node.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/generated/generated_template_read_next_value.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/proofs/trait_incl_drop_glue_Heap_spec_subsumption_correct.{glob,vo}
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_alloc.{glob,vo}
+Did 1236 steps.
+Did 207 steps.
+Did 276 steps.
+Did 4 steps.
+Did 37 steps.
+Did 149 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_mark.{glob,vo}
+Did 981 steps.
+Did 154 steps.
+Did 14 steps.
+Did 348 steps.
+Did 486 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_from.{glob,vo}
+Did 1002 steps.
+Did 300 steps.
+Did 3 steps.
+Did 195 steps.
+Did 14 steps.
+Did 0 steps.
+Did 70 steps.
+Did 181 steps.
+Did 1136 steps.
+Did 195 steps.
+Did 15 steps.
+Did 286 steps.
+Did 215 steps.
+Did 15 steps.
+Did 345 steps.
+Did 600 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_one.{glob,vo}
+Did 1094 steps.
+Did 386 steps.
+Did 3 steps.
+Did 202 steps.
+Did 115 steps.
+Did 112 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_new.{glob,vo}
+Did 434 steps.
+File "hinata_mikami/gc/output/gc/proofs/dune", lines 2-7, characters 0-1361:
+2 | (rocq.theory
+3 | (flags -w -notation-overridden -w -redundant-canonical-projection)
+4 | (name refinedrust.examples.gc.proofs)
+5 | (modules proof_Heap_alloc proof_Heap_mark proof_Heap_mark_from proof_Heap_mark_one proof_Heap_new proof_Heap_sweep proof_Node_set_marked proof_Node_set_next proof_make_node proof_read_next_value proof_drop_glue_Heap trait_incl_drop_glue_Heap_spec_subsumption_correct)
+6 | (generate_project_file)
+7 | (theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib hinata_mikami.extra_proofs.gc rrstd.alloc.alloc.generated rrstd.alloc.theories rrstd.arithops.arithops.generated rrstd.boxed.boxed.generated rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.cmp.cmp.generated rrstd.cmp.theories rrstd.controlflow.controlflow.generated rrstd.index.index.generated rrstd.iterator.iterator.generated rrstd.iterator.theories rrstd.mem.mem.generated rrstd.mem.theories rrstd.num.num.generated rrstd.option.option.generated rrstd.ptr.ptr.generated rrstd.ptr.theories rrstd.ptr_advanced.ptr_advanced.generated rrstd.range.range.generated rrstd.result.result.generated rrstd.result.theories rrstd.rr_internal.rr_internal.generated rrstd.rr_internal.theories rrstd.sized.sized.generated rrstd.stdlib.stdlib.generated rrstd.vec.theories rrstd.vec.vec.generated refinedrust.examples.gc.generated))
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.{glob,vo} (exit 1)
+Did 159 steps.
+Did 1481 steps.
+Did 1106 steps.
+Did 93 steps.
+Did 1834 steps.
+Did 95 steps.
+Did 712 steps.
+File "./hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v", line 308, characters 17-21:
+Error: No applicable tactic.
+
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Node_set_marked.{glob,vo}
+Did 589 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Node_set_next.{glob,vo}
+Did 597 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_drop_glue_Heap.{glob,vo}
+Did 390 steps.
+Warning: rep <-! found no backtracking point; keeping the current proof state.
+Did 127 steps.
+Did 8 steps.
+Did 73 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_make_node.{glob,vo}
+Did 1326 steps.
+        rocq hinata_mikami/gc/output/gc/proofs/proof_read_next_value.{glob,vo}
+Did 626 steps.
+Leaving directory '/home/mikam/RefinedRust'

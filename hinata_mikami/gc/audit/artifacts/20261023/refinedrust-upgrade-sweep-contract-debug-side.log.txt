@@ -1,0 +1,371 @@
+cwd: /home/mikam/RefinedRust 
+command: python3 /tmp/refinedrust-proof-debug.py sweep_side
+
+Rocq < 
+Rocq < 
+Rocq < 
+Rocq < 
+Rocq < Rocq < 
+Rocq < Rocq < 
+Rocq < 
+Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < 
+Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < 
+resolve_ghost_Vec_concrete < 
+
+
+Rocq < Rocq < 
+Rocq < 
+Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+
+prove_with_subtype_stratify_opened < prove_with_subtype_stratify_opened < 
+
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+prove_with_subtype_stratify_opened < 
+Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < 
+Rocq < Rocq < Rocq < Rocq < Rocq < 
+keep_marked_suffix_pred_true < 
+keep_marked_suffix_pred_true < 
+keep_marked_suffix_pred_true < 
+keep_marked_suffix_pred_true < 
+keep_marked_suffix_pred_true < 
+Rocq < Rocq < Rocq < Rocq < Rocq < Rocq < 
+keep_marked_suffix_pred_false < 
+keep_marked_suffix_pred_false < 
+keep_marked_suffix_pred_false < 
+keep_marked_suffix_pred_false < 
+keep_marked_suffix_pred_false < 
+Rocq < Rocq < Rocq < Rocq < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Did 159 steps.
+Finished transaction in 4.33 secs (4.274u,0.029s) (successful)
+
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Did 1481 steps.
+Finished transaction in 30.357 secs (29.885u,0.459s) (successful)
+
+Heap_sweep_proof < 
+
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+Heap_sweep_proof < 
+
+
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+
+
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Did 1106 steps.
+Finished transaction in 22.046 secs (22.016u,0.101s) (successful)
+
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+
+
+
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Did 93 steps.
+Finished transaction in 1.444 secs (1.436u,0.s) (successful)
+
+Heap_sweep_proof < 
+Did 1834 steps.
+Finished transaction in 42.236 secs (41.77u,0.409s) (successful)
+
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Did 95 steps.
+Finished transaction in 2.124 secs (2.151u,0.01s) (successful)
+
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+Heap_sweep_proof < 
+
+
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Did 712 steps.
+Finished transaction in 14.897 secs (14.781u,0.14s) (successful)
+
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 
+Heap_sweep_proof < 
+Heap_sweep_proof < 
+
+3 goals
+  
+  Σ : gFunctors
+  RRGS : refinedrustGS Σ
+  π : thread_id
+  FN_NAME := HIDDEN : string
+  Heap_sl : struct_layout
+  H : CACHED
+  Node_sl : struct_layout
+  H0 : CACHED
+  Global_sl, Box_sl : struct_layout
+  H2 : CACHED
+  Vec_sl : struct_layout
+  H3 : CACHED
+  tuple2_sl : struct_layout
+  H4 : CACHED
+  Hcache : JCACHED
+  RawVec_sl : struct_layout
+  H5 : CACHED
+  core_marker_PhantomData_sl, RawVecInner_sl : struct_layout
+  H6 : CACHED
+  H7 : CACHED
+  unique_Unique_sl : struct_layout
+  H8 : CACHED
+  H10 : CACHED
+  ly3, nonnull_NonNull_sl : struct_layout
+  H9 : CACHED
+  H11 : CACHED
+  ly0 : struct_layout
+  H12 : CACHED
+  ly1, ly2 : struct_layout
+  H13 : CACHED
+  H14 : CACHED
+  vals : list Z
+  locs, nexts : list loc
+  marks : list bool
+  arg_self : loc
+  loop_map : BB_INV
+  H21 : rr_config_strict_resolution
+  H22 : length locs = length vals
+  H23 : length nexts = length vals
+  H24 : length marks = length vals
+  H25 : Forall (λ n : loc, n = NULL_loc ∨ n ∈ locs) nexts
+  H26 : NoDup locs
+  H27 : Forall (λ l : loc, loc_a l ≠ 0) locs
+  H28 : marks_closed locs nexts marks
+  H29 : CACHED
+  local___0, local___5, local___9, local___22, local___24, local_nodes,
+  local_i : loc
+  H30 : 0 ≤ length locs
+  H31 : length locs ≤ MaxInt usize
+  Hvals_marks : length vals = length marks
+  Hlocs_marks : length locs = length marks
+  Hnexts_marks : length nexts = length marks
+  H32 : CACHED
+  Hcut : Z.to_nat (length locs) = length marks
+  H33 : CACHED
+  H34 : CACHED
+  H36 : 0 ≤ length locs
+  H35 : 0 ≤ 0
+  H37 : CACHED
+  H38 : CACHED
+  H39 : CACHED
+  H40 : CACHED
+  H41 : CACHED
+  H42 : CACHED
+  H44 : 0 ≤ MaxInt usize
+  H43 : MinInt usize ≤ 0
+  H45 : ¬ 0 > 0
+  H46 : CACHED
+  H48 : CACHED
+  ============================
+  sweep_kept_exact locs marks (keep_marked locs marks)
+
+goal 2 is:
+ sweep_reachable_exact locs nexts (keep_marked locs marks)
+goal 3 is:
+ sweep_reachability_preserved locs nexts (keep_marked locs marks)
+   (keep_marked nexts marks)
+
+Heap_sweep_proof < Heap_sweep_proof < Heap_sweep_proof < 3 goals
+  
+  Σ : gFunctors
+  RRGS : refinedrustGS Σ
+  π : thread_id
+  FN_NAME := HIDDEN : string
+  Heap_sl : struct_layout
+  H : CACHED
+  Node_sl : struct_layout
+  H0 : CACHED
+  Global_sl, Box_sl : struct_layout
+  H2 : CACHED
+  Vec_sl : struct_layout
+  H3 : CACHED
+  tuple2_sl : struct_layout
+  H4 : CACHED
+  Hcache : JCACHED
+  RawVec_sl : struct_layout
+  H5 : CACHED
+  core_marker_PhantomData_sl, RawVecInner_sl : struct_layout
+  H6 : CACHED
+  H7 : CACHED
+  unique_Unique_sl : struct_layout
+  H8 : CACHED
+  H10 : CACHED
+  ly3, nonnull_NonNull_sl : struct_layout
+  H9 : CACHED
+  H11 : CACHED
+  ly0 : struct_layout
+  H12 : CACHED
+  ly1, ly2 : struct_layout
+  H13 : CACHED
+  H14 : CACHED
+  vals : list Z
+  locs, nexts : list loc
+  marks : list bool
+  arg_self : loc
+  loop_map : BB_INV
+  H21 : rr_config_strict_resolution
+  H22 : length locs = length vals
+  H23 : length nexts = length vals
+  H24 : length marks = length vals
+  H25 : Forall (λ n : loc, n = NULL_loc ∨ n ∈ locs) nexts
+  H26 : NoDup locs
+  H27 : Forall (λ l : loc, loc_a l ≠ 0) locs
+  H28 : marks_closed locs nexts marks
+  H29 : CACHED
+  local___0, local___5, local___9, local___22, local___24, local_nodes,
+  local_i : loc
+  H30 : 0 ≤ length locs
+  H31 : length locs ≤ MaxInt usize
+  Hvals_marks : length vals = length marks
+  Hlocs_marks : length locs = length marks
+  Hnexts_marks : length nexts = length marks
+  H32 : CACHED
+  Hcut : Z.to_nat (length locs) = length marks
+  H33 : CACHED
+  H34 : CACHED
+  H36 : 0 ≤ length locs
+  H35 : 0 ≤ 0
+  H37 : CACHED
+  H38 : CACHED
+  H39 : CACHED
+  H40 : CACHED
+  H41 : CACHED
+  H42 : CACHED
+  H44 : 0 ≤ MaxInt usize
+  H43 : MinInt usize ≤ 0
+  H45 : ¬ 0 > 0
+  H46 : CACHED
+  H48 : CACHED
+  ============================
+  sweep_kept_exact locs marks (keep_marked locs marks)
+
+goal 2 is:
+ sweep_reachable_exact locs nexts (keep_marked locs marks)
+goal 3 is:
+ sweep_reachability_preserved locs nexts (keep_marked locs marks)
+   (keep_marked nexts marks)
+
+Heap_sweep_proof < 

@@ -1,2 +1,6 @@
 output_dir = "output"
 lib_load_paths = "../../stdlib"
+find_stdlib = false
+generate_dune_project = false
+generate_linking_requirements = true
+skip_unsupported_features = false

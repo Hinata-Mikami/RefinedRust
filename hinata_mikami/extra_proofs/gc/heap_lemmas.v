@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing.
 From iris.base_logic.lib Require Import ghost_map.
 From hinata_mikami.extra_proofs.gc Require Import gc_defs.
@@ -31,22 +31,22 @@ Lemma prove_with_subtype_big_sepL_acc {A}
     E L step pm
     (xs : list A)
     (Φ : nat → A → iProp Σ)
-    (i : nat) (x : A) T :
+    (i : nat) (x : A) Acc T :
   (Φ i x -∗
      [∗ list] k ↦ y ∈ xs, Φ k y) -∗
   prove_with_subtype E L step pm
-    (Φ i x) T -∗
+    (Φ i x) Acc T -∗
   prove_with_subtype E L step pm
-    ([∗ list] k ↦ y ∈ xs, Φ k y) T.
+    ([∗ list] k ↦ y ∈ xs, Φ k y) Acc T.
 Proof.
   iIntros "Hclose Hsub".
 
   rewrite /prove_with_subtype.
   iEval (rewrite /prove_with_subtype) in "Hsub".
 
-  iIntros (F ???) "#CTX #HE HL".
+  iIntros (F Acc' ???) "#CTX #HE HL Hacc".
 
-  iMod ("Hsub" with "[//] [//] [//] CTX HE HL")
+  iMod ("Hsub" with "[//] [//] [//] CTX HE HL Hacc")
     as "(%L' & %κs & %R & Hstep & HL & HT)".
 
   iModIntro.
@@ -56,13 +56,13 @@ Proof.
   iApply (maybe_logical_step_wand with "[Hclose] Hstep").
 
   destruct pm.
-  - iIntros "(Hi & HR)".
-    iFrame "HR".
+  - iIntros "(HR & Hi & Hacc)".
+    iFrame "HR Hacc".
     iApply "Hclose".
     iExact "Hi".
 
-  - iIntros "(Hi & HR)".
-    iFrame "HR".
+  - iIntros "(HR & Hi & Hacc)".
+    iFrame "HR Hacc".
 
     iIntros "Hdead".
     iMod ("Hi" with "Hdead") as "Hi".

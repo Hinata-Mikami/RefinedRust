@@ -1,0 +1,101 @@
+GC sweep の仕様強化と教授コメントへの対応（2026-10-23）
+
+最終確認: cargo refinedrust と dune build は成功。追加条件を含む sweep の
+通常 .vo と、検査を含む計29個の Rocq モジュールのソース一致を確認した。
+79件の公理監査も成功。補助・検査67件は global context に対して閉じ、
+GC 型付け12件は既存の関数外延性・証明無関係性のみに依存する。
+新しい Admitted / admit / 公理 / 検証を回避する ignore は追加していない。
+
+今回追加した仕様
+
+開始時のノード・next・mark の列を L0, N0, M0 とし、終了時の列を
+L1 = keep_marked L0 M0, N1 = keep_marked N0 M0 とする。
+Reach(L,N,l) は、root（L の先頭）からアドレス l に到達できること。
+添字は Vec::remove により変わるため、前後の比較にはアドレスを使う。
+
+  (1) 元のノード l が残る iff その開始時の mark が true。
+  (2) 開始時に marked iff reachable が成立するなら、
+        l ∈ L1 iff Reach(L0,N0,l)。
+  (3) 開始時に root が marked なら、
+        Reach(L1,N1,l) iff Reach(L0,N0,l)。
+  (4) 保持された各ノードの value と next は、開始時の同じアドレスの
+      ノードの value と next に等しい。
+  (5) 終了時の全保持ノードの mark ビットは false。
+
+(1)-(3) を sweep_post としてまとめ、(4) を sweep_fields_preserved、
+(5) を all_unmarked として main.rs の ensures に追加した。
+既存の observe、ノードの所有権・freeable_nz、長さ・NoDup・next の妥当性の
+事後条件は保持した。これらが上記の数学的な列と実際の残ったノードを結ぶ。
+Rust の sweep 本体、mark 本体、collect 本体は変更していない。
+
+説明例（a, b, c は異なる非 NULL アドレス）:
+  開始時: locs = [a,b,c], nexts = [c,NULL,NULL], marks = [true,false,true]
+           root a -> c。b は非到達。
+  終了時: locs = [a,c],   nexts = [c,NULL],      marks = [false,false]
+  reachable なアドレスは前後とも {a,c}。c の添字は 2 から 1 へ変わる。
+  元の mark スナップショットは保持判定に使うが、実ビットはリセットされる。
+
+教授コメントへの判断
+
+「reachable なものがぴったり残る、という両方向の検証」:
+  妥当。(2) で両方向を明記した。ただし sweep 単独の既存の事前条件は
+  marks_closed であり、reachable でないノードへの過剰マークを許す。
+  この条件だけで (2) を無条件に主張することはできない。
+  事前条件を強めず、mark の結論を使う条件付き結論にした。
+  mark_sweep_exact により mark_from_rel と初期 all_unmarked から導出した。
+  これは仕様の論理的な合成であり、collect 本体の型付け証明ではない。
+
+「事後条件の結論が分かりにくい」:
+  sweep_post と main.rs の日本語コメントで、保持 iff 開始時 marked、
+  正確な mark の下では保持 iff reachable、という結論を先に読めるようにした。
+  メモリ所有権を記述する既存の細かい事後条件は削っていない。
+
+「sweep によって元の mark, reachable が変わらない」:
+  mark の物理的なビットは、生存ノードで true -> false に変わる。
+  そのためビットの不変を要求すると現在の実装と矛盾する。
+  代わりに、未処理部分のビットは開始時のままであること
+  (sweep_unprocessed_marks_unchanged) と、終了時の全ビットの false を示した。
+  M0 という開始時スナップショットと、メモリ上の現在の mark は区別する。
+  reachable については (3) を両方向に証明した。元のグラフから
+  フィルタ後のグラフへ経路を写す証明と、その逆の経路の証明を行った。
+  mark_sweep_reachability_preserved により、mark の後であれば root marked
+  と marks_closed が満たされ、この保存性が使えることも示した。
+  これはゴーストの元の値を固定するだけの自明な等式ではない。
+
+その他の補助補題
+
+  保持集合と除去集合が元の集合の完全な分割であること、両集合の排他性、
+  逆順に走査する未マーク対象候補列の NoDup、正確な mark の下で候補集合が
+  元の非到達ノードの集合と一致することを証明した。
+
+Drop / 解放についての適用範囲
+
+  output/gc/audit/drop_calls.v は実際の生成 Heap_sweep_def の通常経路について、
+  未マーク分岐の remove -> from_raw -> Drop の順序、
+  生存分岐の set_marked、from_raw と Drop の Box スロットの一致を検査する。
+  選択済み node_ptr を from_raw の引数の一時変数にコピーする点も検査する。
+  Drop ブロックを削除した変異が、この検査に反することも証明している。
+  同ファイルの観測器は実際の Radium stmt_step を必要とし、
+  呼び出しの観測から関数表の解決と callee frame への遷移を導ける。
+
+  ただし、これは sweep の全周回を通した実行済みイベント列の証明ではない。
+  sweep_drop_targets は数学的な対象候補列であり、実行済み Drop の履歴ではない。
+  この列の NoDup から「実行済み Drop が各対象でちょうど1回」を主張しない。
+  観測器と loop の型付けを接続する意味論的な証明は未実装。
+  実際の Free と only_spec のライブラリ本体の検証も残る。
+  したがって、本変更をもって物理的解放まで完全に証明したとは扱わない。
+
+再現と監査
+
+  cd /home/mikam/RefinedRust/hinata_mikami/gc
+  source ./activate.sh
+  cargo refinedrust -- --locked --offline
+  dune build
+  python3 audit/check_assumptions.py \
+    --report verification_assumptions_20261023.txt \
+    --raw-output /tmp/gc-assumptions.txt
+
+実行の結果・所要時間は sweep_proof_log.md、定理ごとの公理依存とソースの
+SHA256 は verification_assumptions_20261023.txt を参照。
+only_spec の呼び出し先契約は型付け定理の前提なので、Print Assumptions の
+監査はライブラリ実装や whole-program linking/adequacy の証明とは異なる。

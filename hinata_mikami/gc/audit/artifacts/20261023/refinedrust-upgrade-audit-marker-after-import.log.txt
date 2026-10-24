@@ -1,0 +1,12 @@
+cwd: /home/mikam/RefinedRust 
+command: python3 /tmp/refinedrust-check-source.py /tmp/test_audit_marker.v
+Chars 0 - 42 [From~Stdlib~Require~Import~Str...] 0.26 secs (0.15u,0.11s)
+Chars 43 - 101 [From~hinata_mikami.extra_proof...] 2.509 secs (1.591u,0.92s)
+     = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans"%string
+     : string
+Chars 102 - 195 [Eval~compute~in~~~"RR-BEGIN|hi...] 0.009 secs (0.009u,0.s)
+Closed under the global context
+Chars 196 - 273 [Print~Assumptions~hinata_mikam...] 0.001 secs (0.001u,0.s)
+     = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans"%string
+     : string
+Chars 274 - 365 [Eval~compute~in~~~"RR-END|hina...] 0.009 secs (0.008u,0.s)

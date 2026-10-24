@@ -1,0 +1,8 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/gc 
+command: python3 audit/check_assumptions.py --report verification_assumptions_20261023.txt --raw-output audit/artifacts/20261023/assumptions.raw.txt
+Traceback (most recent call last):
+  File "/home/mikam/RefinedRust/hinata_mikami/gc/audit/check_assumptions.py", line 128, in <module>
+    main()
+  File "/home/mikam/RefinedRust/hinata_mikami/gc/audit/check_assumptions.py", line 73, in main
+    raise RuntimeError("Rocq audit failed; inspect --raw-output")
+RuntimeError: Rocq audit failed; inspect --raw-output

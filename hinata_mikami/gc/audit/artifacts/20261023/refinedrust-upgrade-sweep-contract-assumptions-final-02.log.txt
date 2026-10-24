@@ -1,0 +1,112 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/gc 
+command: python3 audit/check_assumptions.py --report verification_assumptions_20261023.txt --raw-output audit/artifacts/20261023/assumptions.raw.txt
+RefinedRust GC 証明依存関係監査（仕様強化後、2026-10-23）
+対象: 79 件（補助補題・GC 型付け定理・Drop 検査）
+全対象の通常 .vo と Dune 内ソースの一致を確認。
+許可する基盤公理: functional_extensionality_dep, proof_irrelevance のみ。
+注意: only_spec 等の呼び出し先契約は型付け定理の前提であり、
+この公理監査はライブラリ実装や物理解放の証明を意味しない。
+Drop 検査は静的 CFG と単一遷移の観測器。sweep 全実行の履歴ではない。
+
+定理ごとの監査結果:
+hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound_unmarked: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_preserves_true: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_marks_start: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.nodup_locs_lookup_unique: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.all_unmarked_closed_except: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed_unmarked: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_complete: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_exact_root: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_0: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_length: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_length: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_0: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_true: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_true: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_false: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_false: Closed under the global context
+hinata_mikami.extra_proofs.gc.gc_defs.elem_of_keep_marked: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.simplify_goal_big_sepL_app: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.prove_with_subtype_big_sepL_acc: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.NoDup_snoc_local: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_full_ne: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_nz_full_ne: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_length_same_mask: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_NoDup: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_Forall: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.marks_closed_keep_marked_next_valid: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.aligned_nodes_cons: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_cons: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_zero_cons: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_init: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_step: Closed under the global context
+hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_done: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.elem_of_keep_unmarked: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_kept_exact_filter: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reachable_exact_filter: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition_disjoint: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_exact: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_nodup: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_unreachable: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair_intro: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_unprocessed_marks_unchanged: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reset_all_unmarked: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_origin: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_root: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_forward: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_backward: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_preserves_reachability: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_post_filter: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_exact: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.mark_from_rel_length: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_reachability_preserved: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_fields_preserved_filter: Closed under the global context
+hinata_mikami.extra_proofs.gc.sweep_contract.sweep_resets_mark_example: Closed under the global context
+refinedrust.examples.gc.proofs.proof_Heap_alloc.Heap_alloc_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Heap_mark.Heap_mark_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Heap_mark_from.Heap_mark_from_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Heap_mark_one.Heap_mark_one_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Heap_new.Heap_new_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Heap_sweep.Heap_sweep_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Node_set_marked.Node_set_marked_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_Node_set_next.Node_set_next_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_drop_glue_Heap.drop_glue_Heap_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_make_node.make_node_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.proof_read_next_value.read_next_value_proof: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+refinedrust.examples.gc.proofs.trait_incl_drop_glue_Heap_spec_subsumption_correct.drop_glue_Heap_spec_subsumption_correct: FunctionalExtensionality.functional_extensionality_dep, ProofIrrelevance.proof_irrelevance
+hinata_mikami.gc.audit.drop_calls.observed_step_erases: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.every_step_has_unique_observation: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.observed_call_resolves: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.sweep_dead_branch_calls: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.sweep_live_branch_calls: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.sweep_from_raw_uses_selected_pointer: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.sweep_from_raw_and_drop_share_box_slot: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.sweep_without_drop_has_two_calls: Closed under the global context
+hinata_mikami.gc.audit.drop_calls.sweep_without_drop_rejected: Closed under the global context
+
+対象手動ソースの SHA256:
+c4ed1ef6f6c2b21299e1c62d46b9b1e750068af5aeaf377602e340f21f1eae67  hinata_mikami/extra_proofs/gc/gc_defs.v
+4c7d9b3ad73b7407afd51eb9207da1f1d0f233eaa967444412f7b6c006980c82  hinata_mikami/extra_proofs/gc/heap_lemmas.v
+5faf865a1ace46a00cdc9c42d79e90d3fabba5edc4eb820c3331b6d8cca33367  hinata_mikami/extra_proofs/gc/sweep_contract.v
+d66bbb1e2372908714c621f76e49896ca5e7174e1262b59a5e94e4d1c241f38c  hinata_mikami/gc/output/gc/proofs/proof_Heap_alloc.v
+06f4bbd4cf75f1e3b3c2bb68207d4ebc794373dd1b822a36e79062ac8119cf0f  hinata_mikami/gc/output/gc/proofs/proof_Heap_mark.v
+23182f85abfe034b023b7e48ca2528dac15f52a51ab47e459ea0a41158d744b7  hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_from.v
+e134bb78f317224d01f54706f6b2c3f6d78fda06609880df726739c531d8475b  hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_one.v
+bd2c7d486db0cc0e7930984406b18499afc5aec7a5b05db898d7efdb1e874788  hinata_mikami/gc/output/gc/proofs/proof_Heap_new.v
+e3e7a371d47d489f4f8332bcd7eda8960649a87e1c21d28e0a6a1eb460a89fdc  hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v
+815d98c0fbcf474915e7c4696241dcc9058aab7488b827b4e9f206dd0d4ae6ff  hinata_mikami/gc/output/gc/proofs/proof_Node_set_marked.v
+3ec2ca8410f390af5b0b7ec1d07799d31e9d747dcdbb6d48f5caf90c6d3e5269  hinata_mikami/gc/output/gc/proofs/proof_Node_set_next.v
+64ed5df5cbddbf240d84a87ea32c24a700c1ec77f172059adfdc05d39e172cb2  hinata_mikami/gc/output/gc/proofs/proof_drop_glue_Heap.v
+3551c71a068372774cfb1ce9e44098d5e348c130ef19c93b428f888e3ea1891b  hinata_mikami/gc/output/gc/proofs/proof_make_node.v
+fb3f5e8031a5964783061f881c6d5df8a732c25ababd4bb746899a1666b6444e  hinata_mikami/gc/output/gc/proofs/proof_read_next_value.v
+0d7842dc10e423da387cd7f197c4b8895ebc6cad6cf34ecdb1df8151dea8d6bc  hinata_mikami/gc/output/gc/proofs/trait_incl_drop_glue_Heap_spec_subsumption_correct.v
+6b5d6605eba58737d358c088c5e23421dc631bb684993e040ab2f11e0105e654  hinata_mikami/gc/output/gc/audit/drop_calls.v
+c1257a42277e95dfe7bbda942a12659201b979f8bd41633ae9bb48ea77c4c232  hinata_mikami/gc/src/main.rs
+969b31084c7afe6c8b7622514a2ebf26cb612f58632ae9277190503625a367bc  hinata_mikami/gc/RefinedRust.toml
+323505519d8c6cb436649a05de57a23c7681264f53e27bf8b424d9b993831b98  hinata_mikami/gc/output/gc/generated/generated_code_gc.v
+edb5a905b0ed4f9a6cbe0679b5f56e1b8586fb0045e3bbf523a37fc419056677  hinata_mikami/gc/output/gc/generated/generated_specs_gc.v
