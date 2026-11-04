@@ -11,8 +11,10 @@
 #![rr::include("result")]
 
 use core::mem;
+use std::hint;
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 #[rr::export_as(core::option::Option)]
 #[derive(Copy, Clone, Debug)]
 pub enum Option<T> {
@@ -27,21 +29,48 @@ pub enum Option<T> {
 use crate::Option::*;
 
 #[rr::export_as(core::option::Option)]
-#[rr::only_spec]
 impl<T> Option<T> {
 
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("bool_decide (is_Some x)")]
+    #[rr::returns("bool_decide (is_Some self)")]
     pub fn is_some(&self) -> bool {
-        unimplemented!();
+        matches!(*self, Some(_))
     }
 
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("bool_decide (¬ is_Some x)")]
+    #[rr::returns("bool_decide (¬ is_Some self)")]
     pub fn is_none(&self) -> bool {
-        unimplemented!()
+        !self.is_some()
+    }
+
+    /// # Safety
+    /// See stdlib
+    #[rr::only_spec]
+    #[rr::requires("destruct_hint self is_Some")]
+    #[rr::ensures("match self with | Some x => ret = x | None => False end")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        match self {
+            Some(val) => val,
+            // SAFETY: the safety contract must be upheld by the caller.
+            None => unsafe { hint::unreachable_unchecked() },
+        }
+    }
+
+    #[rr::returns("self")]
+    pub const fn as_ref(&self) -> Option<&T> {
+        match *self {
+            Some(ref x) => Some(x),
+            None => None,
+        }
+    }
+
+    #[rr::only_spec]
+    #[rr::exists("γ")]
+    #[rr::returns("match self.cur with Some x => Some (x, γ) | None => None end")]
+    #[rr::observe("self.ghost": "match self.cur with Some _ => Some (PlaceGhost (rt := {rt_of T}) γ) | None => None end")]
+    pub const fn as_mut(&mut self) -> Option<&mut T> {
+        match *self {
+            Some(ref mut x) => Some(x),
+            None => None,
+        }
     }
 }
 
@@ -57,6 +86,7 @@ impl<T> Option<T> {
     }
 
     #[rr::returns("default def self")]
+    #[rr::may_unwind_if("is_Some self ∧ {T::DropGlueUnwind}")]
     pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
@@ -64,10 +94,21 @@ impl<T> Option<T> {
         }
     }
 
-    #[rr::params("Hx" : "TyGhostDrop {F}")]
-    #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop_for {F} Hx π ($# f))")]
-    #[rr::requires(#iris "if_iSome self (λ self, {F::Pre} π f *[self])")]
-    #[rr::ensures(#iris "if_iSome self (λ self, ∃ x, ⌜ret = Some x⌝ ∗ {F::Post} π f *[self] x)")]
+    #[rr::returns("match self with | Some x => Ok x | None => Err err end")]
+    #[rr::may_unwind_if("is_Some self ∧ {E::DropGlueUnwind}")]
+    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
+        match self {
+            Some(x) => Ok(x),
+            None => Err(err),
+        }
+    }
+
+    #[rr::params("op")]
+    #[rr::requires(#iris "if_iNone self (⌜op = None⌝)")]
+    #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop {F} π ($# f))")]
+    #[rr::requires(#iris "if_iSome self (λ self, ∃ p, ⌜op = Some p⌝ ∗ {F::Pre} π p f *[self])")]
+    #[rr::ensures(#iris "if_iSome self (λ self, ∃ p x, ⌜op = Some p⌝ ∗ ⌜ret = Some x⌝ ∗ {F::Post} π p f *[self] x)")]
+    #[rr::may_unwind_if("if_None self {F::DropGlueUnwind} ∧ if_Some self (λ x, ∃ p, op = Some p ∧ {F::UnwindCondition} f p *[x])")]
     pub fn map<U, F>(self, f: F) -> Option<U>
     where
         F: FnOnce(T) -> U,
@@ -87,11 +128,12 @@ impl<T> Option<T> {
     }
 
     // TODO: maybe ghost drop Self, too, in case pred returns false.
-    #[rr::params("Hx" : "TyGhostDrop {P}")]
-    #[rr::requires(#iris "if_iSome self (λ self, {P::Pre} π predicate *[self])")]
-    #[rr::ensures(#iris "if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ {P::Post} π predicate *[ret] true)")]
-    #[rr::ensures(#iris "if_iNone ret (if_iNone self (ty_ghost_drop_for {P} Hx π ($# predicate)) ∗ 
-                            if_iSome self (λ x, {P::Post} π predicate *[x] false))")]
+    #[rr::params("op")]
+    #[rr::requires(#iris "if_iSome self (λ self, ∃ p, ⌜op = Some p⌝ ∗ {P::Pre} π p predicate *[self])")]
+    #[rr::ensures(#iris "if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ ∃ p, ⌜op = Some p⌝ ∗ {P::Post} π p predicate *[ret] true)")]
+    #[rr::ensures(#iris "if_iNone ret (if_iNone self (ty_ghost_drop {P} π ($# predicate)) ∗
+                            if_iSome self (λ x, ∃ p, ⌜op = Some p⌝ ∗ {P::Post} π p predicate *[x] false))")]
+    #[rr::may_unwind_if("if_None self {P::DropGlueUnwind} ∧ if_Some self (λ x, {T::DropGlueUnwind} ∨ ∃ p, op = Some p ∧ {P::UnwindCondition} predicate p *[x])")]
     pub fn filter<P>(self, predicate: P) -> Self
     where
         P: FnOnce(&T) -> bool,

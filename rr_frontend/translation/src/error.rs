@@ -7,28 +7,160 @@
 use derive_more::Display;
 use rr_rustc_interface::errors::DiagMessage;
 use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::middle::ty;
 
-use crate::{procedures, traits};
+use crate::procedures;
+use crate::spec_parsers::const_attr_parser::ParserError as ConstParserError;
+use crate::spec_parsers::crate_attr_parser::ParserError as CrateParserError;
+use crate::spec_parsers::enum_spec_parser::ParserError as EnumParserError;
+use crate::spec_parsers::loop_attr_parser::ParserError as LoopParserError;
+use crate::spec_parsers::module_attr_parser::ParserError as ModuleParserError;
+use crate::spec_parsers::struct_spec_parser::ParserError as StructParserError;
+use crate::spec_parsers::trait_attr_parser::ParserError as TraitParserError;
+use crate::spec_parsers::trait_impl_attr_parser::ParserError as TraitImplParserError;
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Message<'tcx> {
     #[display("No assumption is allowed, but this function is annotated with `#[rr::{}]`", _0)]
     NoAssumptionAllowed(procedures::Mode),
 
-    #[display("Unknown ADT: {:?}", _0)]
-    UnknownAdt(DefId),
+    #[display("This ADT has not been registered yet")]
+    UnknownAdt,
 
-    #[display("ADT shim was overridden for {:?}", _0)]
-    OverriddenAdtShim(DefId),
+    #[display("ADT shim was overridden")]
+    OverriddenAdtShim,
 
-    #[display("Trait translation failed: {}", _0)]
-    TraitTranslation(traits::Error<'tcx>),
-}
+    #[display("Cannot translate unknown region: {}", _0)]
+    UnknownRegion(ty::Region<'tcx>),
 
-impl<'tcx> From<traits::Error<'tcx>> for Message<'tcx> {
-    fn from(x: traits::Error<'tcx>) -> Self {
-        Self::TraitTranslation(x)
-    }
+    #[display("No refinement annotated for field {}", _0)]
+    MissingFieldRefinement(String),
+
+    #[display("generate_adt_shim_use called for unknown adt shim")]
+    UnknownAdtShim,
+
+    #[display("Could not get field {} of {}", _0, _1)]
+    UnknownField(String, String),
+
+    #[display("Expected a structlike type: {}", _0)]
+    ExpectedStructlike(String),
+
+    #[display("Unsupported feature: {}", _0)]
+    UnsupportedFeature(String),
+
+    #[display("Unsupported type: {}", _0)]
+    UnsupportedType(String),
+
+    #[display("ADT downcast on non-enum type")]
+    AdtDowncastOnNonEnumType,
+
+    #[display("Expected SwitchInt discriminator to have integer type")]
+    SwitchIntOnNonIntegerType,
+
+    #[display("Configured attribute-parser is unknown: {}", _0)]
+    UnknownAttributeParser(String),
+
+    #[display("Unknown function kind")]
+    UnknownFunctionKind,
+
+    #[display("Expected an FnDef type")]
+    ExpectedFnDefType,
+
+    #[display("Unknown variable: {}", _0)]
+    UnknownVar(String),
+
+    #[display("Unknown procedure: {}", _0)]
+    UnknownProcedure(String),
+
+    #[display("Did not find a registered static: {}", _0)]
+    MissingRegisteredStatic(String),
+
+    #[display("Could not find local for return value")]
+    MissingReturnValueLocal,
+
+    #[display("Unimplemented case: {}", _0)]
+    Unimplemented(String),
+
+    #[display("Invalid layout")]
+    InvalidLayout,
+
+    #[display("Trait resolution failed: {}", _0)]
+    TraitResolution(String),
+
+    #[display("Cannot take offset of {}", _0)]
+    OffsetOnUnsupportedType(String),
+
+    #[display("Recursive type does not have an invariant")]
+    RecursiveTypeWithoutInvariant,
+
+    #[display("Application of UnOp::Not to non-{{Int, Bool}}")]
+    UnOpNotOnUnsupportedType,
+
+    #[display("Attribute is ill-formed: {}", _0)]
+    AttributeError(String),
+
+    #[display("Skipping function due to `#[rr::skip]`")]
+    SkipWarn,
+
+    #[display("Skipping function due to `#[rr::skip]` on enclosing impl")]
+    SkipOnImplWarn,
+
+    #[display("Skipping function due to previous failure")]
+    SkippedFunctionDueToPreviousFailure,
+
+    #[display("Skipping trait impl due to previous failure")]
+    SkippedTraitImplDueToPreviousFailure,
+
+    #[display("Failed to parse struct invariant spec: {}", _0)]
+    StructInvariantSpecParse(StructParserError),
+
+    #[display("Failed to parse field specification: {}", _0)]
+    FieldSpecParseError(StructParserError),
+
+    #[display("Failed to parse const specification: {}", _0)]
+    ConstSpecParse(ConstParserError),
+
+    #[display("Failed to parse crate specification: {}", _0)]
+    CrateSpecParse(CrateParserError),
+
+    #[display("Failed to parse module specification: {}", _0)]
+    ModuleSpecParse(ModuleParserError),
+
+    #[display("Failed to parse trait impl specification: {}", _0)]
+    TraitImplSpecParse(TraitImplParserError),
+
+    #[display("Failed to parse trait specification: {}", _0)]
+    TraitSpecParse(TraitParserError),
+
+    #[display("Failed to parse enum spec: {}", _0)]
+    EnumSpecParse(EnumParserError),
+
+    #[display("Failed to parse `refine_as` enum annotation: {}", _0)]
+    EnumRefineAsParse(EnumParserError),
+
+    #[display("Could not parse loop spec: {}", _0)]
+    LoopSpec(LoopParserError),
+
+    #[display("No specification provided for trait impl")]
+    TraitImplSpec,
+
+    #[display("No instantiation provided for trait spec attribute {}", _0)]
+    TraitImplSpecMissing(String),
+
+    #[display("Trait has not been registered with RefinedRust yet")]
+    TraitNotRegisteredWithRefinedRust,
+
+    #[display(
+        "Closure impl with kind {} has not been registered with RefinedRust yet; add a specification for it?",
+        _0
+    )]
+    ClosureImplNotRegisteredWithRefinedRust(ty::ClosureKind),
+
+    #[display("This trait impl of {:?} has not been registered yet", _0)]
+    UnregisteredImpl(DefId),
+
+    #[display("Incomplete specification for trait impl")]
+    IncompleteTraitImplSpec,
 }
 
 impl From<Message<'_>> for DiagMessage {

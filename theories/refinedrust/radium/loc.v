@@ -1,0 +1,318 @@
+From radium Require Export base layout int_type.
+Set Default Proof Using "Type".
+
+(** * Representation of locations. *)
+
+(** ** Definitions. *)
+
+Declare Scope loc_scope.
+Delimit Scope loc_scope with L.
+Global Open Scope loc_scope.
+
+(** Physical address. *)
+Abbreviation addr := Z (only parsing).
+
+(** Allocation identifier (unique to an allocation), see [heap.v]. *)
+Abbreviation alloc_id := Z (only parsing).
+Definition dummy_alloc_id : alloc_id := 0.
+
+(** Provenances *)
+Inductive prov :=
+| ProvNone
+| ProvAlloc (aid : alloc_id)
+| ProvFnPtr.
+Global Instance prov_inhabited : Inhabited prov := populate ProvNone.
+Global Instance prov_eq_dec : EqDecision prov.
+Proof. solve_decision. Qed.
+Global Instance prov_countable : Countable prov.
+Proof.
+  refine (inj_countable'
+    (λ prov,
+     match prov with
+     | ProvNone => inl (inl tt)
+     | ProvAlloc aid => inl (inr aid)
+     | ProvFnPtr => inr tt
+     end
+    )
+    (λ prov,
+     match prov with
+     | inl (inl _) => ProvNone
+     | inl (inr aid) => ProvAlloc aid
+     | inr _ => ProvFnPtr
+     end) _); abstract by intros [].
+Defined.
+
+Definition prov_alloc_id (p : prov) : option alloc_id :=
+  if p is ProvAlloc aid then Some aid else None.
+
+(** Memory location. *)
+Record loc := Loc {
+  loc_p : prov;
+  loc_a : addr;
+}.
+Add Printing Constructor loc.
+Bind Scope loc_scope with loc.
+
+Global Instance loc_inhabited : Inhabited loc := populate (Loc ProvNone 0).
+Global Instance loc_eq_dec : EqDecision loc.
+Proof. solve_decision. Qed.
+Global Instance loc_countable : Countable loc.
+Proof.
+  refine (inj_countable'
+    (λ l, (l.(loc_p), l.(loc_a)))
+    (λ l, Loc l.1 l.2) _); abstract by intros [].
+Defined.
+
+Definition fn_loc (a : addr) : loc := Loc ProvFnPtr a.
+Definition NULL_loc : loc := Loc ProvNone 0.
+Global Typeclasses Opaque NULL_loc fn_loc.
+
+(** Shifts location [l] by offset [z]. *)
+Definition shift_loc (l : loc) (z : Z) : loc := Loc l.(loc_p) (l.(loc_a) + z).
+Notation "l +ₗ z" := (shift_loc l%L z%Z)
+  (at level 50, left associativity) : loc_scope.
+Global Typeclasses Opaque shift_loc.
+
+(** Shifts location [l] by offset [z], wrapping at the address space boundary. *)
+Definition wrapping_shift_loc (l : loc) (z : Z) : loc :=
+  Loc l.(loc_p) (wrap_unsigned (l.(loc_a) + z) USize).
+Notation "l +wₗ z" := (wrapping_shift_loc l%L z%Z)
+  (at level 50, left associativity) : loc_scope.
+Global Typeclasses Opaque wrapping_shift_loc.
+
+(** Shift a location by [z] times the size of [ly]. *)
+Definition offset_loc (l : loc) (ly : layout) (z : Z) : loc := (l +ₗ ly.(ly_size) * z).
+Notation "l 'offset{' ly '}ₗ' z" := (offset_loc l%L ly z%Z)
+  (at level 50, format "l  'offset{' ly '}ₗ'  z", left associativity) : loc_scope.
+Global Typeclasses Opaque offset_loc.
+
+(** Shift a location by [z] times the size of [ly], wrapping at the address space boundary. *)
+Definition wrapping_offset_loc (l : loc) (ly : layout) (z : Z) : loc := (l +wₗ ly.(ly_size) * z).
+Notation "l 'wrapping_offset{' ly '}ₗ' z" := (wrapping_offset_loc l%L ly z%Z)
+  (at level 50, format "l  'wrapping_offset{' ly '}ₗ'  z", left associativity) : loc_scope.
+Global Typeclasses Opaque wrapping_offset_loc.
+
+(** Proposition stating that location [l] is aligned to [n] *)
+Definition aligned_to (l : loc) (n : nat) : Prop := (n | l.(loc_a)).
+Notation "l `aligned_to` n" := (aligned_to l n) (at level 50) : stdpp_scope.
+Arguments aligned_to : simpl never.
+Global Typeclasses Opaque aligned_to.
+
+(** Proposition stating that location [l] has the right alignment for layout [ly]. *)
+Definition has_layout_loc (l : loc) (ly : layout) : Prop := l `aligned_to` ly_align ly.
+Notation "l `has_layout_loc` n" := (has_layout_loc l n) (at level 50) : stdpp_scope.
+Arguments has_layout_loc : simpl never.
+Global Typeclasses Opaque has_layout_loc.
+
+(** ** Properties of [shift_loc]. *)
+
+Lemma shift_loc_assoc l n1 n2 : l +ₗ n1 +ₗ n2 = l +ₗ (n1 + n2).
+Proof. rewrite /shift_loc /=. f_equal. lia. Qed.
+
+Lemma shift_loc_0 l : l +ₗ 0 = l.
+Proof. destruct l as [??]. by rewrite /shift_loc Z.add_0_r. Qed.
+
+Lemma shift_loc_assoc_nat l (n1 n2 : nat) : l +ₗ n1 +ₗ n2 = l +ₗ (n1 + n2)%nat.
+Proof. rewrite /shift_loc /=. f_equal. lia. Qed.
+
+Lemma shift_loc_0_nat l : l +ₗ 0%nat = l.
+Proof. have: Z.of_nat 0%nat = 0 by lia. move => ->. apply shift_loc_0. Qed.
+
+Lemma shift_loc_S l n: l +ₗ S n = (l +ₗ 1%nat +ₗ n).
+Proof. by rewrite shift_loc_assoc_nat. Qed.
+
+Lemma shift_loc_inj1 l1 l2 n : l1 +ₗ n = l2 +ₗ n → l1 = l2.
+Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
+
+Global Instance shift_loc_inj2 l : Inj (=) (=) (shift_loc l).
+Proof. destruct l as [b o]; intros n n' H; inversion H; lia. Qed.
+
+Lemma shift_loc_block l n : (l +ₗ n).(loc_p) = l.(loc_p).
+Proof. done. Qed.
+
+
+(** ** Properties of [wrapping_shift_loc]. *)
+
+Lemma wrapping_shift_loc_assoc l n1 n2 : l +wₗ n1 +wₗ n2 = l +wₗ (n1 + n2).
+Proof.
+  rewrite /wrapping_shift_loc/=. f_equal.
+  rewrite wrap_unsigned_add_l.
+  rewrite Z.add_assoc; done.
+Qed.
+
+(* TODO: need to know that the original address is in range *)
+Lemma wrapping_shift_loc_0 l : l +wₗ 0 = l.
+Proof.
+  destruct l as [??]. rewrite /wrapping_shift_loc; f_equal.
+Abort.
+
+Lemma wrapping_shift_loc_assoc_nat l (n1 n2 : nat) : l +wₗ n1 +wₗ n2 = l +wₗ (n1 + n2)%nat.
+Proof. rewrite wrapping_shift_loc_assoc. by rewrite Nat2Z.inj_add. Qed.
+
+(*Lemma shift_loc_0_nat l : l +ₗ 0%nat = l.*)
+(*Proof. have: Z.of_nat 0%nat = 0 by lia. move => ->. apply shift_loc_0. Qed.*)
+
+Lemma wrapping_shift_loc_S l n: l +wₗ S n = (l +wₗ 1%nat +wₗ n).
+Proof. by rewrite wrapping_shift_loc_assoc_nat. Qed.
+
+Lemma wrapping_shift_loc_inj1 l1 l2 n : l1 +ₗ n = l2 +ₗ n → l1 = l2.
+Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
+
+Lemma wrapping_shift_loc_block l n : (l +wₗ n).(loc_p) = l.(loc_p).
+Proof. done. Qed.
+
+Lemma wrapping_shift_loc_0 l :
+  l.(loc_a) ∈ USize →
+  l +wₗ 0 = l.
+Proof.
+  destruct l as [prov addr]; simpl.
+  intros Hel.
+  rewrite /wrapping_shift_loc/=.
+  f_equiv.
+  rewrite Z.add_0_r. by rewrite wrap_unsigned_id.
+Qed.
+Lemma wrapping_shift_loc_shift_loc a o :
+  a.(loc_a) + o ∈ USize →
+  a +wₗ o = a +ₗ o.
+Proof.
+  destruct a as [prov addr].
+  intros ?.
+  rewrite /wrapping_shift_loc/shift_loc/=. f_equiv.
+  by rewrite wrap_unsigned_id.
+Qed.
+
+Lemma wrapping_shift_loc_in_range l n :
+  (l +wₗ n).(loc_a) ∈ USize.
+Proof.
+  unfold wrapping_shift_loc.
+  simpl.
+  by apply wrap_unsigned_in_range.
+Qed.
+
+(** ** Properties of [offset_loc]. *)
+
+Lemma offset_loc_0 l ly : l offset{ly}ₗ 0 = l.
+Proof. by rewrite /offset_loc Z.mul_0_r shift_loc_0. Qed.
+
+Lemma offset_loc_S l ly n : l offset{ly}ₗ S n = (l offset{ly}ₗ 1) offset{ly}ₗ n.
+Proof. destruct l. rewrite /offset_loc /shift_loc /=. f_equal. lia. Qed.
+
+Lemma offset_loc_1 l ly : l offset{ly}ₗ 1%nat = (l +ₗ ly.(ly_size)).
+Proof. destruct l. rewrite /offset_loc /shift_loc /=. f_equal. lia. Qed.
+
+Lemma offset_loc_sz1 ly l n : ly.(ly_size) = 1%nat → l offset{ly}ₗ n = l +ₗ n.
+Proof. rewrite /offset_loc => ->. f_equal. lia. Qed.
+
+Lemma offset_loc_offset_loc l ly n1 n2 : l offset{ly}ₗ n1 offset{ly}ₗ n2 = l offset{ly}ₗ (n1 + n2).
+Proof. destruct l. rewrite /offset_loc /shift_loc /=. f_equal. lia. Qed.
+
+(** ** Properties about alignment. *)
+
+Lemma ly_with_align_aligned_to l m n:
+  l `aligned_to` n →
+  is_power_of_two n →
+  l `has_layout_loc` ly_with_align m n.
+Proof.
+  rewrite /has_layout_loc/aligned_to. move => ??.
+  by rewrite ly_align_ly_with_align keep_factor2_is_power_of_two.
+Qed.
+
+Lemma has_layout_loc_trans l ly1 ly2 :
+  l `has_layout_loc` ly2 →
+  (ly1.(ly_align_log) ≤ ly2.(ly_align_log))%nat →
+  l `has_layout_loc` ly1.
+Proof.
+  rewrite /has_layout_loc/aligned_to => Hl ?.
+  etrans;[|by apply Hl]. by apply Zdivide_nat_pow.
+Qed.
+
+Lemma has_layout_loc_trans' l ly1 ly2 :
+  l `has_layout_loc` ly2 →
+  (ly_align ly1 ≤ ly_align ly2)%nat →
+  l `has_layout_loc` ly1.
+Proof.
+  rewrite -ly_align_log_ly_align_le_iff.
+  by apply: has_layout_loc_trans.
+Qed.
+
+Lemma has_layout_loc_1 l ly:
+  ly_align ly = 1%nat →
+  l `has_layout_loc` ly.
+Proof.
+  rewrite /has_layout_loc/aligned_to => ->. by apply Z.divide_1_l.
+Qed.
+
+Lemma has_layout_loc_shift_loc l ly i :
+  l `has_layout_loc` ly →
+  (ly_align ly | i)%Z →
+  (l +ₗ i) `has_layout_loc` ly.
+Proof.
+  rewrite /has_layout_loc /aligned_to.
+  simpl. apply Z.divide_add_r.
+Qed.
+Lemma has_layout_loc_shift_loc_nat l ly i :
+  l `has_layout_loc` ly →
+  (ly_align ly | i)%nat →
+  (l +ₗ i) `has_layout_loc` ly.
+Proof.
+  rewrite -Nat2Z.divide. apply has_layout_loc_shift_loc.
+Qed.
+
+Lemma has_layout_ly_offset l (n : nat) ly:
+  l `has_layout_loc` ly →
+  (l +ₗ n) `has_layout_loc` ly_offset ly n.
+Proof.
+  rewrite/has_layout_loc/aligned_to. move => Hl. apply Z.divide_add_r.
+  - etrans;[|by apply Hl]. apply Zdivide_nat_pow. rewrite {1}/ly_align_log/=. destruct n; lia.
+  - rewrite/ly_offset. destruct n;[by subst;apply Z.divide_0_r|].
+    etrans;[apply Zdivide_nat_pow, Nat.le_min_r|]. by apply factor2_divide.
+Qed.
+
+Lemma has_layout_loc_ly_mult_offset l ly n:
+  layout_wf ly →
+  l `has_layout_loc` ly_mult ly (S n) →
+  (l +ₗ ly_size ly) `has_layout_loc` ly_mult ly n.
+Proof. rewrite /ly_mult/has_layout_loc/aligned_to. move => ??. by apply Z.divide_add_r. Qed.
+
+Lemma has_layout_loc_offset_loc l i ly:
+  layout_wf ly →
+  l `has_layout_loc` ly →
+  (l offset{ly}ₗ i) `has_layout_loc` ly.
+Proof.
+  rewrite/has_layout_loc/aligned_to.
+  move => Hwf Hl. apply Z.divide_add_r; [done|]. etrans; [by apply: Hwf|].
+  apply: Z.divide_factor_l.
+Qed.
+Lemma has_layout_loc_offset_loc' l i ly ly':
+  ly = ly' →
+  layout_wf ly →
+  l `has_layout_loc` ly →
+  (l offset{ly}ₗ i) `has_layout_loc` ly'.
+Proof.
+  intros <-. apply has_layout_loc_offset_loc.
+Qed.
+
+Lemma aligned_to_offset l n off :
+  l `aligned_to` n → (n | off) → (l +ₗ off) `aligned_to` n.
+Proof. rewrite /aligned_to. apply Z.divide_add_r. Qed.
+
+Lemma aligned_to_add l (n : nat) x:
+  (l +ₗ x * n) `aligned_to` n ↔ l `aligned_to` n.
+Proof.
+  unfold aligned_to. destruct l => /=. rewrite Z.add_comm. split.
+  - apply: Z.divide_add_cancel_r. by apply Z.divide_mul_r.
+  - apply Z.divide_add_r. by apply Z.divide_mul_r.
+Qed.
+
+Lemma aligned_to_mult_eq l n1 n2 off:
+  l `aligned_to` n2 → (l +ₗ off) `aligned_to` (n1 * n2) → (n2 | off).
+Proof.
+  unfold aligned_to. destruct l => /= ??. apply: Z.divide_add_cancel_r => //.
+  apply: (Zdivide_mult_l _ n1). by rewrite Z.mul_comm -Nat2Z.inj_mul.
+Qed.
+
+#[export] Instance aligned_to_dec l n : Decision (l `aligned_to` n).
+Proof. rewrite /aligned_to. eapply BoolSpec_sumbool. apply Z.BoolSpec_divide. Qed.
+
+#[export] Instance has_layout_loc_dec l ly : Decision (l `has_layout_loc` ly).
+Proof. rewrite /has_layout_loc. apply _. Defined.

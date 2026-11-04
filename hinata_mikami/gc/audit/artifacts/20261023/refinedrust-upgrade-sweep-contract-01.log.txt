@@ -1,0 +1,19 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc 
+command: dune build -j 1 --display=short
+Entering directory '/home/mikam/RefinedRust'
+        rocq hinata_mikami/extra_proofs/gc/.hinata_mikami.extra_proofs.theory.d
+        rocq hinata_mikami/extra_proofs/gc/sweep_contract.{glob,vo} (exit 1)
+File "./hinata_mikami/extra_proofs/gc/sweep_contract.v", line 64, characters 4-19:
+Error:
+In environment
+locs, nexts : list loc
+marks : list bool
+Hexact : marking_exact locs nexts marks
+l : loc
+i : nat
+Hi : locs !! i = Some l
+Hprop : reachable locs nexts i
+Unable to unify "marking_exact locs nexts marks" with 
+"locs !! i = Some l".
+
+Leaving directory '/home/mikam/RefinedRust'

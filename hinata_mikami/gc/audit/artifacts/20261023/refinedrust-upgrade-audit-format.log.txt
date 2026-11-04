@@ -1,0 +1,13 @@
+cwd: /home/mikam/RefinedRust 
+command: rocq repl -quiet < /tmp/refinedrust-audit-format.input
+
+Rocq < 
+Rocq <      = "RR-BEGIN|test"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|test"%string
+     : string
+
+Rocq < 

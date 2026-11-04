@@ -6,15 +6,67 @@
 
 /// Parsing of `RefinedRust` struct specifications.
 use attribute_parse::{MToken, parse};
+use derive_more::Display;
 use log::info;
 use parse::{Parse, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParamsNamed, RRTerms, attr_args_tokens,
-    str_err,
+    CoqLiteralError, IProp, IdentOrTerm, LiteralType, ParamLookup, RRParamsNamed, RRTerms, attr_args_tokens,
+    parse_context_item, str_err,
 };
+
+pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
+    "refined_by",
+    "depends_on",
+    "inv",
+    "invariant",
+    "ty_lfts",
+    "ty_wf_elctx",
+    "ty_wf_E",
+    "ghost_drop",
+    "exists",
+    "mode",
+    "refines",
+    "context",
+    "export_as",
+    "verify",
+    "skip",
+    "trust_me",
+    "only_spec",
+    "derive_instantiate",
+];
+
+pub(crate) const FIELD_SPEC_ATTRS: &[&str] = &["field"];
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub(crate) enum ParserError {
+    #[display("parse error: {}", _0)]
+    Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
+    #[display("no invariant specifications given")]
+    NoInvariantSpecifications,
+    #[display("multiple refines specifications given")]
+    MultipleRefinesSpecifications,
+    #[display("unknown attribute for struct field specification: {}", _0)]
+    UnknownFieldAttribute(String),
+    #[display("field attribute specified twice for field {}", _0)]
+    DuplicateFieldAttribute(String),
+    #[display("invalid mode {} for ghost drop proposition", _0)]
+    InvalidGhostDropAttribute(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
 
 pub(crate) trait InvariantSpecParser {
     /// Parse attributes as an invariant type specification.
@@ -32,8 +84,10 @@ pub(crate) trait InvariantSpecParser {
     fn parse_invariant_spec<'a>(
         &'a mut self,
         struct_name: &str,
+        has_trivial_drop: bool,
+        span: Span,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<(specs::invariants::Spec, bool), String>;
+    ) -> Result<(specs::invariants::Spec, bool), SpannedError<ParserError>>;
 }
 
 /// Parse a binder pattern with an optional Coq type annotation, e.g.
@@ -45,14 +99,20 @@ struct RfnPattern {
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let pat_span = stream.pos().unwrap_or(DUMMY_SP);
         let pat = parse::LitStr::parse(stream, meta)?;
-        let (pat, _) = meta.process_coq_literal(pat.value().as_str());
+        let (pat, _) = meta
+            .process_coq_literal(pat_span, pat.value().as_str())
+            .map_err(|err| parse::Error::OtherErr(pat_span, err.to_string()))?;
 
         // optionally, parse a type annotation (otherwise, let Coq inference do its thing)
         if parse::Colon::peek(stream) {
             stream.parse::<_, MToken![:]>(meta)?;
+            let ty_span = stream.pos().unwrap_or(DUMMY_SP);
             let ty: parse::LitStr = stream.parse(meta)?;
-            let (processed_rt, _) = meta.process_coq_literal(ty.value().as_str());
+            let (processed_rt, _) = meta
+                .process_coq_literal(ty_span, ty.value().as_str())
+                .map_err(|err| parse::Error::OtherErr(ty_span, err.to_string()))?;
 
             Ok(Self {
                 rfn_pat: pat,
@@ -103,20 +163,29 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                 },
 
                 "type" => {
+                    let loc_span = stream.pos().unwrap_or(DUMMY_SP);
                     let loc_str: parse::LitStr = stream.parse(meta)?;
-                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
+                    let (loc_str, mut annot_meta) = meta
+                        .process_coq_literal(loc_span, &loc_str.value())
+                        .map_err(|err| parse::Error::OtherErr(loc_span, err.to_string()))?;
 
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
                     let rfn_str: parse::LitStr = stream.parse(meta)?;
-                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
+                    let (rfn_str, annot_meta2) = meta
+                        .process_coq_literal(rfn_span, &rfn_str.value())
+                        .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta2);
 
                     stream.parse::<_, MToken![@]>(meta)?;
 
+                    let type_span = stream.pos().unwrap_or(DUMMY_SP);
                     let type_str: parse::LitStr = stream.parse(meta)?;
-                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
+                    let (type_str, annot_meta3) = meta
+                        .process_coq_literal(type_span, &type_str.value())
+                        .map_err(|err| parse::Error::OtherErr(type_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta3);
 
@@ -125,7 +194,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                 },
 
                 _ => Err(parse::Error::OtherErr(
-                    stream.pos().unwrap(),
+                    stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
@@ -137,14 +206,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 
                 stream.parse::<_, MToken![:]>(meta)?;
 
+                let pure_span = stream.pos().unwrap_or(DUMMY_SP);
                 let pure_prop: parse::LitStr = stream.parse(meta)?;
-                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
+                let (pure_str, _annot_meta) = meta
+                    .process_coq_literal(pure_span, &pure_prop.value())
+                    .map_err(|err| parse::Error::OtherErr(pure_span, err.to_string()))?;
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
+                let lit_span = stream.pos().unwrap_or(DUMMY_SP);
+                let (lit, _) = meta
+                    .process_coq_literal(lit_span, &name_or_prop_str.value())
+                    .map_err(|err| parse::Error::OtherErr(lit_span, err.to_string()))?;
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -169,7 +244,7 @@ impl<U> Parse<U> for InvariantSpecFlags {
             "plain" => Ok(Self(specs::invariants::SpecFlags::Plain)),
             "na" => Ok(Self(specs::invariants::SpecFlags::NonAtomic)),
             "atomic" => Ok(Self(specs::invariants::SpecFlags::Atomic)),
-            _ => Err(parse::Error::OtherErr(stream.pos().unwrap(), "invalid ADT mode".to_owned())),
+            _ => Err(parse::Error::OtherErr(stream.pos().unwrap_or(DUMMY_SP), "invalid ADT mode".to_owned())),
         }
     }
 }
@@ -188,14 +263,19 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
     fn parse_invariant_spec<'a>(
         &'a mut self,
         struct_name: &str,
+        has_trivial_drop: bool,
+        span: Span,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<(specs::invariants::Spec, bool), String> {
+    ) -> Result<(specs::invariants::Spec, bool), SpannedError<ParserError>> {
         if attrs.is_empty() {
-            return Err("no invariant specifications given".to_owned());
+            return Err(spanned_error(span, ParserError::NoInvariantSpecifications));
         }
 
         let mut invariants: Vec<(coq::iris::IProp, specs::invariants::Mode)> = Vec::new();
         let mut type_invariants: Vec<specs::TyOwnSpec> = Vec::new();
+
+        let mut ghost_drop: Vec<coq::iris::IProp> = Vec::new();
+
         let mut abstracted_refinement = None;
 
         let mut rfn_pat = "placeholder_pat".to_owned();
@@ -215,6 +295,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
+            let attr_span = it.span;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -223,7 +304,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
             match seg.as_str() {
                 "refined_by" => {
-                    let pat = RfnPattern::parse(&buffer, self.scope).map_err(str_err)?;
+                    let pat = RfnPattern::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     rfn_pat = pat.rfn_pat;
 
@@ -235,7 +316,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                     //}
                 },
                 "inv" | "invariant" => {
-                    let prop = MetaIProp::parse(&buffer, self.scope).map_err(str_err)?;
+                    let prop = MetaIProp::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     match prop {
                         MetaIProp::Own(iprop) => {
@@ -271,39 +352,68 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                         },
                     }
                 },
+                "ghost_drop" => {
+                    let span = buffer.pos().unwrap_or(DUMMY_SP);
+                    let prop = MetaIProp::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
+                    match prop {
+                        MetaIProp::Own(_) => {
+                            return Err(spanned_error(
+                                span,
+                                ParserError::InvalidGhostDropAttribute("own".to_owned()),
+                            ));
+                        },
+                        MetaIProp::Shared(_) => {
+                            return Err(spanned_error(
+                                span,
+                                ParserError::InvalidGhostDropAttribute("shr".to_owned()),
+                            ));
+                        },
+                        MetaIProp::Iris(iprop) => {
+                            ghost_drop.push(iprop);
+                        },
+                        MetaIProp::Type(mut p) => {
+                            p.set_later(false);
+                            let owned_ty = p.fmt_owned("π");
+                            ghost_drop.push(coq::iris::IProp::Atom(owned_ty));
+                        },
+                        MetaIProp::Pure(p, _) => {
+                            ghost_drop.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(p))));
+                        },
+                    }
+                },
                 "ty_lfts" => {
-                    let mut terms = RRTerms::parse(&buffer, self.scope).map_err(str_err)?;
+                    let mut terms =
+                        RRTerms::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
                     ty_lfts.append(&mut terms.terms);
                 },
                 "ty_wf_elctx" | "ty_wf_E" => {
-                    let mut terms = RRTerms::parse(&buffer, self.scope).map_err(str_err)?;
+                    let mut terms =
+                        RRTerms::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
                     ty_wf_elctx.append(&mut terms.terms);
                 },
                 "exists" => {
-                    let params = RRParamsNamed::parse(&buffer, self.scope).map_err(str_err)?;
+                    let params =
+                        RRParamsNamed::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
                     existentials.append(&mut params.params.into_iter().map(Into::into).collect());
                 },
                 "mode" => {
-                    let mode = InvariantSpecFlags::parse(&buffer, self.scope).map_err(str_err)?;
+                    let mode = InvariantSpecFlags::parse(&buffer, self.scope)
+                        .map_err(|e| parse_err(attr_span, e))?;
 
                     inv_flags = mode.into();
                 },
                 "refines" => {
-                    let term = IdentOrTerm::parse(&buffer, self.scope).map_err(str_err)?;
+                    let term =
+                        IdentOrTerm::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     if abstracted_refinement.is_some() {
-                        return Err("multiple refines specifications given".to_owned());
+                        return Err(spanned_error(attr_span, ParserError::MultipleRefinesSpecifications));
                     }
                     abstracted_refinement = Some(term.to_string());
                 },
                 "context" => {
-                    let param = RRCoqContextItem::parse(&buffer, self.scope).map_err(str_err)?;
-
-                    params.push(coq::binder::Binder::new_generalized(
-                        coq::binder::Kind::MaxImplicit,
-                        None,
-                        coq::term::Type::Literal(param.item),
-                    ));
+                    params
+                        .push(parse_context_item(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?);
                 },
                 _ => {
                     //skip, this may be part of an enum spec
@@ -314,6 +424,8 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
         let refinement_included = abstracted_refinement.is_some();
 
         //let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
+
+        let ghost_drop = if ghost_drop.is_empty() { None } else { Some(coq::iris::IProp::Sep(ghost_drop)) };
 
         let spec = specs::invariants::Spec::new(
             struct_name.to_owned(),
@@ -327,6 +439,8 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             type_invariants,
             ty_lfts,
             ty_wf_elctx,
+            ghost_drop,
+            has_trivial_drop,
             abstracted_refinement,
             params,
         );
@@ -351,8 +465,9 @@ pub(crate) trait StructFieldSpecParser<'def> {
     fn parse_field_spec<'a>(
         &'a mut self,
         field_name: &str,
+        span: Span,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<StructFieldSpec<'def>, String>;
+    ) -> Result<StructFieldSpec<'def>, SpannedError<ParserError>>;
 }
 
 /// Parses attributes on a field to a `StructFieldSpec`, using a given default type for the field
@@ -393,20 +508,25 @@ where
         }
     }
 
-    fn make_type(&self, lit: &LiteralType, ty: &specs::Type<'def>) -> specs::Type<'def> {
+    fn make_type(
+        &self,
+        lit: &LiteralType,
+        ty: &specs::Type<'def>,
+        rfn_type: Option<coq::term::Type>,
+    ) -> specs::Type<'def> {
         // literal type given, we use this literal type as the RR semantic type
         // just use the syntype from the Rust type
 
-        // TODO: get CoqType for refinement.
-        // maybe have it as an annotation? the Infer is currently a placeholder.
-        // we need this in order to be able to specify the invariant spec separately.
+        // An overridden field type may have a different refinement type from
+        // the translated Rust field (e.g. alias_ref_t instead of mut_ref).
 
         info!("making type: {:?}, {:?}", lit, ty);
         let lit_ty = specs::types::Literal {
             rust_name: None,
             type_term: lit.ty.clone(),
-            refinement_type: coq::term::Type::Infer,
+            refinement_type: rfn_type.unwrap_or(coq::term::Type::Infer),
             syn_type: ty.into(),
+            raw_type: None,
             info: specs::types::AdtShimInfo::empty(),
         };
         let lit_ref = (self.make_literal)(lit_ty);
@@ -424,8 +544,9 @@ where
     fn parse_field_spec(
         &mut self,
         field_name: &str,
+        span: Span,
         attrs: &[&hir::AttrItem],
-    ) -> Result<StructFieldSpec<'def>, String> {
+    ) -> Result<StructFieldSpec<'def>, SpannedError<ParserError>> {
         info!("parsing attributes of field {:?}: {:?}", field_name, attrs);
 
         let mut field_type = None;
@@ -434,6 +555,7 @@ where
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
+            let attr_span = it.span;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -442,29 +564,44 @@ where
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
 
             if seg.as_str() != "field" {
-                return Err(format!("unknown attribute for struct field specification: {:?}", args));
+                return Err(spanned_error(span, ParserError::UnknownFieldAttribute(format!("{:?}", args))));
             }
 
             if self.expect_rfn {
-                let rfn: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                let (rfn, _) = self.scope.process_coq_literal(rfn.value().as_str());
+                let rfn: parse::LitStr = buffer.parse(self.scope).map_err(|e| parse_err(attr_span, e))?;
+                let (rfn, _) = self
+                    .scope
+                    .process_coq_literal(span, rfn.value().as_str())
+                    .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                 parsed_rfn = Some(rfn);
 
                 if parse::At::peek(&buffer) {
                     info!("expecting type");
-                    buffer.parse::<_, MToken![@]>(self.scope).map_err(str_err)?;
+                    buffer.parse::<_, MToken![@]>(self.scope).map_err(|e| parse_err(attr_span, e))?;
                 } else {
                     continue;
                 }
             }
 
-            let ty = LiteralType::parse(&buffer, self.scope).map_err(str_err)?;
+            let ty = LiteralType::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
+            let rfn_type = if parse::Colon::peek(&buffer) {
+                buffer.parse::<_, MToken![:]>(self.scope).map_err(|e| parse_err(attr_span, e))?;
+                let rfn_type: parse::LitStr =
+                    buffer.parse(self.scope).map_err(|e| parse_err(attr_span, e))?;
+                let (rfn_type, _) = self
+                    .scope
+                    .process_coq_literal(attr_span, &rfn_type.value())
+                    .map_err(|err| spanned_error(attr_span, ParserError::AntiQuotation(err)))?;
+                Some(coq::term::Type::Literal(rfn_type))
+            } else {
+                None
+            };
 
             if field_type.is_some() {
-                return Err(format!("field attribute specified twice for field {:?}", field_name));
+                return Err(spanned_error(span, ParserError::DuplicateFieldAttribute(field_name.to_owned())));
             }
 
-            field_type = Some(self.make_type(&ty, self.field_type));
+            field_type = Some(self.make_type(&ty, self.field_type, rfn_type));
         }
 
         let ty = match field_type {

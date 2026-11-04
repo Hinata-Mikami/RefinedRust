@@ -1,5 +1,5 @@
-From caesium Require Import lang notation.
-From refinedrust Require Import annotations typing.
+From radium Require Import lang notation.
+From refinedrust Require Import typing.
 
 Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("dst", void* ); ("src", use_layout_alg' T_st)];

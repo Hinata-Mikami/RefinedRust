@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(iterator_try_collect)]
 
@@ -70,6 +70,7 @@ macro_rules! write_list {
 }
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use std::fmt::Write as _;
 

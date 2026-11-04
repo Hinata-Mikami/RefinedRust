@@ -13,24 +13,24 @@ use derive_more::{Constructor, Debug};
 use log::{info, trace};
 use radium::{coq, lang, push_str_list, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::{bug, mir, ty};
 use rr_rustc_interface::{abi, ast, span};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::environment::Environment;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
-use crate::regions::{EarlyLateRegionMap, LftConstr, format_atomic_region_direct};
+use crate::regions::{EarlyLateRegionMap, LftConstr, RegionVarResolver};
 use crate::spec_parsers::enum_spec_parser::{
-    EnumSpecParser as _, VerboseEnumSpecParser, parse_enum_refine_as,
+    ENUM_SPEC_ATTRS, ENUM_VARIANT_SPEC_ATTRS, EnumSpecParser as _, VerboseEnumSpecParser,
+    parse_enum_refine_as,
 };
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
-use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser as _, StructFieldSpecParser as _};
-use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
-use crate::traits::registry;
+use crate::spec_parsers::struct_spec_parser::{
+    self, FIELD_SPEC_ATTRS, INVARIANT_SPEC_ATTRS, InvariantSpecParser as _, StructFieldSpecParser as _,
+};
+use crate::traits::{registry, requirements};
 use crate::types::scope;
-use crate::{attrs, error, search};
+use crate::{attrs, environment, error, search, spec_parsers};
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -52,9 +52,13 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     /// Shim uses for the current function
     pub shim_uses: BTreeMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>,
 
-    /// optional Polonius Info for the current function
+    /// Rust types translated in this function. Inline callers replay these to register any layout
+    /// assumptions required only by the inlined body.
+    pub layout_types: Vec<ty::Ty<'tcx>>,
+
+    /// optional resolver for Polonius region variables in the current function
     #[debug(ignore)]
-    polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+    region_resolver: Option<RegionVarResolver>,
 }
 
 impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
@@ -72,83 +76,72 @@ impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
     }
 }
 
-impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        trace!("attaching trait attr requirement: {typaram:?}::{attr:?}");
-        self.generic_scope.determine_trait_attr_requirement_origin(typaram, attr)
-    }
-
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
-        self.generic_scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
-    }
-}
-
 impl<'tcx, 'def> FunctionState<'tcx, 'def> {
     /// Create a new scope for a function translation with the given generic parameters and
     /// incorporating the trait environment.
     pub(crate) fn new_with_traits(
         did: DefId,
-        env: &Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
         lifetimes: EarlyLateRegionMap<'def>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
-        info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    ) -> Result<Self, TranslationError<'tcx>> {
+        region_resolver: Option<RegionVarResolver>,
+    ) -> Result<Self, TranslationError> {
         info!("Entering procedure with ty_params {:?} and lifetimes {:?}", ty_params, lifetimes);
-        let mut generics = scope::Params::new_from_generics(env.tcx(), ty_params, Some(did));
+        let mut generics = scope::Params::new_from_generics(tcx, ty_params, Some(did));
 
-        generics.add_param_env(did, env, type_translator, trait_registry)?;
+        generics.add_param_env(did, tcx, type_translator, trait_registry)?;
 
         let mut t = Self {
             did,
             tuple_uses: BTreeMap::new(),
             generic_scope: generics,
             shim_uses: BTreeMap::new(),
-            polonius_info: info,
+            layout_types: Vec::new(),
+            region_resolver,
             lifetime_scope: lifetimes,
         };
 
         // add lifetime constraints to the lifetime scope
-        let param_env = env.tcx().param_env(did);
-        let clauses = param_env.caller_bounds();
+        let param_env = tcx.param_env(did);
+        let clauses_with_origin = requirements::get_clauses_with_origin(tcx, did, param_env);
         info!("looking for outlives clauses");
-        for cl in clauses {
+        for (cl, origin) in clauses_with_origin {
             let cl_kind = cl.kind();
             let cl_kind = cl_kind.skip_binder();
 
             if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
-                let region1 = t
-                    .lifetime_scope
-                    .translate_region_to_polonius(region_pred.0)
-                    .ok_or(TranslationError::UnknownRegion(region_pred.0))?;
-                let region2 = t
-                    .lifetime_scope
-                    .translate_region_to_polonius(region_pred.1)
-                    .ok_or(TranslationError::UnknownRegion(region_pred.1))?;
+                let region1 =
+                    t.lifetime_scope.translate_region_to_polonius(region_pred.0).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownRegion(region_pred.0)),
+                        )
+                    })?;
+                let region2 =
+                    t.lifetime_scope.translate_region_to_polonius(region_pred.1).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownRegion(region_pred.1)),
+                        )
+                    })?;
 
-                t.lifetime_scope.constraints.push(LftConstr::RegionOutlives(region1, region2));
+                let constr = LftConstr::RegionOutlives(region1, region2);
+                t.lifetime_scope.constraints.push((constr, origin));
 
                 info!("region outlives: {:?} {:?}", region1, region2);
             }
             if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
                 let mut st = STInner::InFunction(&mut t);
                 let translated_ty = type_translator.translate_type_in_state(outlives_pred.0, &mut st)?;
-                let translated_lft = t
-                    .lifetime_scope
-                    .translate_region_to_polonius(outlives_pred.1)
-                    .ok_or(TranslationError::UnknownRegion(outlives_pred.1))?;
+                let translated_lft =
+                    t.lifetime_scope.translate_region_to_polonius(outlives_pred.1).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownRegion(outlives_pred.1)),
+                        )
+                    })?;
 
-                t.lifetime_scope.constraints.push(LftConstr::TypeOutlives(translated_ty, translated_lft));
+                let constr = LftConstr::TypeOutlives(translated_ty, translated_lft);
+                t.lifetime_scope.constraints.push((constr, origin));
                 info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
             }
         }
@@ -196,9 +189,9 @@ pub(crate) struct TraitState<'a, 'tcx, 'def> {
     scope: scope::Params<'tcx, 'def>,
     /// the current typing env
     typing_env: ty::TypingEnv<'tcx>,
-    /// optional Polonius Info for the current function
+    /// optional resolver for Polonius region variables in the current function
     #[debug(ignore)]
-    polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+    region_resolver: Option<RegionVarResolver>,
     lifetime_scope: Option<&'a EarlyLateRegionMap<'def>>,
 }
 
@@ -207,9 +200,25 @@ pub(crate) struct TraitState<'a, 'tcx, 'def> {
 #[derive(Constructor, Clone, Copy, Debug)]
 pub(crate) struct CalleeState<'a, 'tcx, 'def> {
     /// the env of the caller
-    typing_env: &'a ty::TypingEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     /// the generic scope of the caller
     param_scope: &'a scope::Params<'tcx, 'def>,
+}
+
+/// Translation state for synthetic shim bodies.
+///
+/// Like `CalleeState`, this erases regions, but it still records ADT and tuple uses
+/// so generated shim bodies can assume the corresponding syntypes are layoutable.
+#[derive(Constructor, Debug)]
+pub(crate) struct ShimState<'a, 'tcx, 'def> {
+    /// the env of the translated shim
+    typing_env: ty::TypingEnv<'tcx>,
+    /// the generic scope of the translated shim
+    param_scope: scope::Params<'tcx, 'def>,
+    /// ADT literal uses needed by the translated shim
+    shim_uses: &'a RefCell<BTreeMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
+    /// tuple literal uses needed by the translated shim
+    tuple_uses: &'a RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
 }
 
 /// The type translator `TX` has three modes:
@@ -226,6 +235,15 @@ pub(crate) enum STInner<'b, 'def, 'tcx> {
     /// We are translating in an empty dummy scope.
     /// All regions are erased.
     CalleeTranslation(CalleeState<'b, 'tcx, 'def>),
+    /// We are translating a synthetic shim body. Regions are erased, but tuple/ADT
+    /// uses are still recorded for layout assumptions.
+    ShimTranslation(Box<ShimState<'b, 'tcx, 'def>>),
+    /// We are generating a syntactic type use in the current function. Regions
+    /// are erased, but tuple/ADT uses are still recorded for layout assumptions.
+    SyntypeInFunction {
+        state: &'b mut FunctionState<'tcx, 'def>,
+        typing_env: ty::TypingEnv<'tcx>,
+    },
     /// we are translating trait requirements
     TraitReqs(Box<TraitState<'b, 'tcx, 'def>>),
 }
@@ -240,24 +258,30 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) => state.make_params_scope(),
             Self::TranslateAdt(state) => state.scope.to_owned(),
             Self::CalleeTranslation(state) => state.param_scope.to_owned(),
+            Self::ShimTranslation(state) => state.param_scope.clone(),
+            Self::SyntypeInFunction { state, .. } => state.generic_scope.clone(),
             Self::TraitReqs(state) => state.scope.clone(),
         }
     }
 
     const fn param_scope(&self) -> &scope::Params<'tcx, 'def> {
         match &self {
-            Self::InFunction(state) => &state.generic_scope,
+            Self::InFunction(state) | Self::SyntypeInFunction { state, .. } => &state.generic_scope,
             Self::TranslateAdt(state) => state.scope,
             Self::CalleeTranslation(state) => state.param_scope,
+            Self::ShimTranslation(state) => &state.param_scope,
             Self::TraitReqs(state) => &state.scope,
         }
     }
 
-    pub(crate) const fn polonius_info(&self) -> Option<&'def PoloniusInfo<'def, 'tcx>> {
+    pub(crate) const fn region_resolver(&self) -> Option<&RegionVarResolver> {
         match &self {
-            Self::InFunction(state) => state.polonius_info,
-            Self::TraitReqs(state) => state.polonius_info,
-            Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
+            Self::InFunction(state) => state.region_resolver.as_ref(),
+            Self::TraitReqs(state) => state.region_resolver.as_ref(),
+            Self::TranslateAdt(_)
+            | Self::CalleeTranslation(_)
+            | Self::ShimTranslation(_)
+            | Self::SyntypeInFunction { .. } => None,
         }
     }
 
@@ -265,7 +289,10 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => Some(&state.lifetime_scope),
             Self::TraitReqs(state) => state.lifetime_scope,
-            Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
+            Self::TranslateAdt(_)
+            | Self::CalleeTranslation(_)
+            | Self::ShimTranslation(_)
+            | Self::SyntypeInFunction { .. } => None,
         }
     }
 
@@ -277,19 +304,28 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
 
     pub(crate) fn register_adt_use(
         &mut self,
-        env: &'def Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         did: DefId,
         lit_ref: Option<specs::types::LiteralRef<'def>>,
         params: &specs::GenericScopeInst<'def>,
     ) {
-        self.register_dep_on(OrderedDefId::new(env.tcx(), did));
+        self.register_dep_on(OrderedDefId::new(tcx, did));
 
-        if let Self::InFunction(state) = self {
+        if let Self::InFunction(state) | Self::SyntypeInFunction { state, .. } = self {
             let lit_ref = lit_ref.unwrap();
-            let ordered_did = OrderedDefId::new(env.tcx(), did);
+            let ordered_did = OrderedDefId::new(tcx, did);
             let key = scope::AdtUseKey::new_from_inst(ordered_did, params);
             let lit_uses = &mut state.shim_uses;
             lit_uses
+                .entry(key)
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
+        } else if let Self::ShimTranslation(state) = self {
+            let lit_ref = lit_ref.unwrap();
+            let ordered_did = OrderedDefId::new(tcx, did);
+            let key = scope::AdtUseKey::new_from_inst(ordered_did, params);
+            state
+                .shim_uses
+                .borrow_mut()
                 .entry(key)
                 .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
         }
@@ -300,11 +336,19 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         lit_ref: specs::types::LiteralRef<'def>,
         params: &specs::GenericScopeInst<'def>,
     ) {
-        if let Self::InFunction(state) = self {
+        if let Self::InFunction(state) | Self::SyntypeInFunction { state, .. } = self {
             let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
             let tuple_uses = &mut state.tuple_uses;
 
             tuple_uses
+                .entry(key)
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
+        } else if let Self::ShimTranslation(state) = self {
+            let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
+
+            state
+                .tuple_uses
+                .borrow_mut()
                 .entry(key)
                 .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
         }
@@ -318,9 +362,25 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         if let STInner::CalleeTranslation(s) = self {
             // make sure to keep the callee state, which translates regions to dummys
             STInner::CalleeTranslation(*s)
+        } else if let STInner::ShimTranslation(s) = self {
+            // keep shim tracking while switching to the augmented trait-requirement scope;
+            // `ShimTranslation` still translates all regions to dummies.
+            STInner::ShimTranslation(Box::new(ShimState::new(
+                s.typing_env,
+                params,
+                s.shim_uses,
+                s.tuple_uses,
+            )))
+        } else if let STInner::SyntypeInFunction { state, typing_env } = self {
+            STInner::CalleeTranslation(CalleeState::new(*typing_env, &state.generic_scope))
         } else {
             let typing_env = self.get_typing_env(tcx);
-            let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
+            let state = TraitState::new(
+                params,
+                typing_env,
+                self.region_resolver().cloned(),
+                self.polonius_region_map(),
+            );
             STInner::TraitReqs(Box::new(state))
         }
     }
@@ -330,7 +390,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => ty::TypingEnv::post_analysis(tcx, state.did),
             Self::TranslateAdt(state) => *state.typing_env,
-            Self::CalleeTranslation(state) => *state.typing_env,
+            Self::CalleeTranslation(state) => state.typing_env,
+            Self::ShimTranslation(state) => state.typing_env,
+            Self::SyntypeInFunction { typing_env, .. } => *typing_env,
             Self::TraitReqs(state) => state.typing_env,
         }
     }
@@ -340,10 +402,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         tcx: ty::TyCtxt<'tcx>,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
+    ) -> Result<ty::Ty<'tcx>, ty::normalize_erasing_regions::NormalizationError<'tcx>> {
         let typing_env = self.get_typing_env(tcx);
-        tcx.try_normalize_erasing_regions(typing_env, ty)
-            .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
+        tcx.try_normalize_erasing_regions(typing_env, ty::Unnormalized::dummy(ty))
     }
 
     /// Lookup a trait parameter in the current state.
@@ -352,26 +413,56 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&registry::GenericTraitUse<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> &registry::GenericTraitUse<'tcx, 'def> {
         //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
-        let res = self.param_scope().trait_scope().lookup_trait_use(tcx, trait_did, args)?;
+        let res = self.param_scope().trait_scope().lookup_trait_use(tcx, trait_did, args);
         //trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
-        Ok(res)
+        res
+    }
+
+    pub(crate) fn try_lookup_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_did: DefId,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&registry::GenericTraitUse<'tcx, 'def>> {
+        self.param_scope().trait_scope().try_lookup_trait_use(tcx, trait_did, args)
+    }
+
+    pub(crate) fn try_lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: registry::VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&registry::GenericTraitUse<'tcx, 'def>> {
+        self.param_scope().trait_scope().try_lookup_virtual_trait_use(tcx, trait_key, args)
+    }
+
+    pub(crate) fn try_lookup_normalized_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: registry::VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+    ) -> Option<&registry::GenericTraitUse<'tcx, 'def>> {
+        self.param_scope().trait_scope().try_lookup_normalized_virtual_trait_use(
+            tcx,
+            self.get_typing_env(tcx),
+            trait_key,
+            self_ty,
+        )
     }
 
     /// Lookup a type parameter in the current state
-    fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
-        let ty = self.param_scope().lookup_ty_param_idx(param_ty.index as usize).ok_or_else(|| {
-            TranslationError::UnknownVar(format!("unknown generic parameter {:?}", param_ty))
-        })?;
-        Ok(specs::Type::LiteralParam(ty.clone()))
+    fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> specs::Type<'def> {
+        let ty = self
+            .param_scope()
+            .lookup_ty_param_idx(param_ty.index)
+            .unwrap_or_else(|| bug!("Unknown type parameter {param_ty:?}"));
+        specs::Type::LiteralParam(ty.clone())
     }
 
     /// Lookup an early-bound region.
-    fn lookup_early_region(
-        &self,
-        region: ty::EarlyParamRegion,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    fn lookup_early_region(&self, region: ty::EarlyParamRegion) -> specs::Lft {
         trace!("lookup_early_region in state={self:?}");
         match self {
             STInner::InFunction(scope) => {
@@ -379,108 +470,110 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 let lft = scope
                     .lifetime_scope
                     .lookup_early_region(region.index as usize)
-                    .ok_or(TranslationError::UnknownEarlyRegion(region))?;
-                Ok(lft.lft().to_owned())
+                    .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
+                lft.lft().to_owned()
             },
             STInner::TranslateAdt(scope) => {
                 let lft = scope
                     .scope
                     .lookup_region_idx(region.index as usize)
-                    .ok_or(TranslationError::UnknownEarlyRegion(region))?;
-                Ok(lft.lft().to_owned())
+                    .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
+                lft.lft().to_owned()
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope
                     .scope
                     .lookup_region_idx(region.index as usize)
-                    .ok_or(TranslationError::UnknownEarlyRegion(region))?;
-                Ok(lft.lft().to_owned())
+                    .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
+                lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
+            STInner::CalleeTranslation(_)
+            | STInner::ShimTranslation(_)
+            | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 
     /// Lookup a late-bound region.
-    fn lookup_late_region(&self, binder: usize, var: usize) -> Result<specs::Lft, TranslationError<'tcx>> {
+    fn lookup_late_region(&self, binder: usize, var: usize) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
                 let lft = scope
                     .lifetime_scope
                     .lookup_late_region(binder, var)
-                    .ok_or(TranslationError::UnknownLateRegion(binder, var))?;
-                Ok(lft.lft().to_owned())
+                    .unwrap_or_else(|| bug!("Unknown late region {var:?}"));
+                lft.lft().to_owned()
             },
             STInner::TranslateAdt(scope) => {
                 let lft = scope
                     .scope
                     .lookup_late_region_idx(binder, var)
-                    .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
-                Ok(lft.lft().to_owned())
+                    .unwrap_or_else(|| bug!("Unknown late region outside function: ({binder:?}, {var:?})"));
+                lft.lft().to_owned()
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope
                     .scope
                     .lookup_late_region_idx(binder, var)
-                    .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
-                Ok(lft.lft().to_owned())
+                    .unwrap_or_else(|| bug!("Unknown late region outside function: ({binder:?}, {var:?})"));
+                lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
+            STInner::CalleeTranslation(_)
+            | STInner::ShimTranslation(_)
+            | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 
     /// Try to translate a Polonius region variable to a Caesium lifetime.
-    pub(crate) fn lookup_polonius_var(&self, v: facts::Region) -> Result<specs::Lft, TranslationError<'tcx>> {
+    pub(crate) fn lookup_polonius_var(&self, v: facts::Region) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
-                if let Some(info) = scope.polonius_info {
-                    // If there is Polonius Info available, use that for translation
-                    let x = info.mk_atomic_region(v);
-                    let r = format_atomic_region_direct(x, Some(&scope.lifetime_scope));
+                if let Some(resolver) = &scope.region_resolver {
+                    let r = resolver.translate_region_var(v, Some(&scope.lifetime_scope));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r)
+                    r
                 } else {
                     // otherwise, just use the universal scope
                     let r = scope
                         .lifetime_scope
                         .lookup_region(v)
-                        .ok_or(TranslationError::UnknownPoloniusRegion(v))?;
+                        .unwrap_or_else(|| bug!("Unknown Polonius region: {v:?}"));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r.lft().to_owned())
+                    r.lft().to_owned()
                 }
             },
             STInner::TraitReqs(scope) => {
-                if let Some(info) = scope.polonius_info {
-                    // If there is Polonius Info available, use that for translation
-                    let x = info.mk_atomic_region(v);
-                    let r = format_atomic_region_direct(x, scope.lifetime_scope);
+                if let Some(resolver) = &scope.region_resolver {
+                    let r = resolver.translate_region_var(v, scope.lifetime_scope);
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r)
+                    r
                 } else {
                     // otherwise, just use the universal scope
                     let r = scope
                         .lifetime_scope
                         .as_ref()
-                        .ok_or(TranslationError::UnknownPoloniusRegion(v))?
+                        .unwrap_or_else(|| bug!("Lifetime scope has not been initialized"))
                         .lookup_region(v)
-                        .ok_or(TranslationError::UnknownPoloniusRegion(v))?;
+                        .unwrap_or_else(|| bug!("Unknown Polonius region: {v:?}"));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r.lft().to_owned())
+                    r.lft().to_owned()
                     //info!("Translating region: ReVar {:?} as None (trait)", v);
                     //return Err(TranslationError::UnknownPoloniusRegion(v));
                 }
             },
             STInner::TranslateAdt(_scope) => {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
-                Err(TranslationError::PoloniusRegionOutsideFunction(v))
+                bug!("encountered Polonius region outside function translation: {v:?}")
             },
-            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
+            STInner::CalleeTranslation(_)
+            | STInner::ShimTranslation(_)
+            | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 }
 
 pub(crate) struct TX<'def, 'tcx> {
-    env: &'def Environment<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
 
     trait_registry: Cell<Option<&'def registry::TR<'tcx, 'def>>>,
 
@@ -524,13 +617,13 @@ pub(crate) struct TX<'def, 'tcx> {
 //
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) const fn new(
-        env: &'def Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         struct_arena: &'def Arena<RefCell<Option<specs::structs::Abstract<'def>>>>,
         enum_arena: &'def Arena<RefCell<Option<specs::enums::Abstract<'def>>>>,
         shim_arena: &'def Arena<specs::types::Literal>,
     ) -> Self {
         TX {
-            env,
+            tcx,
             trait_registry: Cell::new(None),
             adt_deps: RefCell::new(BTreeMap::new()),
             adt_shims: RefCell::new(BTreeMap::new()),
@@ -556,8 +649,25 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.shim_arena.alloc(lit)
     }
 
-    pub(crate) const fn env(&self) -> &'def Environment<'tcx> {
-        self.env
+    pub(crate) const fn tcx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    pub(crate) fn is_registered(&self, did: DefId) -> bool {
+        let ordered_did = OrderedDefId::new(self.tcx, did);
+
+        let enum_reg = self.enum_registry.borrow();
+        if enum_reg.contains_key(&ordered_did) {
+            return true;
+        }
+
+        let variant_reg = self.variant_registry.borrow();
+        if variant_reg.contains_key(&ordered_did) {
+            return true;
+        }
+
+        let shim_reg = self.adt_shims.borrow();
+        shim_reg.contains_key(&ordered_did)
     }
 
     /// Register a shim for an ADT.
@@ -565,26 +675,33 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         did: DefId,
         lit: &specs::types::Literal,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
-        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some(_old) = shims.insert(ordered_did, lit_ref) {
-            Err(self.env.tcx().dcx().err(error::Message::OverriddenAdtShim(did)).into())
+            Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(did), error::Message::OverriddenAdtShim),
+            ))
         } else {
             Ok(())
         }
     }
 
     /// Lookup a shim for an ADT.
-    fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
-        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+    pub(crate) fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
+        let ordered_did = OrderedDefId::new(self.tcx, did);
         self.adt_shims.borrow().get(&ordered_did).copied()
+    }
+
+    /// Register a local ADT eagerly.
+    pub(crate) fn register_local_adt(&self, did: DefId) -> Result<(), TranslationError> {
+        self.register_adt(self.tcx.adt_def(did))
     }
 
     /// Check whether this is an ADT that was registered as part of this crate.
     fn is_registered_local_adt(&self, did: DefId) -> bool {
-        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        let ordered_did = OrderedDefId::new(self.tcx, did);
         self.variant_registry.borrow().contains_key(&ordered_did)
             || self.enum_registry.borrow().contains_key(&ordered_did)
     }
@@ -595,7 +712,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Check whether this is a registered ADT (remote or local).
-    fn is_registered_adt(&self, did: DefId) -> bool {
+    pub(crate) fn is_registered_adt(&self, did: DefId) -> bool {
         self.lookup_adt_shim(did).is_some() || self.is_registered_local_adt(did)
     }
 
@@ -605,7 +722,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         for (did, (_, su, _, is_of_enum)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
             if !is_of_enum {
-                defs.insert(*did, *su);
+                defs.insert(did.clone(), *su);
             }
         }
         defs
@@ -615,7 +732,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn get_variant_defs(&self) -> BTreeMap<OrderedDefId, specs::structs::AbstractRef<'def>> {
         let mut defs = BTreeMap::new();
         for (did, (_, su, _, _)) in self.variant_registry.borrow().iter() {
-            defs.insert(*did, *su);
+            defs.insert(did.clone(), *su);
         }
         defs
     }
@@ -624,7 +741,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn get_enum_defs(&self) -> BTreeMap<OrderedDefId, specs::enums::AbstractRef<'def>> {
         let mut defs = BTreeMap::new();
         for (did, (_, su, _)) in self.enum_registry.borrow().iter() {
-            defs.insert(*did, *su);
+            defs.insert(did.clone(), *su);
         }
         defs
     }
@@ -637,8 +754,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Returns the Radium enum representation according to the Rust representation options.
     fn get_enum_representation(
+        tcx: ty::TyCtxt<'tcx>,
         repr: &abi::ReprOptions,
-    ) -> Result<specs::enums::Repr, TranslationError<'tcx>> {
+    ) -> Result<specs::enums::Repr, TranslationError> {
         if repr.c() {
             return Ok(specs::enums::Repr::C);
         }
@@ -648,21 +766,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         if repr.simd() {
-            return Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support the SIMD flag".to_owned(),
-            });
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the SIMD flag".to_owned(),
+            ))));
         }
 
         if repr.packed() {
-            return Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support the repr(packed) flag".to_owned(),
-            });
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the repr(packed) flag".to_owned(),
+            ))));
         }
 
         if repr.linear() {
-            return Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support the linear flag".to_owned(),
-            });
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the linear flag".to_owned(),
+            ))));
         }
 
         Ok(specs::enums::Repr::Rust)
@@ -670,8 +788,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Returns the Radium structure representation according to the Rust representation options.
     fn get_struct_representation(
+        tcx: ty::TyCtxt<'tcx>,
         repr: &abi::ReprOptions,
-    ) -> Result<specs::structs::Repr, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::Repr, TranslationError> {
         if repr.c() {
             return Ok(specs::structs::Repr::C);
         }
@@ -681,23 +800,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         if repr.simd() {
-            return Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support the SIMD flag".to_owned(),
-            });
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the SIMD flag".to_owned(),
+            ))));
         }
 
         if repr.packed() {
-            return Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support the repr(packed) flag".to_owned(),
-            });
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the repr(packed) flag".to_owned(),
+            ))));
         }
 
-        if repr.linear() {
-            return Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support the linear flag".to_owned(),
-            });
-        }
-
+        // `linear` is rustc-internal and only inhibits field reordering. Treat it as ordinary
+        // Rust representation; verifying against Rust representation is valid under the stronger
+        // field-order guarantee. This is used by compiler-known ADTs such as `alloc::boxed::Box`.
+        // Fall through to Rust representation for `linear` structs.
         Ok(specs::structs::Repr::Rust)
     }
 
@@ -705,7 +822,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn translate_region(
         translation_state: ST<'_, '_, 'def, 'tcx>,
         region: ty::Region<'tcx>,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    ) -> specs::Lft {
         match region.kind() {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
@@ -720,21 +837,22 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     unimplemented!("cannot handle Canonicalized binders");
                 }
             },
-
-            ty::RegionKind::RePlaceholder(placeholder) => {
-                // TODO: not sure if any placeholders should remain at this stage.
-                info!("Translating region: Placeholder {:?}", placeholder);
-                Err(TranslationError::PlaceholderRegion)
-            },
-
-            ty::RegionKind::ReStatic => Ok(coq::Ident::new("static")),
-            ty::RegionKind::ReErased => Ok(coq::Ident::new("erased")),
+            ty::RegionKind::ReStatic => coq::Ident::new("static"),
 
             ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(v.into()),
 
             _ => {
                 info!("Translating region: {:?}", region);
-                Err(TranslationError::UnknownRegion(region))
+                if matches!(
+                    translation_state,
+                    STInner::CalleeTranslation(_)
+                        | STInner::ShimTranslation(_)
+                        | STInner::SyntypeInFunction { .. }
+                ) {
+                    coq::Ident::new("DUMMY")
+                } else {
+                    bug!("Unhandled region {region:?} in translation")
+                }
             },
         }
     }
@@ -743,16 +861,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_adt_variant(
         &self,
         did: DefId,
-    ) -> Result<
-        (specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
-        TranslationError<'tcx>,
-    > {
-        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+    ) -> Result<(specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>), TranslationError>
+    {
+        let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some((_n, st, _, _)) = self.variant_registry.borrow().get(&ordered_did) {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
-            Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
+            Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(did), error::Message::UnknownAdt),
+            ))
         }
     }
 
@@ -760,16 +878,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_enum(
         &self,
         did: DefId,
-    ) -> Result<
-        (specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
-        TranslationError<'tcx>,
-    > {
-        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+    ) -> Result<(specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>), TranslationError>
+    {
+        let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some((_n, st, _)) = self.enum_registry.borrow().get(&ordered_did) {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
-            Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
+            Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(did), error::Message::UnknownAdt),
+            ))
         }
     }
 
@@ -781,19 +899,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
         st: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
                 // we prefer to use the registered ADT instead of the shim, to support things like `#raw`
                 if self.is_registered_remote_adt(adt.did()) {
                     return self.generate_adt_shim_use(*adt, args, st);
-                }
-
-                if adt.is_box() {
-                    // TODO: for now, Box gets a special treatment and is not accurately
-                    // translated. Reconsider this later on
-                    return Err(TranslationError::UnknownError("Box is not a proper structlike".to_owned()));
                 }
 
                 if adt.is_struct() {
@@ -806,8 +918,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 if adt.is_enum() {
                     let Some(variant) = variant else {
-                        return Err(TranslationError::UnknownError(
-                            "a non-downcast enum is not a structlike".to_owned(),
+                        return Err(TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::ExpectedStructlike("a non-downcast enum".to_owned())),
                         ));
                     };
 
@@ -818,14 +932,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         .map(specs::Type::Struct);
                 }
 
-                Err(TranslationError::UnsupportedType {
-                    description: "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
-                })
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
+                    "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
+                ))))
             },
 
             ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, st).map(specs::Type::Literal),
 
-            _ => Err(TranslationError::UnknownError("not a structlike".to_owned())),
+            _ => Err(TranslationError::ErrorReported(
+                self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))),
+            )),
         }
     }
 
@@ -836,14 +952,19 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::enums::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::enums::AbstractUse<'def>, TranslationError> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
         let (enum_ref, lit_ref) = self.lookup_enum(adt_def.did())?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt_def.did(),
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
-        state.register_adt_use(self.env, adt_def.did(), lit_ref, &params);
+        state.register_adt_use(self.tcx, adt_def.did(), lit_ref, &params);
 
         Ok(specs::enums::AbstractUse::new(enum_ref, params))
     }
@@ -855,15 +976,20 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError> {
         info!("generating struct use for {:?}", variant_id);
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            variant_id,
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
         info!("struct use has params: {params:?}");
 
-        state.register_adt_use(self.env, variant_id, lit_ref, &params);
+        state.register_adt_use(self.tcx, variant_id, lit_ref, &params);
 
         let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
         Ok(struct_use)
@@ -877,7 +1003,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_idx: abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
         let variant_idx = variant_idx.as_usize();
@@ -888,9 +1014,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let (_, struct_ref, _) = en.get_variant(variant_idx).unwrap();
         let struct_ref: specs::structs::AbstractRef<'def> = *struct_ref;
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt_id,
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
-        state.register_adt_use(self.env, adt_id, lit_ref, &params);
+        state.register_adt_use(self.tcx, adt_id, lit_ref, &params);
 
         let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
 
@@ -902,12 +1033,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         tys: F,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>>
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
         let args: Vec<ty::GenericArg<'tcx>> = tys.into_iter().map(ty::GenericArg::from).collect();
-        let args = self.env().tcx().mk_args(&args);
+        let args = self.tcx.mk_args(&args);
         let params = self.trait_registry().compute_scope_inst_in_state_without_traits(state, args)?;
 
         let num_components = params.get_direct_ty_params().len();
@@ -945,13 +1076,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register an ADT that is being used by the program.
-    fn register_adt(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
+    fn register_adt(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError> {
         trace!("Registering ADT {:?}", def.did());
 
         if def.is_union() {
-            Err(TranslationError::Unimplemented {
-                description: "union ADTs are not yet supported".to_owned(),
-            })
+            Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("union ADTs are not yet supported".to_owned())),
+            ))
         } else if def.is_enum() {
             self.register_enum(def)
         } else if def.is_struct() {
@@ -961,42 +1094,40 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             }
             Ok(())
         } else {
-            Err(TranslationError::Unimplemented {
-                description: format!("unhandled ADT kind: {:?}", def),
-            })
+            Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented(format!("unhandled ADT kind: {:?}", def))),
+            ))
         }
     }
 
     /// Register a struct ADT type that is used by the program.
-    fn register_struct(
-        &self,
-        ty: &'tcx ty::VariantDef,
-        adt: ty::AdtDef<'_>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    fn register_struct(&self, ty: &'tcx ty::VariantDef, adt: ty::AdtDef<'_>) -> Result<(), TranslationError> {
         if self.is_registered_adt(ty.def_id) {
             // already there, that's fine.
             return Ok(());
         }
         info!("registering struct {:?}", ty);
 
-        let generics: &'tcx ty::Generics = self.env.tcx().generics_of(adt.did());
+        let generics: &'tcx ty::Generics = self.tcx.generics_of(adt.did());
         let mut deps = BTreeSet::new();
         let mut scope = scope::Params::from(generics.own_params.as_slice());
-        scope.add_param_env(adt.did(), self.env(), self, self.trait_registry())?;
+        scope.add_param_env(adt.did(), self.tcx, self, self.trait_registry())?;
 
-        let tcx = self.env.tcx();
+        let tcx = self.tcx;
         let typing_env = ty::TypingEnv::post_analysis(tcx, adt.did());
 
         // to account for recursive structs and enable establishing circular references,
         // we first generate a dummy struct (None)
         let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
-        let struct_name = strip_coq_ident(&self.env.get_item_name(ty.def_id));
+        let struct_name = strip_coq_ident(&environment::get_item_name(self.tcx, ty.def_id));
 
-        let ordered_did = OrderedDefId::new(self.env.tcx(), ty.def_id);
+        let ordered_did = OrderedDefId::new(self.tcx, ty.def_id);
         self.variant_registry
             .borrow_mut()
-            .insert(ordered_did, (struct_name.clone(), &*struct_def_init, ty, false));
+            .insert(ordered_did.clone(), (struct_name.clone(), &*struct_def_init, ty, false));
         // TODO: can we also add the literal already?
 
         let translate_adt = || {
@@ -1007,7 +1138,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 &mut STInner::TranslateAdt(AdtState::new(&mut deps, &scope, &typing_env)),
             )?;
 
-            let mut struct_def = specs::structs::Abstract::new(variant_def, scope.into());
+            let mut struct_def = specs::structs::Abstract::new(
+                variant_def,
+                scope.into_radium_scope(registry::ScopePurpose::TypeDefinition),
+            );
             if let Some(invariant_def) = invariant_def {
                 struct_def.add_invariant(invariant_def);
             }
@@ -1015,21 +1149,30 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         };
 
         match translate_adt() {
-            Ok(mut struct_def) => {
+            Ok(struct_def) => {
                 let lit = self.intern_literal(struct_def.make_literal_type());
 
-                // check the deps
-                let is_rec_type = deps.contains(&OrderedDefId::new(self.env.tcx(), adt.did()));
-                if is_rec_type {
-                    if !struct_def.has_invariant() {
-                        // this is an error, we need an invariant on recursive types
-                        self.variant_registry.borrow_mut().remove(&ordered_did);
-                        return Err(TranslationError::RecursiveTypeWithoutInvariant(ty.def_id));
+                // check for extra annotated dependencies
+                let attrs = environment::get_attributes(self.tcx, ty.def_id);
+                let attrs = attrs::filter_for_tool(attrs);
+                let extra_deps = spec_parsers::get_depends_on_attrs(&attrs).map_err(|err| {
+                    TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::AttributeError(err)))
+                })?;
+                for dep in extra_deps {
+                    if let Some(did) = search::try_resolve_did(self.tcx, dep.path.as_slice()) {
+                        deps.insert(OrderedDefId::new(self.tcx, did));
                     }
+                }
 
-                    // remove it
-                    deps.remove(&OrderedDefId::new(self.env.tcx(), adt.did()));
-                    struct_def.set_is_recursive();
+                // check the deps
+                let is_rec_type = deps.contains(&OrderedDefId::new(self.tcx, adt.did()));
+                if is_rec_type && !struct_def.has_invariant() {
+                    // this is an error, we need an invariant on recursive types
+                    self.variant_registry.borrow_mut().remove(&ordered_did);
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                        self.tcx.def_span(ty.def_id),
+                        error::Message::RecursiveTypeWithoutInvariant,
+                    )));
                 }
 
                 // finalize the definition
@@ -1037,7 +1180,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 *struct_def_ref = Some(struct_def);
 
                 let mut deps_ref = self.adt_deps.borrow_mut();
-                deps_ref.insert(OrderedDefId::new(self.env.tcx(), adt.did()), deps);
+                deps_ref.insert(OrderedDefId::new(self.tcx, adt.did()), deps);
 
                 // also add the entry for the literal
                 self.register_adt_shim(ty.def_id, lit)?;
@@ -1062,29 +1205,49 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt: ty::AdtDef<'_>,
         state: ST<'_, '_, 'def, 'tcx>,
         //st: &mut TranslateAdtState<'_, 'tcx, 'def>,
-    ) -> Result<
-        (specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>),
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<(specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>), TranslationError>
+    {
         info!("adt variant: {:?}", ty);
 
-        let tcx = self.env.tcx();
-
         // check for representation flags
-        let repr = Self::get_struct_representation(&adt.repr())?;
+        let repr = Self::get_struct_representation(self.tcx, &adt.repr())?;
         let mut builder = specs::structs::VariantBuilder::new(struct_name.to_owned(), repr);
 
         // parse attributes
-        let outer_attrs = self.env.get_attributes(ty.def_id);
+        let outer_attrs = environment::get_attributes(self.tcx, ty.def_id);
+        let outer_attrs = attrs::filter_for_tool(outer_attrs);
+        if !adt.is_enum() {
+            attrs::check_tool_attrs(&outer_attrs, INVARIANT_SPEC_ATTRS.iter().copied()).map_err(|err| {
+                let err = self.tcx.dcx().span_err(
+                    err.span,
+                    error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                );
+                TranslationError::Tainted(err)
+            })?;
+        }
+
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx(), ty.def_id);
+        let adt_ty = self.tcx().type_of(ty.def_id).skip_binder();
+        let has_trivial_drop = !adt_ty.needs_drop(self.tcx(), typing_env);
 
         let expect_refinement;
         let mut invariant_spec;
-        if attrs::has_tool_attr(outer_attrs, "refined_by") {
-            let outer_attrs = attrs::filter_for_tool(outer_attrs);
-            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
+        let annotation_scope =
+            state.param_scope().annotation_scope_for_purpose(registry::ScopePurpose::TypeDefinition);
+        if attrs::has_tool_attr_filtered(&outer_attrs, "refined_by") {
+            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(&annotation_scope);
             let res = spec_parser
-                .parse_invariant_spec(struct_name, &outer_attrs)
-                .map_err(TranslationError::FatalError)?;
+                .parse_invariant_spec(
+                    struct_name,
+                    has_trivial_drop,
+                    self.tcx.def_span(ty.def_id),
+                    &outer_attrs,
+                )
+                .map_err(|err| {
+                    let err =
+                        self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err));
+                    TranslationError::Tainted(err)
+                })?;
 
             invariant_spec = Some(res.0);
             expect_refinement = !res.1;
@@ -1096,22 +1259,25 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         // assemble the field definition
         let mut field_refinements = Vec::new();
         for f in &ty.fields {
-            let f_name = f.ident(tcx).to_string();
+            let f_name = f.ident(self.tcx).to_string();
 
-            let attrs = self.env.get_attributes(f.did);
+            let attrs = environment::get_attributes(self.tcx, f.did);
             let attrs = attrs::filter_for_tool(attrs);
 
-            let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
+            let f_ty = self.tcx.type_of(f.did).instantiate_identity().skip_norm_wip();
             let ty = self.translate_type_in_state(f_ty, state)?;
 
             let mut parser = struct_spec_parser::VerboseStructFieldSpecParser::new(
                 &ty,
-                state.param_scope(),
+                &annotation_scope,
                 expect_refinement,
                 |lit| self.intern_literal(lit),
             );
             let field_spec =
-                parser.parse_field_spec(&f_name, &attrs).map_err(TranslationError::UnknownError)?;
+                parser.parse_field_spec(&f_name, self.tcx.def_span(f.did), &attrs).map_err(|err| {
+                    let err = self.tcx.dcx().span_err(err.span, error::Message::FieldSpecParseError(err.err));
+                    TranslationError::Tainted(err)
+                })?;
 
             //info!("adt variant field: {:?} -> {} (with rfn {:?})", f_name, field_spec.ty, field_spec.rfn);
             builder.add_field(&f_name, field_spec.ty);
@@ -1120,9 +1286,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 if let Some(rfn) = field_spec.rfn {
                     field_refinements.push(rfn);
                 } else {
-                    return Err(TranslationError::UnknownError(format!(
-                        "No refinement annotated for field {:?}",
-                        f_name
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                        self.tcx.def_span(f.did),
+                        error::Message::MissingFieldRefinement(f_name.clone()),
                     )));
                 }
             }
@@ -1139,7 +1305,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let mut rfn = String::with_capacity(100);
 
             rfn.push_str("-[");
-            push_str_list!(rfn, &field_refinements, "; ", "#({})");
+            push_str_list!(rfn, &field_refinements, "; ", "{}");
             rfn.push(']');
 
             invariant_spec.provide_abstracted_refinement(rfn);
@@ -1157,7 +1323,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         mir::interpret::GlobalId {
             instance: ty::Instance {
                 def: ty::InstanceKind::Item(did),
-                args: self.env.tcx().mk_args(env),
+                args: self.tcx.mk_args(env),
             },
             promoted: None,
         }
@@ -1177,7 +1343,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         def: ty::AdtDef<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         signed: bool,
-    ) -> Result<HashMap<String, specs::enums::Int128>, TranslationError<'tcx>> {
+    ) -> Result<HashMap<String, specs::enums::Int128>, TranslationError> {
         let mut map: HashMap<String, specs::enums::Int128> = HashMap::new();
         let variants = def.variants();
 
@@ -1190,22 +1356,27 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 ty::VariantDiscr::Explicit(did) => {
                     // we try to const-evaluate the discriminant
                     let evaluated_discr = self
-                        .env
-                        .tcx()
+                        .tcx
                         .const_eval_global_id_for_typeck(
                             typing_env,
                             self.make_global_id_for_discr(did, &[]),
                             span::DUMMY_SP,
                         )
                         .map_err(|err| {
-                            TranslationError::FatalError(format!(
-                                "Failed to const-evaluate discriminant: {:?}",
-                                err
+                            TranslationError::ErrorReported(self.tcx.dcx().err(
+                                error::Message::UnsupportedFeature(format!(
+                                    "Failed to const-evaluate discriminant: {:?}",
+                                    err
+                                )),
                             ))
                         })?;
 
                     let evaluated_discr = evaluated_discr.map_err(|_err| {
-                        TranslationError::FatalError("Failed to const-evaluate discriminant".to_owned())
+                        TranslationError::ErrorReported(self.tcx.dcx().err(
+                            error::Message::UnsupportedFeature(
+                                "Failed to const-evaluate discriminant".to_owned(),
+                            ),
+                        ))
                     })?;
 
                     let evaluated_int = evaluated_discr.try_to_leaf().unwrap();
@@ -1227,7 +1398,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
-        let lookup_did = search::try_resolve_did(self.env.tcx(), path);
+        let lookup_did = search::try_resolve_did(self.tcx, path);
         if let Some(lookup_did) = lookup_did
             && lookup_did == did
         {
@@ -1268,17 +1439,25 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         for v in def.variants() {
             let registry = self.variant_registry.borrow();
-            let ordered_did = OrderedDefId::new(self.env.tcx(), v.def_id);
+            let ordered_did = OrderedDefId::new(self.tcx, v.def_id);
             let (variant_name, coq_def, variant_def, _) = registry.get(&ordered_did).unwrap();
             let coq_def = coq_def.borrow();
             let coq_def = coq_def.as_ref().unwrap();
-            let refinement_type = coq_def.plain_rt_def_name().to_owned();
+            let refinement_type = coq_def.public_rt_def_name().clone();
 
             // simple optimization: if the variant has no fields, also this constructor gets no arguments
             let (variant_args, variant_arg_binders, variant_rfn) = if variant_def.fields.is_empty() {
                 (vec![], vec![], "*[]".to_owned())
             } else {
-                let args = vec![coq::binder::Binder::new(None, coq::term::Type::Literal(refinement_type))];
+                let args = vec![coq::binder::Binder::new(
+                    None,
+                    coq::term::Type::Term(Box::new(
+                        coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("F")), vec![
+                            coq::term::Term::Ident(coq::Ident::new(&refinement_type)),
+                        ])
+                        .into(),
+                    )),
+                )];
                 (args, vec!["x".to_owned()], "x".to_owned())
             };
 
@@ -1289,15 +1468,24 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         // We assume the generated Inductive def is placed in a context where the generic types are in scope.
         let inductive = coq::inductive::Inductive::new(
-            inductive_name.clone(),
-            coq::binder::BinderList::empty(),
+            inductive_name,
+            coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                Some("F".to_owned()),
+                coq::term::Type::Function(vec![coq::term::Type::RT], Box::new(coq::term::Type::Type)),
+            )]),
             variants,
         );
 
         let enum_spec = specs::enums::Spec {
-            rfn_type: coq::term::Type::Literal(inductive_name),
+            rfn_type: coq::term::Type::Term(Box::new(
+                coq::term::App::new(coq::term::Term::Ident(coq::Ident::new(inductive.get_name())), vec![
+                    coq::term::Term::Ident(coq::Ident::new("RT_rt")),
+                ])
+                .into(),
+            )),
             variant_patterns,
             is_partial: false,
+            coq_params: Vec::new(),
         };
 
         info!("Generated inductive for {:?}: {:?}", def, inductive);
@@ -1306,21 +1494,19 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register an enum ADT
-    fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
+    fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError> {
         if self.is_registered_adt(def.did()) {
             // already there, that's fine.
             return Ok(());
         }
         info!("Registering enum {:?}", def.did());
 
-        let tcx = self.env.tcx();
-
-        let generics: &'tcx ty::Generics = self.env.tcx().generics_of(def.did());
+        let generics: &'tcx ty::Generics = self.tcx.generics_of(def.did());
         let mut scope = scope::Params::from(generics.own_params.as_slice());
-        scope.add_param_env(def.did(), self.env(), self, self.trait_registry())?;
+        scope.add_param_env(def.did(), self.tcx, self, self.trait_registry())?;
 
         let mut deps = BTreeSet::new();
-        let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx, def.did());
 
         // pre-register the enum for recursion
         let enum_def_init = self.enum_arena.alloc(RefCell::new(None));
@@ -1329,10 +1515,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let enum_name = strip_coq_ident(format!("{:?}", def).as_str());
 
         // insert partial definition for recursive occurrences
-        let ordered_did = OrderedDefId::new(self.env.tcx(), def.did());
+        let ordered_did = OrderedDefId::new(self.tcx, def.did());
         self.enum_registry
             .borrow_mut()
-            .insert(ordered_did, (enum_name.clone(), &*enum_def_init, def));
+            .insert(ordered_did.clone(), (enum_name.clone(), &*enum_def_init, def));
 
         let translate_variants = || {
             let mut variant_attrs = Vec::new();
@@ -1340,8 +1526,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // now generate the variant
                 let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
-                let struct_name = strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
-                let ordered_vdid = OrderedDefId::new(self.env.tcx(), v.def_id);
+                let struct_name = strip_coq_ident(format!("{}_{}", enum_name, v.ident(self.tcx)).as_str());
+                let ordered_vdid = OrderedDefId::new(self.tcx, v.def_id);
                 self.variant_registry
                     .borrow_mut()
                     .insert(ordered_vdid, (struct_name.clone(), &*struct_def_init, v, true));
@@ -1353,14 +1539,32 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     &mut STInner::TranslateAdt(AdtState::new(&mut deps, &scope, &typing_env)),
                 )?;
 
-                let mut struct_def = specs::structs::Abstract::new(variant_def, scope.clone().into());
+                let mut struct_def = specs::structs::Abstract::new(
+                    variant_def,
+                    scope.clone().into_radium_scope(registry::ScopePurpose::TypeDefinition),
+                );
                 if let Some(invariant_def) = invariant_def {
                     struct_def.add_invariant(invariant_def);
                 }
 
                 // also remember the attributes for additional processing
-                let outer_attrs = self.env.get_attributes(v.def_id);
+                let outer_attrs = environment::get_attributes(self.tcx, v.def_id);
                 let outer_attrs = attrs::filter_for_tool(outer_attrs);
+                attrs::check_tool_attrs(
+                    &outer_attrs,
+                    INVARIANT_SPEC_ATTRS
+                        .iter()
+                        .copied()
+                        .chain(ENUM_VARIANT_SPEC_ATTRS.iter().copied())
+                        .chain(FIELD_SPEC_ATTRS.iter().copied()),
+                )
+                .map_err(|err| {
+                    let err = self.tcx.dcx().span_err(
+                        err.span,
+                        error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                    );
+                    TranslationError::Tainted(err)
+                })?;
                 variant_attrs.push(outer_attrs);
 
                 // finalize the definition
@@ -1382,31 +1586,56 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let discrs = self.build_discriminant_map(def, typing_env, it_is_signed)?;
 
             // get representation options
-            let repr = Self::get_enum_representation(&def.repr())?;
+            let repr = Self::get_enum_representation(self.tcx, &def.repr())?;
 
             // parse annotations for enum type
             let enum_spec;
             let mut inductive_decl = None;
 
-            if self.env.has_tool_attribute(def.did(), "refined_by") {
-                let attributes = self.env.get_attributes(def.did());
-                let attributes = attrs::filter_for_tool(attributes);
+            let attributes = environment::get_attributes(self.tcx, def.did());
+            let attributes = attrs::filter_for_tool(attributes);
+            attrs::check_tool_attrs(&attributes, ENUM_SPEC_ATTRS.iter().copied().chain(["refine_as"]))
+                .map_err(|err| {
+                    let err = self.tcx.dcx().span_err(
+                        err.span,
+                        error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                    );
+                    TranslationError::Tainted(err)
+                })?;
 
-                let mut parser = VerboseEnumSpecParser::new(&scope);
+            if environment::has_tool_attribute(self.tcx, def.did(), "refined_by") {
+                let annotation_scope =
+                    scope.annotation_scope_for_purpose(registry::ScopePurpose::TypeDefinition);
+                let mut parser = VerboseEnumSpecParser::new(&annotation_scope);
 
-                enum_spec = parser
-                    .parse_enum_spec(&enum_name, &attributes, &variant_attrs)
-                    .map_err(TranslationError::FatalError)?;
+                enum_spec = match parser.parse_enum_spec(&enum_name, &attributes, &variant_attrs) {
+                    Ok(spec) => spec,
+                    Err(err) => {
+                        let err = self.tcx.dcx().span_err(err.span, error::Message::EnumSpecParse(err.err));
+                        return Err(TranslationError::Tainted(err));
+                    },
+                };
             } else {
                 // generate a specification
 
                 // get name for the inductive
-                let ind_name = self
-                    .env
-                    .get_tool_attribute(def.did(), "refine_as")
+                let refine_as = environment::get_tool_attribute(self.tcx, def.did(), "refine_as");
+                let refine_as_span = attrs::filter_for_tool(environment::get_attributes(self.tcx, def.did()))
+                    .into_iter()
+                    .find(|it| it.path.segments.get(1).is_some_and(|seg| seg.as_str() == "refine_as"))
+                    .map_or(span::DUMMY_SP, |it| it.span);
+                let ind_name = refine_as
                     .map_or_else(
                         || Ok(Some(enum_name.clone())),
-                        |args| parse_enum_refine_as(args).map_err(TranslationError::FatalError),
+                        |args| {
+                            parse_enum_refine_as(args, refine_as_span).map_err(|err| {
+                                let err = self
+                                    .tcx
+                                    .dcx()
+                                    .span_err(err.span, error::Message::EnumRefineAsParse(err.err));
+                                TranslationError::Tainted(err)
+                            })
+                        },
                     )?
                     .unwrap_or_else(|| enum_name.clone());
 
@@ -1415,20 +1644,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 inductive_decl = Some(decl);
             }
 
-            // check the deps
-            let is_rec_type = deps.contains(&OrderedDefId::new(self.env.tcx(), def.did()));
-            if is_rec_type {
-                // remove it
-                deps.remove(&OrderedDefId::new(self.env.tcx(), def.did()));
-            }
-
-            let mut enum_builder =
-                specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
+            let mut enum_builder = specs::enums::Builder::new(
+                enum_name,
+                scope.into_radium_scope(registry::ScopePurpose::TypeDefinition),
+                translated_it,
+                repr,
+            );
 
             // now build the enum itself
             for v in def.variants() {
                 let (variant_ref, _) = self.lookup_adt_variant(v.def_id)?;
-                let variant_name = strip_coq_ident(&v.ident(tcx).to_string());
+                let variant_name = strip_coq_ident(&v.ident(self.tcx).to_string());
                 let discriminant = discrs[&variant_name];
                 enum_builder.add_variant(&variant_name, variant_ref, discriminant);
             }
@@ -1446,7 +1672,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 self.register_adt_shim(def.did(), lit)?;
 
                 let mut deps_ref = self.adt_deps.borrow_mut();
-                deps_ref.insert(OrderedDefId::new(self.env.tcx(), def.did()), deps);
+                deps_ref.insert(OrderedDefId::new(self.tcx, def.did()), deps);
                 Ok(())
             },
             Err(err) => {
@@ -1462,39 +1688,40 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt: ty::AdtDef<'tcx>,
         substs: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         let Some(shim) = self.lookup_adt_shim(adt.did()) else {
-            return Err(TranslationError::UnknownError(format!(
-                "generate_adt_shim_use called for unknown adt shim {:?}",
-                adt.did()
-            )));
+            return Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(adt.did()), error::Message::UnknownAdtShim),
+            ));
         };
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt.did(),
+            substs,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
-        state.register_adt_use(self.env, adt.did(), Some(shim), &params);
+        state.register_adt_use(self.tcx, adt.did(), Some(shim), &params);
         let shim_use = specs::types::LiteralUse::new(shim, params);
         Ok(specs::Type::Literal(shim_use))
     }
 
-    fn evaluate_constant_as_uint(v: ty::Const<'tcx>) -> Result<u128, TranslationError<'tcx>> {
+    fn evaluate_constant_as_uint(
+        tcx: ty::TyCtxt<'tcx>,
+        v: ty::Const<'tcx>,
+    ) -> Result<u128, TranslationError> {
+        if let Some(value) = v.try_to_target_usize(tcx) {
+            return Ok(value.into());
+        }
+
         match v.kind() {
-            ty::ConstKind::Value(v) => {
-                // this doesn't contain the necessary structure anymore. Need to reconstruct using the
-                // type.
-                match v.valtree.try_to_leaf() {
-                    Some(sc) => match v.ty.kind() {
-                        ty::TyKind::Uint(_) => Ok(sc.to_u128()),
-                        _ => Err(TranslationError::InvalidLayout),
-                    },
-                    _ => Err(TranslationError::UnsupportedFeature {
-                        description: format!("const value not supported: {:?}", v),
-                    }),
-                }
+            ty::ConstKind::Value(_) => {
+                Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::InvalidLayout)))
             },
-            _ => Err(TranslationError::UnsupportedFeature {
-                description: format!("Unsupported ConstKind: {v:?}"),
-            }),
+            _ => Err(TranslationError::ErrorReported(
+                tcx.dcx().err(error::Message::UnsupportedFeature(format!("Unsupported ConstKind: {v:?}"))),
+            )),
         }
     }
 
@@ -1504,7 +1731,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Bool => Ok(specs::Type::Bool),
             ty::TyKind::Char => Ok(specs::Type::Char),
@@ -1542,7 +1769,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 let translated_ty = self.translate_type_in_state(*ty, &mut *state)?;
 
-                let lft = TX::translate_region(&mut *state, *region)?;
+                let lft = TX::translate_region(&mut *state, *region);
 
                 match mutability {
                     ast::ast::Mutability::Mut => Ok(specs::Type::MutRef(Box::new(translated_ty), lft)),
@@ -1567,9 +1794,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     return self.generate_enum_use_noshim(*adt, substs, &mut *state).map(specs::Type::Enum);
                 }
 
-                Err(TranslationError::UnsupportedFeature {
-                    description: format!("unsupported ADT {:?}", ty),
-                })
+                Err(TranslationError::ErrorReported(
+                    self.tcx
+                        .dcx()
+                        .err(error::Message::UnsupportedFeature(format!("unsupported ADT {:?}", ty))),
+                ))
             },
 
             ty::TyKind::Closure(_def, closure_args) => {
@@ -1588,14 +1817,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 self.generate_tuple_use(params.iter(), &mut *state).map(specs::Type::Literal)
             },
 
-            ty::TyKind::Param(param_ty) => state.lookup_ty_param(*param_ty),
+            ty::TyKind::Param(param_ty) => Ok(state.lookup_ty_param(*param_ty)),
 
-            ty::TyKind::Float(_) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does not support floats".to_owned(),
-            }),
+            ty::TyKind::Float(_) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::UnsupportedType("RefinedRust does not support floats".to_owned())),
+            )),
 
             ty::TyKind::Array(ty, num) => {
-                let num_eval = Self::evaluate_constant_as_uint(*num)?;
+                let num_eval = Self::evaluate_constant_as_uint(self.tcx, *num)?;
                 let translated_ty = self.translate_type_in_state(*ty, state)?;
 
                 Ok(specs::Type::Array(Box::new(translated_ty), num_eval))
@@ -1603,83 +1834,93 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::TyKind::Slice(_) => {
                 // TODO this should really be a fat ptr?
-                Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does not support slices".to_owned(),
-                })
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedFeature(
+                    "RefinedRust does not support slices".to_owned(),
+                ))))
             },
 
-            ty::TyKind::Alias(kind, alias_ty) => {
+            ty::TyKind::Alias(_, alias_ty) => {
                 // TODO do we get a problem because we are erasing regions?
-                if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.env.tcx(), ty)
-                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(_, _))
+                if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.tcx, ty)
+                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(..))
                 {
                     // if we managed to normalize it, translate the normalized type
                     return self.translate_type_in_state(normalized_ty, state);
                 }
                 // otherwise, we can't normalize the projection
-                match kind {
-                    ty::AliasTyKind::Projection => {
-                        info!(
-                            "Trying to resolve projection of {:?} for {:?}",
-                            alias_ty.def_id, alias_ty.args
-                        );
+                match alias_ty.kind {
+                    ty::AliasTyKind::Projection { def_id } => {
+                        info!("Trying to resolve projection of {:?} for {:?}", def_id, alias_ty.args);
 
-                        let trait_did = self.env.tcx().parent(alias_ty.def_id);
-                        let entry = &state.lookup_trait_use(self.env.tcx(), trait_did, alias_ty.args)?;
-                        let assoc_type = entry.get_associated_type_use(self.env, alias_ty.def_id)?;
+                        let trait_did = self.tcx.parent(def_id);
+                        let entry = &state.lookup_trait_use(self.tcx, trait_did, alias_ty.args);
+                        let assoc_type = entry.get_associated_type_use(self.tcx, def_id);
 
                         info!("Resolved projection to {assoc_type:?}");
 
                         Ok(assoc_type)
                     },
-                    _ => Err(TranslationError::UnsupportedType {
-                        description: format!("RefinedRust does not support Alias types of kind {kind:?}"),
-                    }),
+                    _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        error::Message::UnsupportedType(format!(
+                            "RefinedRust does not support Alias types of kind {:?}",
+                            alias_ty.kind
+                        )),
+                    ))),
                 }
             },
 
-            ty::TyKind::Foreign(_) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does not support extern types".to_owned(),
-            }),
+            ty::TyKind::Foreign(_) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support extern types".to_owned()),
+            ))),
 
-            ty::TyKind::Str => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does not support str".to_owned(),
-            }),
+            ty::TyKind::Str => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::UnsupportedType("RefinedRust does not support str".to_owned())),
+            )),
 
-            ty::TyKind::Pat(_, _) => Err(TranslationError::Unimplemented {
-                description: "RefinedRust does not support Pat".to_owned(),
-            }),
+            ty::TyKind::Pat(_, _) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("RefinedRust does not support Pat".to_owned())),
+            )),
 
-            ty::TyKind::FnDef(_, _) => Err(TranslationError::Unimplemented {
-                description: "RefinedRust does not support FnDef".to_owned(),
-            }),
+            ty::TyKind::FnDef(_, _) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("RefinedRust does not support FnDef".to_owned())),
+            )),
 
-            ty::TyKind::FnPtr(..) => Err(TranslationError::Unimplemented {
-                description: "RefinedRust does not support FnPtr".to_owned(),
-            }),
+            ty::TyKind::FnPtr(..) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("RefinedRust does not support FnPtr".to_owned())),
+            )),
 
-            ty::TyKind::Dynamic(_, _) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does not support trait objects".to_owned(),
-            }),
+            ty::TyKind::Dynamic(_, _) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support trait objects".to_owned()),
+            ))),
 
-            ty::TyKind::UnsafeBinder(_) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does not support UnsafeBinder".to_owned(),
-            }),
+            ty::TyKind::UnsafeBinder(_) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support UnsafeBinder".to_owned()),
+            ))),
 
             ty::TyKind::Coroutine(_, _)
             | ty::TyKind::CoroutineWitness(_, _)
-            | ty::TyKind::CoroutineClosure(_, _) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does currently not support coroutines".to_owned(),
-            }),
+            | ty::TyKind::CoroutineClosure(_, _) => {
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
+                    "RefinedRust does currently not support coroutines".to_owned(),
+                ))))
+            },
 
-            ty::TyKind::Infer(_) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does not support infer types".to_owned(),
-            }),
+            ty::TyKind::Infer(_) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support infer types".to_owned()),
+            ))),
 
             ty::TyKind::Bound(_, _) | ty::TyKind::Placeholder(_) | ty::TyKind::Error(_) => {
-                Err(TranslationError::UnsupportedType {
-                    description: "RefinedRust does not support higher-ranked types".to_owned(),
-                })
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
+                    "RefinedRust does not support higher-ranked types".to_owned(),
+                ))))
             },
         }
     }
@@ -1723,26 +1964,37 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         f: abi::FieldIdx,
         ty: ty::Ty<'tcx>,
         variant: Option<usize>,
-    ) -> Result<String, TranslationError<'tcx>> {
-        let tcx = self.env.tcx();
+    ) -> Result<String, TranslationError> {
+        let tcx = self.tcx;
         match ty.kind() {
             ty::TyKind::Adt(def, _) => {
                 info!("getting field name of {:?} at {} (variant {:?})", f, ty, variant);
                 if def.is_struct() {
                     let i = def.variants().get(abi::VariantIdx::from_usize(0)).unwrap();
                     i.fields.get(f).map(|f| f.ident(tcx).to_string()).ok_or_else(|| {
-                        TranslationError::UnknownError(format!("could not get field {:?} of {}", f, ty))
+                        TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::UnknownField(format!("{f:?}"), format!("{ty}"))),
+                        )
                     })
                 } else if def.is_enum() {
                     let variant = variant.unwrap();
                     let i = def.variants().get(abi::VariantIdx::from_usize(variant)).unwrap();
                     i.fields.get(f).map(|f| f.ident(tcx).to_string()).ok_or_else(|| {
-                        TranslationError::UnknownError(format!("could not get field {:?} of {}", f, ty))
+                        TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::UnknownField(format!("{f:?}"), format!("{ty}"))),
+                        )
                     })
                 } else {
-                    Err(TranslationError::UnsupportedFeature {
-                        description: format!("unsupported field access {:?}to ADT {:?}", f, ty),
-                    })
+                    Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        error::Message::UnsupportedFeature(format!(
+                            "unsupported field access {:?}to ADT {:?}",
+                            f, ty
+                        )),
+                    )))
                 }
             },
 
@@ -1753,22 +2005,23 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 Ok(f.index().to_string())
             },
 
-            _ => Err(TranslationError::InvalidLayout),
+            _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::InvalidLayout))),
         }
     }
 
     /// Get the name of a variant of an enum.
     pub(crate) fn get_variant_name_of(
+        tcx: ty::TyCtxt<'tcx>,
         ty: ty::Ty<'tcx>,
         variant: abi::VariantIdx,
-    ) -> Result<String, TranslationError<'tcx>> {
+    ) -> Result<String, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(def, _) => {
                 info!("getting variant name of {:?} at {}", variant, ty);
                 let i = def.variants().get(variant).unwrap();
                 Ok(i.name.to_string())
             },
-            _ => Err(TranslationError::InvalidLayout),
+            _ => Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::InvalidLayout))),
         }
     }
 }
@@ -1781,7 +2034,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<lang::SynType, TranslationError<'tcx>> {
+    ) -> Result<lang::SynType, TranslationError> {
         self.translate_type_in_state(ty, scope).map(lang::SynType::from)
     }
 
@@ -1790,7 +2043,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         self.translate_type_in_state(ty, &mut STInner::InFunction(&mut *scope))
     }
 
@@ -1800,7 +2053,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         scope: &scope::Params<'tcx, 'def>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: ty::Ty<'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         let mut deps = BTreeSet::new();
         let state = AdtState::new(&mut deps, scope, &typing_env);
         self.translate_type_in_state(ty, &mut STInner::TranslateAdt(state))
@@ -1812,41 +2065,43 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
+        state: ST<'_, '_, 'def, 'tcx>,
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 if adt.is_struct() {
                     info!("generating struct use for {:?}", adt.did());
                     // register the ADT, if necessary
                     self.register_adt(*adt)?;
-                    self.generate_struct_use(adt.did(), args, &mut *scope)
+                    self.generate_struct_use(adt.did(), args, state)
                 } else if adt.is_enum() {
                     if let Some(variant) = variant {
                         self.register_adt(*adt)?;
                         let v = &adt.variants()[variant];
-                        self.generate_enum_variant_use(v.def_id, args, scope).map(Some)
+                        self.generate_enum_variant_use(v.def_id, args, state)
                     } else {
-                        Err(TranslationError::UnknownError(
-                            "a non-downcast enum is not a structlike".to_owned(),
+                        Err(TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::ExpectedStructlike("a non-downcast enum".to_owned())),
                         ))
                     }
                 } else {
-                    Err(TranslationError::UnsupportedType {
-                        description: "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
-                    })
+                    Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
+                        "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
+                    ))))
                 }
             },
-            ty::TyKind::Tuple(args) => {
-                self.generate_tuple_use(*args, &mut STInner::InFunction(scope)).map(Some)
-            },
+            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, state),
             ty::TyKind::Closure(_, args) => {
                 // use the upvar tuple
                 let closure_args = args.as_closure();
                 let upvars = closure_args.upvar_tys();
-                self.generate_tuple_use(upvars, &mut STInner::InFunction(scope)).map(Some)
+                self.generate_tuple_use(upvars, state)
             },
-            _ => Err(TranslationError::UnknownError("not a structlike".to_owned())),
+            _ => Err(TranslationError::ErrorReported(
+                self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))),
+            )),
         }
     }
 
@@ -1856,26 +2111,27 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-        state: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+        state: ST<'_, '_, 'def, 'tcx>,
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
-        let enum_ref: specs::types::LiteralRef<'def> = self
-            .lookup_adt_shim(adt_def.did())
-            .ok_or_else(|| self.env.tcx().dcx().err(error::Message::UnknownAdt(adt_def.did())))?;
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(state),
+        let enum_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(adt_def.did()).ok_or_else(|| {
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(self.tcx().def_span(adt_def.did()), error::Message::UnknownAdt),
+                )
+            })?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
             adt_def.did(),
             args,
+            registry::ScopePurpose::TypeDefinition,
         )?;
-        let ordered_did = OrderedDefId::new(self.env.tcx(), adt_def.did());
-        let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
-        let enum_use = specs::types::LiteralUse::new(enum_ref, params);
+        let enum_use = specs::types::LiteralUse::new(enum_ref, params.clone());
 
         // track this enum use for the current function
-        let enum_uses = &mut state.shim_uses;
-        enum_uses.entry(key).or_insert_with(|| enum_use.clone());
+        state.register_adt_use(self.tcx, adt_def.did(), Some(enum_ref), &params);
 
         Ok(enum_use)
     }
@@ -1888,26 +2144,28 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
+        state: ST<'_, '_, 'def, 'tcx>,
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating struct use for {:?}", variant_id);
 
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(scope),
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
             variant_id,
             args,
+            registry::ScopePurpose::TypeDefinition,
         )?;
-        let ordered_did = OrderedDefId::new(self.env.tcx(), variant_id);
-        let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> = self
-            .lookup_adt_shim(variant_id)
-            .ok_or_else(|| self.env.tcx().dcx().err(error::Message::UnknownAdt(variant_id)))?;
-        let struct_use = specs::types::LiteralUse::new(struct_ref, params);
+        let struct_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(variant_id).ok_or_else(|| {
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(self.tcx().def_span(variant_id), error::Message::UnknownAdt),
+                )
+            })?;
+        let struct_use = specs::types::LiteralUse::new(struct_ref, params.clone());
 
-        scope.shim_uses.entry(key).or_insert_with(|| struct_use.clone());
+        state.register_adt_use(self.tcx, variant_id, Some(struct_ref), &params);
 
-        Ok(Some(struct_use))
+        Ok(struct_use)
     }
 
     /// Generate an enum use.
@@ -1915,21 +2173,27 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+        state: ST<'_, '_, 'def, 'tcx>,
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum variant use for {:?}", variant_id);
 
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(scope),
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
             variant_id,
             args,
+            registry::ScopePurpose::TypeDefinition,
         )?;
         //let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> = self
-            .lookup_adt_shim(variant_id)
-            .ok_or_else(|| self.env.tcx().dcx().err(error::Message::UnknownAdt(variant_id)))?;
-        let struct_use = specs::types::LiteralUse::new(struct_ref, params);
+        let struct_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(variant_id).ok_or_else(|| {
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(self.tcx().def_span(variant_id), error::Message::UnknownAdt),
+                )
+            })?;
+        let struct_use = specs::types::LiteralUse::new(struct_ref, params.clone());
+
+        state.register_adt_use(self.tcx, variant_id, Some(struct_ref), &params);
 
         // TODO: track?
         // generate the struct use key

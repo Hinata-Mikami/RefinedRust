@@ -22,6 +22,7 @@ use crate::shims::flat;
 
 type Path<'a> = Vec<&'a str>;
 
+#[expect(clippy::inline_modules)]
 mod remote {
     use super::*;
 
@@ -33,6 +34,9 @@ mod remote {
 
         #[serde(getter = "Self::has_semantic_interp")]
         has_semantic_interp: bool,
+
+        #[serde(getter = "Self::realization")]
+        realization: String,
     }
 
     impl LiteralImpl {
@@ -47,11 +51,15 @@ mod remote {
         fn has_semantic_interp(literal_impl: &specs::traits::LiteralImpl) -> bool {
             Option::is_some(&literal_impl.spec_semantic())
         }
+
+        fn realization(literal_impl: &specs::traits::LiteralImpl) -> String {
+            literal_impl.spec_realization().to_owned()
+        }
     }
 
     impl From<LiteralImpl> for specs::traits::LiteralImpl {
         fn from(literal_impl: LiteralImpl) -> Self {
-            Self::new(literal_impl.name, literal_impl.has_semantic_interp)
+            Self::new(literal_impl.name, literal_impl.has_semantic_interp, literal_impl.realization)
         }
     }
 
@@ -110,6 +118,8 @@ struct ShimTraitEntry {
     has_semantic_interp: bool,
     /// whether the attrs record is dependent
     attrs_dependent: bool,
+    /// associated type names declared by this trait
+    assoc_tys: Vec<String>,
     /// allowed attributes on impls of this trait
     allowed_attrs: Vec<String>,
     /// definition names for the canonical trait linking assumption for each method
@@ -119,20 +129,28 @@ struct ShimTraitEntry {
 /// A file entry for a trait method implementation.
 #[derive(Serialize, Deserialize)]
 struct ShimTraitImplEntry {
-    /// The rustc path for the trait
-    trait_path: flat::PathWithArgs,
-    /// for which type is this implementation?
-    for_type: flat::Type,
     // TODO: additional constraints like the required clauses for disambiguation
     /// a kind: always `trait_impl`
     kind: String,
 
-    /// map from method names to (base name, specification name, trait incl name)
-    method_specs: BTreeMap<String, (String, String, String)>,
+    #[serde(flatten)]
+    impl_kind: TraitImplShimKind,
+
+    /// map from method names to their shim metadata
+    method_specs: BTreeMap<String, MethodShimSpec>,
 
     #[serde(flatten)]
     #[serde(with = "remote::LiteralImpl")]
     specs: specs::traits::LiteralImpl,
+}
+
+/// The raw type of an ADT shim, without safety invariant.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub(crate) struct RawAdtType {
+    /// The Coq name of the raw refinement type.
+    pub rtype: String,
+    /// The Coq name of the raw semantic type.
+    pub semtype: String,
 }
 
 /// A file entry for an adt shim.
@@ -148,6 +166,9 @@ struct ShimAdtEntry {
     rtype: String,
     /// the Coq name of the semantic type
     semtype: String,
+
+    /// the raw type without safety invariant
+    raw_type: RawAdtType,
 
     /// more meta information
     #[serde(with = "remote::AdtShimInfo")]
@@ -184,19 +205,44 @@ impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(tag = "impl_kind", rename_all = "snake_case")]
+pub(crate) enum TraitImplShimKind {
+    Rust {
+        /// The rustc path for the trait.
+        trait_path: flat::PathWithArgs,
+        /// For which type is this implementation?
+        for_type: flat::Type,
+    },
+    VirtualDropGlueForAdt {
+        /// Path of the ADT whose virtual drop-glue impl this is.
+        path: Vec<String>,
+    },
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub(crate) struct MethodShimSpec {
+    /// The basis name to use for generated Coq names.
+    pub name: String,
+    /// The Coq name of the spec.
+    #[serde(rename = "spec")]
+    pub spec_name: String,
+    /// The Coq name of the trait assumption inclusion for this function.
+    #[serde(rename = "trait_req_incl")]
+    pub trait_req_incl_name: String,
+}
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub(crate) struct TraitImplShim {
-    pub trait_path: flat::PathWithArgs,
-    pub for_type: flat::Type,
-    pub method_specs: BTreeMap<String, (String, String, String)>,
+    pub impl_kind: TraitImplShimKind,
+    pub method_specs: BTreeMap<String, MethodShimSpec>,
     pub specs: specs::traits::LiteralImpl,
 }
 
 impl From<TraitImplShim> for ShimTraitImplEntry {
     fn from(shim: TraitImplShim) -> Self {
         Self {
-            trait_path: shim.trait_path,
-            for_type: shim.for_type,
+            impl_kind: shim.impl_kind,
             method_specs: shim.method_specs,
             kind: "trait_impl".to_owned(),
             specs: shim.specs,
@@ -210,6 +256,7 @@ pub(crate) struct TraitShim<'a> {
     pub name: String,
     pub has_semantic_interp: bool,
     pub attrs_dependent: bool,
+    pub assoc_tys: Vec<String>,
     pub allowed_attrs: Vec<String>,
     pub method_trait_incl_decls: BTreeMap<String, String>,
 }
@@ -222,6 +269,7 @@ impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
             name: shim.name,
             has_semantic_interp: shim.has_semantic_interp,
             attrs_dependent: shim.attrs_dependent,
+            assoc_tys: shim.assoc_tys,
             allowed_attrs: shim.allowed_attrs,
             method_trait_incl_decls: shim.method_trait_incl_decls,
         }
@@ -234,6 +282,7 @@ pub(crate) struct AdtShim<'a> {
     pub refinement_type: String,
     pub syn_type: String,
     pub sem_type: String,
+    pub raw_type: RawAdtType,
     pub info: specs::types::AdtShimInfo,
 }
 
@@ -245,6 +294,7 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
             syntype: shim.syn_type,
             semtype: shim.sem_type,
             rtype: shim.refinement_type,
+            raw_type: shim.raw_type,
             info: shim.info,
         }
     }
@@ -443,6 +493,7 @@ impl<'a> SR<'a> {
                         syn_type: b.syntype,
                         sem_type: b.semtype,
                         refinement_type: b.rtype,
+                        raw_type: b.raw_type,
                         info: b.info,
                     };
 
@@ -464,8 +515,7 @@ impl<'a> SR<'a> {
                 ShimKind::TraitImpl => {
                     let b: ShimTraitImplEntry = serde_json::value::from_value(i)?;
                     let entry = TraitImplShim {
-                        trait_path: b.trait_path,
-                        for_type: b.for_type,
+                        impl_kind: b.impl_kind,
                         method_specs: b.method_specs,
                         specs: b.specs,
                     };
@@ -479,6 +529,7 @@ impl<'a> SR<'a> {
                         name: b.name,
                         has_semantic_interp: b.has_semantic_interp,
                         attrs_dependent: b.attrs_dependent,
+                        assoc_tys: b.assoc_tys,
                         allowed_attrs: b.allowed_attrs,
                         method_trait_incl_decls: b.method_trait_incl_decls,
                     };

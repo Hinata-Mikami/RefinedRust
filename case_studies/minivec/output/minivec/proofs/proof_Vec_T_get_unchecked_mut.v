@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.minivec.generated Require Import generated_code_minivec generated_specs_minivec.
 From refinedrust.examples.minivec.generated Require Import generated_template_Vec_T_get_unchecked_mut.
@@ -15,7 +15,7 @@ Proof.
   Vec_T_get_unchecked_mut_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_typed_array_access l index (st_of T_ty MetaNone)).
+  apply_update (updateable_typed_array_access l index (UntypedSynType $ st_of T_ty MetaNone)).
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

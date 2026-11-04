@@ -1,0 +1,1697 @@
+From refinedrust Require Export type.
+From refinedrust.primitive Require Import alias_ptr existentials.
+From refinedrust Require Import int programs program_rules functions uninit shr_ref mut_ref struct unit automation.
+From refinedrust Require Import enum.
+From refinedrust Require Import array.array.
+From refinedrust Require Import options.
+
+(** * Local-dead stratification guard *)
+Section local_dead_stratification_test.
+  Context `{!typeGS Σ}.
+  Context {rt : RT} (ty : type rt) (κ : lft) (sls : struct_layout_spec).
+
+  Goal LocalDeadNeedsStratification (BlockedLtype ty κ).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification (ShrBlockedLtype ty κ).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification (MutLtype (BlockedLtype ty κ) κ).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (StructLtype ((BlockedLtype ty κ) +:: +[]) sls).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (ArrayLtype ty 1 [(0, BlockedLtype ty κ)]).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (OpenedLtype (OfTy ty) (OfTy ty) (OfTy ty) (λ _ _, True%I) (λ _ _, True%I)).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (OpenedNaLtype (OfTy ty) (OfTy ty) (λ _, True%I) (λ _, True%I)).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification (CoreableLtype [κ] (OfTy ty)).
+  Proof. typeclasses eauto. Qed.
+
+  Goal TCOrT (LocalDeadNeedsStratification (OfTy ty)) TCTrue.
+  Proof. typeclasses eauto. Qed.
+End local_dead_stratification_test.
+
+(** * Test cases for sidecondition solvers declared in [automation/solvers.v] *)
+
+(** compute_map_lookup *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma test_compute_map_lookup_1 (M : gmap string lft) (κ : lft) :
+    M = <[ "lft1" := κ]> $ ∅ →
+    M !! "lft1" = Some κ.
+  Proof.
+    intros ->.
+    solve_compute_map_lookup true; solve[fail].
+  Abort.
+
+  Lemma test_compute_map_lookup_1 (M : list (string * lft)) (κ : lft) :
+    M = [("lft1", κ)] →
+    lookup_iml M "lft1" = Some κ.
+  Proof.
+    intros ->.
+    solve_compute_list_map_lookup; solve[fail].
+  Abort.
+
+  Lemma test_compute_map_lookup_2 (M : list (string * lft)) (κ : lft) :
+    M = [("lft1", κ)] →
+    ∃ κ', lookup_iml M "lft1" = Some κ'.
+  Proof.
+    intros ->. eexists _.
+    solve_compute_list_map_lookup ; solve[fail].
+  Abort.
+
+  Lemma test_compute_map_lookup_3 M (κ : lft) :
+    M = [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal M "lft1") (λ v,
+      ⌜v = Some κ⌝ ∗ True).
+  Proof.
+    intros ->.
+    iStartProof. unshelve (repeat liRStep); solve[fail].
+  Abort.
+
+  Lemma test_compute_map_lookup_3 M (κ : lft) :
+    M = [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal M "lft1") (λ v,
+      ⌜v = Some κ⌝ ∗ True).
+  Proof.
+    intros ->.
+    iStartProof. unshelve (repeat liRStep); solve[fail].
+  Abort.
+
+  Lemma test_compute_map_lookup_4 M (κ κ' : lft) :
+    M = ("lft2", κ') :: ("lft1", κ) :: []  →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_nofail_goal M "lft1") (λ v,
+      ⌜v = κ⌝ ∗ True).
+  Proof.
+    liStep.
+    iStartProof.
+    unshelve (repeat liRStep); solve[fail].
+  Abort.
+
+  Lemma test_compute_map_lookup_5 M (κ : lft) :
+    M = [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal M "lft2") (λ v,
+      ⌜v = None⌝ ∗ True).
+  Proof.
+    liRStep.
+    iStartProof. unshelve (repeat liRStep); solve[fail].
+  Abort.
+
+  Lemma test (M : list (string * lft)) (κ1 κ2 : lft) :
+    M = [("κ1", κ1); ("κ2", κ2)] →
+    ∃ ls, Forall2 (λ k v, lookup_iml M k = Some v) ["κ1"; "κ2"] ls ∧ ls = [κ1; κ2].
+  Proof.
+    intros ->. eexists. split; first compute_list_map_lookups. done.
+  Abort.
+
+  Lemma test (κ ulft__ : lft) :
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal (("plft17", κ) :: ("plft12", κ) :: ("llft6", κ) :: ("plft11", ulft__) :: ("ulft__", ulft__) :: [] ) "llft6") (λ v,
+      ⌜v = Some κ⌝ ∗ True).
+  Proof.
+    iStartProof.
+    unshelve (repeat liRStep); solve[fail].
+  Abort.
+End test.
+
+(** liExplainGoal *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma li_explain_goal_sidecondition (P Q : Prop) : P ∧ Q.
+  Proof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_evar_sidecondition : ∃ x : nat, x = 0 ∧ True.
+  Proof.
+    eexists.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_find_loc (l : loc) :
+    ⊢ find_in_context (FindLoc l) (λ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_guarded_find_loc {rt} (lt : ltype rt)
+      (r : place_rfn rt) (l : loc) (π : thread_id) :
+    guarded true (l ◁ₗ[π, Owned] r @ lt) ⊢
+      find_in_context (FindLoc l) (λ _, True).
+  Proof.
+    iIntros "Hl".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_prove_with_subtype E L :
+    ⊢ prove_with_subtype E L false ProveDirect
+      (∀ x : nat, ⌜x = x⌝) True (λ _ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_stratify E L {rt} (ty : type rt) (κ : lft)
+      (r : place_rfn rt) (l : loc) (π : thread_id) :
+    l ◁ₗ[π, Owned] r @ BlockedLtype ty κ ⊢
+      prove_with_subtype E L true ProveDirect True True (λ _ _ _, True).
+  Proof.
+    iIntros "Hl".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_acquire_credits :
+    credit_store 10 2 ⊢ have_creds.
+  Proof.
+    iIntros "Hstore".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_acquire_credits_for_guard E L :
+    credit_store 10 2 ⊢
+      prove_with_subtype E L false ProveDirect
+        (guarded true True) True (λ _ _ _, True).
+  Proof.
+    iIntros "Hstore".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_no_nested_guard_credit_hint E L :
+    credit_store 10 2 ⊢
+      prove_with_subtype E L false ProveDirect
+        (True ∗ guarded true True) True (λ _ _ _, True).
+  Proof.
+    iIntros "Hstore".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_extract_typed E L {rt} (ty : type rt) (r : rt)
+      (v : val) (l : loc) (π : thread_id) :
+    ⊢ subsume_full false
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (l ◁ₗ[π, Owned] #v @ (◁ value_t true (st_of ty MetaNone)))
+      E L (λ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_extract_untyped E L {rt} (ty : type rt) (r : rt)
+      (v : val) (l : loc) (π : thread_id) :
+    ⊢ subsume_full false
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (l ◁ₗ[π, Owned] #v @ (◁ value_t false (st_of ty MetaNone)))
+      E L (λ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_extract_value E L {rt} (ty : type rt) (r : rt)
+      (v : val) (l : loc) (π : thread_id) :
+    ⊢ subsume_full false
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (v ◁ᵥ{π, MetaNone} r @ ty)
+      E L (λ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_array_access {rt} (lt : ltype rt) (r : place_rfn rt)
+      (base : loc) (off : Z) (st : syn_type) (π : thread_id) :
+    base ◁ₗ[π, Owned] r @ lt ⊢
+      find_in_context (FindLoc (base offsetst{st}ₗ off)) (λ _, True).
+  Proof.
+    iIntros "Hbase".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_array_access_no_base
+      (base : loc) (off : Z) (st : syn_type) :
+    ⊢ find_in_context (FindLoc (base offsetst{st}ₗ off)) (λ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_guarded_array_access {rt} (lt : ltype rt)
+      (rbase r : place_rfn rt) (base : loc) (off : Z) (st : syn_type)
+      (π : thread_id) :
+    base ◁ₗ[π, Owned] rbase @ lt -∗
+    guarded true ((base offsetst{st}ₗ off) ◁ₗ[π, Owned] r @ lt) -∗
+      find_in_context (FindLoc (base offsetst{st}ₗ off)) (λ _, True).
+  Proof.
+    iIntros "Hbase Hguarded".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_rocq : True.
+  Proof.
+    liExplainGoal.
+  Abort.
+End test.
+
+(** simplify_gmap *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma test_simplify_lft_map_1 (M : list (string * lft)) (κ : lft) :
+    M = ("lft1", κ) :: [] →
+    ∃ M', opaque_eq M' (map_list_delete M "lft1").
+  Proof.
+    intros ->.
+    eexists _.
+    unshelve solve_simplify_lft_map; solve[fail].
+  Qed.
+
+  Lemma test_simplify_lft_map_3 M (κ κ' : lft) :
+    M = ("lft2", κ') :: [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (simplify_lft_map_goal M) (λ M',
+      ⌜M' = M⌝ ∗ True).
+  Proof.
+    liRStep.
+    iStartProof. unshelve (repeat liRStep); solve[fail].
+  Qed.
+
+  Lemma test_simplify_lft_names1 (ulft__ κ : lft) :
+    ⊢@{iPropI Σ} li_tactic (simplify_lft_map_goal (("plft17", κ) :: (map_list_delete (("plft12", κ) :: ("llft6", κ) :: ("plft11", ulft__) :: [("ulft__", ulft__)]) "plft17" )))
+    (λ M',
+      ⌜M' = [("plft17", κ); ("plft12", κ); ("llft6", κ); ("plft11", ulft__); ("ulft__", ulft__)]⌝ ∗ True).
+  Proof.
+    iStartProof. unshelve (repeat liRStep); solve[fail].
+  Qed.
+End test.
+
+(** find_implied_dying_lifetimes *)
+Lemma test `{!typeGS Σ} ϝ ulft_4 ulft1 κ3 κ4 L :
+  L = [κ4 ≡ₗ [κ3; ulft1]; κ3 ⊑ₗ{ 1} [ulft_4]; ϝ ⊑ₗ{ 2} []] →
+  ∃ ks, find_implied_dying_lifetimes_pure_goal L κ3 ks ∧ ks = [κ4].
+Proof.
+  intros ->.
+  eexists. split.
+  { solve_find_implied_dying_lifetimes. }
+  done.
+Abort.
+
+(** check if lifetime is local *)
+Lemma test1 `{!typeGS Σ} κ ϝ:
+  ∃ b, check_lft_is_local_pure_goal [] [ϝ ⊑ₗ{0} []] κ b ∧ b = false.
+Proof.
+  eexists. split; first solve_check_lft_is_local_goal.
+  done.
+Abort.
+Lemma test2 `{!typeGS Σ} κ ϝ:
+  ∃ b, check_lft_is_local_pure_goal [] [κ ⊑ₗ{0} [ϝ]; ϝ ⊑ₗ{0} []] κ b ∧ b = true.
+Proof.
+  eexists. split; first solve_check_lft_is_local_goal.
+  done.
+Abort.
+Lemma test2 `{!typeGS Σ} κ κ' ϝ:
+  ∃ b, check_lft_is_local_pure_goal [] [κ' ⊑ₗ{0} [κ]; κ ⊑ₗ{0} [ϝ]; ϝ ⊑ₗ{0} []] κ b ∧ b = true.
+Proof.
+  eexists. split; first solve_check_lft_is_local_goal.
+  done.
+Abort.
+
+(** inv_layout_alg *)
+Section test.
+  Context `{!typeGS Σ}.
+  Context (T_st : syn_type).
+
+  (** Struct tests *)
+  Definition s1_spec :=
+    mk_sls "s1_T" [("s1_f1", T_st); ("s1_f2", IntSynType I32)] StructReprRust.
+  Definition s2_spec :=
+    mk_sls "s2_T" [("s2_f1", PtrSynType); ("s2_f2", s1_spec : syn_type)] StructReprRust.
+
+  Lemma inv_test' s2_ly :
+    use_struct_layout_alg s2_spec = Some s2_ly →
+    ∃ s2_sl : struct_layout, s2_ly = s2_sl ∧
+    ∃ s1_sl : struct_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
+      sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
+  Proof.
+    init_jcache.
+    intros H.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+
+  Lemma inv_test s2_ly :
+    use_layout_alg s2_spec = Some s2_ly →
+    ∃ s2_sl : struct_layout, s2_ly = layout_of s2_sl ∧
+    ∃ s1_sl : struct_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
+      sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
+  Proof.
+    init_jcache.
+    intros H.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+
+  Lemma inv_test4 len ly :
+    syn_type_has_layout (ArraySynType T_st len) ly →
+    ∃ ly2, syn_type_has_layout T_st ly2.
+  Proof.
+    init_jcache.
+    intros Hly. inv_layout_alg.
+    eexists.
+    open_cache.
+    solve_layout_alg; solve[fail].
+  Abort.
+
+  Lemma inv_test5 {rt} (T_ty : type rt) (xs : list nat) ly :
+    T_st = ty_syn_type T_ty MetaNone →
+    use_layout_alg (ArraySynType (ty_syn_type T_ty MetaNone) (length xs)) = Some ly →
+    ∃ ly', syn_type_has_layout (T_st) ly'.
+  Proof.
+    init_jcache.
+    intros -> H1. inv_layout_alg.
+    eexists.
+    solve_layout_alg; solve[fail].
+  Abort.
+
+  (** Union tests *)
+  Definition u1_spec :=
+    mk_uls "u1_T" [("u1_v1", T_st); ("u1_v2", IntSynType I32)] UnionReprRust.
+  Definition u2_spec :=
+    mk_uls "u2_T" [("u2_v1", PtrSynType); ("u2_v2", u1_spec : syn_type)] UnionReprRust.
+
+  Lemma inv_test' u2_ly :
+    use_union_layout_alg u2_spec = Some u2_ly →
+    ∃ u2_ul : union_layout, u2_ly = u2_ul ∧
+    ∃ u1_ul : union_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
+      ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
+  Proof.
+    init_jcache.
+    intros Hly.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+
+  Lemma inv_test u2_ly :
+    use_layout_alg u2_spec = Some u2_ly →
+    ∃ u2_ul : union_layout, u2_ly = ul_layout u2_ul ∧
+    ∃ u1_ul : union_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
+      ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
+  Proof.
+    init_jcache.
+    intros Hly.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+
+  Lemma inv_test3 ly :
+    syn_type_has_layout (u2_spec) ly →
+    ∃ u2_ul : union_layout,
+    ∃ u1_ul : union_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
+      ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
+  Proof.
+    init_jcache.
+    intros Hly. inv_layout_alg.
+    open_jcache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+
+  (** Enums *)
+  Definition std_option_Option_None_sls  : struct_layout_spec := mk_sls "std_option_Option_None" [] StructReprRust.
+  Definition std_option_Option_Some_sls : struct_layout_spec := mk_sls "std_option_Option_Some" [
+    ("0", T_st)] StructReprRust.
+  Program Definition std_option_Option_els : enum_layout_spec := mk_els "std_option_Option" ISize [
+    ("None", std_option_Option_None_sls  : syn_type);
+    ("Some", std_option_Option_Some_sls : syn_type)] EnumReprRust [("None", 0); ("Some", 1)] _ _ _ _.
+  Next Obligation. repeat first [econstructor | set_solver]. Qed.
+  Next Obligation. done. Qed.
+  Next Obligation. repeat first [econstructor | set_solver]. Qed.
+  Next Obligation. repeat first [econstructor | init_cache; solve_goal]. Qed.
+
+  Lemma inv_test e_ly :
+    use_enum_layout_alg std_option_Option_els = Some e_ly →
+    ∃ ly, enum_layout_spec_has_layout std_option_Option_els ly.
+  Proof.
+    init_jcache.
+    intros.
+    inv_layout_alg.
+    open_jcache.
+    eexists.
+    solve_layout_alg; solve[fail].
+  Abort.
+
+  (** Untyped *)
+  Lemma inv_test2 ily :
+    use_layout_alg (UntypedSynType (IntSynType I32)) = Some ily →
+    ily = it_layout I32.
+  Proof.
+    init_jcache.
+    intros Hly. inv_layout_alg. reflexivity.
+  Abort.
+
+  (* Regression test: this should not diverge, ensured by the [DONT_ENRICH] markers we place in simplification *)
+  Lemma inv_test3 U_st ly1 ly2 :
+    syn_type_has_layout T_st ly1 →
+    syn_type_has_layout U_st ly2 →
+    True.
+  Proof.
+    init_jcache.
+    intros.
+    timeout 4 (intros; inv_layout_alg).
+  Abort.
+
+  (* Regression test: having the same assumption twice should not break anything. *)
+  Lemma inv_test5 T_ly1 T_ly2 :
+    syn_type_has_layout T_st T_ly1 →
+    syn_type_has_layout T_st T_ly2 →
+    T_ly1 = T_ly2.
+  Proof.
+    init_jcache.
+    intros ??.
+    inv_layout_alg.
+    reflexivity.
+  Abort.
+  Lemma inv_test4 ly1 ly2 :
+    syn_type_has_layout (s2_spec) ly1 →
+    syn_type_has_layout (s1_spec) ly2 →
+    ∃ s2_sl : struct_layout,
+    ∃ s1_sl : struct_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
+      sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
+  Proof.
+    init_jcache.
+    intros ? ?.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+  Lemma inv_test4' ly1 ly2 :
+    syn_type_has_layout (s1_spec) ly1 →
+    syn_type_has_layout (s2_spec) ly2 →
+    ∃ s2_sl : struct_layout,
+    ∃ s1_sl : struct_layout,
+    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
+      sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
+  Proof.
+    init_jcache.
+    intros ? ?.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+
+  Lemma inv_test_name_collision {T_rt} (T_ty : type T_rt) U_st {U_rt} (U_ty : type U_rt) ly1 ly2 ly3 ly4 :
+    syn_type_has_layout T_st ly1 →
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) ly2 →
+    syn_type_has_layout U_st ly3 →
+    syn_type_has_layout (ty_syn_type U_ty MetaNone) ly4 →
+    ty_syn_type T_ty MetaNone = T_st →
+    ty_syn_type U_ty MetaNone = U_st →
+    True.
+  Proof.
+    init_jcache.
+    (* Regression test: This should not diverge. *)
+    intros ?. inv_layout_alg.
+    intros ?. inv_layout_alg.
+    intros ?. inv_layout_alg.
+    intros ?. inv_layout_alg.
+  Abort.
+
+  (* Regression test: [st_of] is a notation now, not a definition. *)
+  Definition tuple1_sls (T0_st : syn_type) : struct_layout_spec :=
+   mk_sls "tuple1" [("0", T0_st)] StructReprRust.
+  Lemma inv_test_5 {U_rt} (U_ty : type U_rt) x :
+    use_layout_alg (tuple1_sls (st_of U_ty MetaNone)) = Some x → True.
+  Proof.
+    init_jcache.
+    intros H.
+    inv_layout_alg.
+    open_cache.
+  Abort.
+
+  Lemma inv_test_5 {U_rt} (U_ty : type U_rt) U_st x x1 :
+    use_layout_alg (tuple1_sls U_st) = Some x1 →
+    use_layout_alg (tuple1_sls (st_of U_ty MetaNone)) = Some x →
+    ty_syn_type U_ty MetaNone = U_st →
+    True.
+  Proof.
+    init_jcache.
+    intros H.
+    inv_layout_alg.
+    intros Ha.
+    inv_layout_alg.
+    open_cache.
+    intros ?.
+
+    simplify_eq/=.
+    open_cache.
+  Abort.
+End test.
+
+Section test.
+  Lemma inv_test `{!typeGS Σ} {rt} (T : type rt) s2_ly :
+    use_layout_alg (s2_spec (ty_syn_type T MetaNone)) = Some s2_ly →
+    use_layout_alg (s2_spec (ty_syn_type T MetaNone)) = Some s2_ly →
+    ∃ s2_sl : struct_layout, s2_ly = layout_of s2_sl ∧
+    ∃ s1_sl : struct_layout,
+    ∃ T_ly, syn_type_has_layout (ty_syn_type T MetaNone) T_ly ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
+      sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
+  Proof.
+    init_jcache.
+    intros Hly.
+    inv_layout_alg.
+    intros Ha.
+    inv_layout_alg.
+    open_cache.
+    (*eauto 10; solve[fail].*)
+  Abort.
+End test.
+
+(** layout solver *)
+Section test.
+  Context `{!typeGS Σ}.
+  Context (T_st : syn_type).
+
+  Lemma solve_layout_size_test1 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    ly_size T_ly * 42 ≤ ly_size (mk_array_layout T_ly 42).
+  Proof.
+    intros. solve_layout_size; solve[fail].
+  Abort.
+
+  Lemma solve_layout_size_test2 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    (size_of_st T_st * 43 ≤ MaxInt ISize)%Z →
+    ly_size (use_layout_alg' (ArraySynType T_st 42)) ≤ ly_size (use_layout_alg' (ArraySynType T_st 43)).
+  Proof.
+    intros. solve_layout_size; solve[fail].
+  Abort.
+
+  Lemma solve_layout_size_test3 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    size_of_st (UntypedSynType T_st) = ly_size T_ly.
+  Proof.
+    intros. solve_layout_size; solve [fail].
+  Abort.
+
+  Lemma solve_layout_size_test4 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    (size_of_st T_st * 43 ≤ MaxInt ISize)%Z →
+    size_of_st T_st > 0 →
+    ly_size (use_layout_alg' (ArraySynType T_st 42)) < ly_size (use_layout_alg' (ArraySynType T_st 43)).
+  Proof.
+    intros. solve_layout_size; solve[fail].
+  Abort.
+
+  Lemma solve_layout_alg_test1 :
+    use_layout_alg (IntSynType U16) = Some (it_layout U16).
+  Proof.
+    solve_layout_alg; solve [fail].
+  Abort.
+
+  Lemma solve_layout_alg_test1 s2_ly :
+    use_layout_alg (s2_spec T_st) = Some s2_ly →
+    syn_type_has_layout (s2_spec T_st) s2_ly.
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    solve_layout_alg; solve [fail].
+  Abort.
+
+  Lemma solve_layout_alg_test2 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    (ly_size T_ly * 42 ≤ MaxInt ISize)%Z →
+    syn_type_has_layout (ArraySynType T_st 42) (mk_array_layout T_ly 42).
+  Proof.
+    intros. solve_layout_alg; solve [fail].
+  Abort.
+
+  Lemma solve_layout_alg_test2' T_ly size :
+    use_layout_alg T_st = Some T_ly →
+    (ly_size T_ly * Z.to_nat size ≤ MaxInt ISize)%Z →
+    ∃ ly, syn_type_has_layout (ArraySynType T_st (Z.to_nat size)) ly.
+  Proof.
+    intros. eexists.
+    solve_layout_alg.
+    Unshelve. done.
+  Abort.
+
+  Lemma solve_layout_alg_test3 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    syn_type_has_layout (UntypedSynType T_st) T_ly.
+  Proof.
+    intros. solve_layout_alg; solve [fail].
+  Abort.
+
+  Lemma solve_layout_alg_test4 T_ly :
+    use_layout_alg T_st = Some T_ly →
+    ∃ ly, syn_type_has_layout (UntypedSynType T_st) ly.
+  Proof.
+    intros. eexists. solve_layout_alg; solve[fail].
+  Abort.
+
+  Lemma solve_layout_alg_test5 s2_ly :
+    use_layout_alg (s2_spec T_st) = Some s2_ly →
+    ∃ s2_sl, struct_layout_spec_has_layout (s2_spec T_st) s2_sl.
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    eexists. solve_layout_alg; solve[fail].
+  Abort.
+
+  Lemma solve_layout_alg_test6 s2_ly :
+    use_layout_alg (s2_spec T_st) = Some s2_ly →
+    syn_type_has_layout (s2_spec T_st) (use_layout_alg' (s2_spec T_st)).
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    solve_layout_alg; solve[fail].
+  Abort.
+
+  (*
+  Lemma solve_layout_alg_test7 s2_ly :
+    use_layout_alg (s2_spec T_st) = Some s2_ly →
+    struct_layout_spec_has_layout (s2_spec T_st) (use_struct_layout_alg' (s2_spec T_st)).
+  Proof.
+    intros. inv_layout_alg.
+    solve_layout_alg. solve[fail].
+  Abort.
+  *)
+
+  Lemma solve_layout_alg_test8 {T_rt} (T_ty : type T_rt) T_ly :
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) T_ly →
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) (use_layout_alg' (ty_syn_type T_ty MetaNone)).
+  Proof.
+    intros. inv_layout_alg.
+    solve_layout_alg; solve[fail].
+  Abort.
+
+  Lemma solve_layout_alg_test9 s2_ly :
+    use_layout_alg (s2_spec T_st) = Some s2_ly →
+    ∃ ly, syn_type_has_layout (UntypedSynType ((s2_spec T_st))) ly.
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    eexists. solve_layout_alg ; solve [fail].
+  Abort.
+
+  Lemma solve_layout_alg_test10 ly :
+    use_layout_alg (std_option_Option_els T_st) = Some ly →
+    ∃ ly, syn_type_has_layout (std_option_Option_els T_st) ly.
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    eexists. solve_layout_alg; solve[fail].
+  Abort.
+
+  Lemma solve_layout_alg_test11 ly ly' :
+    use_layout_alg (std_option_Option_els T_st) = Some ly →
+    use_layout_alg (std_option_Option_els (IntSynType U32)) = Some ly' →
+    ∃ ly1 ly2, syn_type_has_layout (std_option_Option_els T_st) ly1 ∧ syn_type_has_layout (std_option_Option_els (IntSynType U32)) ly2.
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    eexists _, _.
+    split; solve_layout_alg.
+    Unshelve. all: solve[fail].
+  Abort.
+End test.
+
+(** solve_op_alg *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma solve_op_alg_test1 :
+    use_op_alg (IntSynType U16) = Some (IntOp $ U16).
+  Proof.
+    solve_op_alg; solve [fail].
+  Abort.
+
+  Lemma solve_op_alg_test1 T_st ly :
+    syn_type_has_layout T_st ly →
+    use_op_alg T_st = Some (use_op_alg' T_st).
+  Proof.
+    init_jcache.
+    intros; inv_layout_alg.
+    solve_op_alg; solve [fail].
+  Abort.
+
+  Lemma solve_op_alg_test1 T_st s2_sl s1_sl :
+    use_struct_layout_alg (s2_spec T_st) = Some s2_sl →
+    use_struct_layout_alg (s1_spec T_st) = Some s1_sl →
+    use_op_alg (s2_spec T_st) = Some (StructOp s2_sl [PtrOp; StructOp s1_sl [use_op_alg' T_st; IntOp I32]]).
+  Proof.
+    init_jcache.
+    intros. inv_layout_alg.
+    solve_op_alg.
+    Unshelve. all: solve_goal.
+    all: solve [fail].
+  Abort.
+
+  Lemma solve_op_alg_test3 T_st T_ly :
+    use_layout_alg T_st = Some T_ly →
+    use_op_alg (UntypedSynType (T_st)) = Some $ UntypedOp T_ly.
+  Proof.
+    intros. solve_op_alg; solve [fail].
+  Abort.
+
+  Lemma solve_op_alg_test4 T_st T_ly :
+    use_layout_alg T_st = Some T_ly →
+    ∃ ot, use_op_alg (UntypedSynType (T_st)) = Some ot.
+  Proof.
+    intros. eexists. solve_op_alg; solve[fail].
+  Abort.
+
+  Lemma solve_op_alg_test5 {T_rt} (T_ty : type T_rt) T_ly :
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) T_ly →
+    use_op_alg (ty_syn_type T_ty MetaNone) = Some (use_op_alg' (ty_syn_type T_ty MetaNone)).
+  Proof.
+    intros. inv_layout_alg.
+    solve_op_alg; solve[fail].
+  Abort.
+
+  Lemma solve_op_alg_test6  :
+    use_op_alg' (IntSynType I32) = IntOp I32.
+  Proof.
+    intros. inv_layout_alg.
+    solve_op_alg; solve[fail].
+  Abort.
+
+  Lemma solve_op_alg_test7 :
+    use_op_alg CharSynType = Some CharOp.
+  Proof.
+    solve_op_alg; solve [fail].
+  Abort.
+End test.
+
+(** ty_has_op_type *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma solve_ty_has_op_type_array_canonical_test :
+    ty_has_op_type (array_t 3 (int I32))
+      (use_op_alg' (ArraySynType (IntSynType I32) 3)).
+  Proof.
+    solve_ty_has_op_type; solve [fail].
+  Abort.
+
+  Lemma solve_ty_has_op_type_array_direct_test :
+    ty_has_op_type (array_t 3 (int I32)) (ArrayOp (IntOp I32) 3).
+  Proof.
+    solve_ty_has_op_type; solve [fail].
+  Abort.
+End test.
+
+(** Copyable *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma copyable_array_test :
+    Copyable (array_t 3 (int I32)).
+  Proof. apply _. Abort.
+
+  Lemma copyable_empty_array_test :
+    Copyable (array_t 0 (int I32)).
+  Proof. apply _. Abort.
+End test.
+
+(** ty_allows_ops *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma ty_allows_ops_int :
+    ty_allows_ops (int I32).
+  Proof.
+    solve [unshelve solve_ty_allows; init_cache; solve_goal].
+  Abort.
+  Lemma ty_allows_ops_struct_1 ly :
+    struct_layout_spec_has_layout (s1_spec (IntSynType I32)) ly →
+    ty_allows_ops (struct_t (s1_spec (IntSynType I32)) +[int I32; int I32]).
+  Proof.
+    intros. inv_layout_alg.
+    solve_ty_allows; solve_goal.
+    all: solve [fail].
+  Abort.
+
+  Lemma ty_allows_ops_struct_2 {T_rt} (T_ty : type T_rt) `{!TySized T_ty} ly :
+    ty_allows_ops T_ty →
+    struct_layout_spec_has_layout (s1_spec (ty_syn_type T_ty MetaNone)) ly →
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) ly →
+    ty_allows_ops (struct_t (s1_spec (ty_syn_type T_ty MetaNone)) +[T_ty; int I32]).
+  Proof.
+    intros. inv_layout_alg.
+    unfold ty_allows_ops.
+    solve_ty_has_op_type.
+    Unshelve.
+    all: solve [fail].
+  Abort.
+
+  (* TODO more tests *)
+End test.
+
+(** solve_interpret_rust_type *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Context (testX : ∀ `{!typeGS Σ} {rt}, spec_with 0 [rt] (type rt)).
+
+  (* TODO: better error handling in the tactic above.
+      Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
+  Lemma interpret_rust_type_test0 {rt} (T_ty : type rt) κ :
+    ∃ ty, interpret_rust_type_pure_goal ([("κ", κ)]) (RSTLitType ["testX"] (RSTScopeInst [] [RSTInt I32] [])) ty ∧ ty = testX _ _ *[] *[(int I32)].
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    eexists _; split; [ solve_interpret_rust_type | ]. done.
+  Abort.
+
+  Lemma interpret_rust_type_test1 {rt} (T_ty : type rt) :
+    ∃ rt2 (ty2 : type rt2), interpret_rust_type_pure_goal [] (RSTInt I32) ty2.
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    eexists _, _. solve_interpret_rust_type; solve[fail].
+  Abort.
+
+  Lemma interpret_rust_type_test1 {rt} (T_ty : type rt) :
+    interpret_rust_type_pure_goal [] (RSTTyVar "T") T_ty.
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    solve_interpret_rust_type; solve[fail].
+  Abort.
+
+  Lemma interpret_rust_type_test2 {rt} (T_ty : type rt) :
+    interpret_rust_type_pure_goal [] (RSTInt I32) (int I32).
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    solve_interpret_rust_type; solve[fail].
+  Abort.
+
+  Lemma interpret_rust_type_test4 {rt} (T_ty : type rt) κ :
+    ∃ ty, interpret_rust_type_pure_goal [("κ", κ)] (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int I32)).
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    eexists _; split; [solve_interpret_rust_type | ]. done.
+  Abort.
+
+  Lemma interpret_rust_type_test5 :
+    interpret_rust_type_pure_goal [] (RSTInt U8) (int U8).
+  Proof.
+    init_tyvars (∅).
+    solve_interpret_rust_type; solve[fail].
+  Abort.
+
+  Context (testY : ∀ `{!typeGS Σ} {rt}, spec_with 1 [rt] (type rt)).
+
+  (* TODO: better error handling in the tactic above.
+      Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
+  Lemma interpret_rust_type_test6 {rt} (T_ty : type rt) κ :
+    ∃ ty, interpret_rust_type_pure_goal [("κ", κ)] (RSTLitType ["testY"] (RSTScopeInst ["κ"] [RSTInt I32] [])) ty ∧ ty = testY _ _ ( *[κ] : prod_vec lft 1)  *[(int I32)].
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    eexists _; split; [ solve_interpret_rust_type | ]. done.
+  Abort.
+
+
+  (*
+  Import enum_test.
+  Lemma bla {rt} (T_ty : type rt) ulft__ :
+    ∃ ty, interpret_rust_type_pure_goal (named_lft_update "plft5" ulft__ (named_lft_update "ulft__" ulft__ ∅)) (RSTLitType ["std_option_Option_ty"] [RSTTyVar "T"]) ty ∧ ty = std_option_Option_ty T_ty.
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    eexists _. split. { solve_interpret_rust_type. } done.
+  Abort.
+   *)
+  Definition boo (rt : RT) := rt.
+  Definition term1 : lit_term :=
+    AppDef ["boo"] [TypeRt (RSTInt I8)].
+
+  Goal True.
+  Proof.
+    init_tyvars (∅).
+    set (lfts := (∅ : gmap string lft)).
+
+    refine (let Ha := ltac:(interpret_lit_term lfts tyvars term1) in _);
+    simpl in Ha;
+    idtac
+    .
+  Abort.
+End test.
+Section test.
+
+  Record attrs_def : Type := mkAttr {
+
+  }.
+  Definition attrs_inst `{!typeGS Σ} (T_rt : RT) : attrs_def := mkAttr.
+  Definition Vec_t `{!typeGS Σ} {T_rt A_rt : RT} (x : attrs_def): spec_with 0 [T_rt; A_rt] (type Z) :=
+    (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : [_; _], int I8)
+  .
+
+  Context `{!typeGS Σ}.
+
+  Lemma interpret_rust_type_test7 {T_rt A_rt} κ (T_ty : type T_rt) (A_ty : type A_rt) :
+    ∃ ty, interpret_rust_type_pure_goal [("κ", κ)]
+      (RSTLitType ["Vec_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["attrs_inst"] [TypeRt (RSTTyVar "T")]])) ty ∧ ty = Vec_t (attrs_inst T_rt) ( *[] : prod_vec lft 0)  *[T_ty; A_ty].
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> $ <["A" := (existT _ A_ty)]> ∅).
+    eexists _; split.
+    { solve_interpret_rust_type. }
+    done.
+  Abort.
+End test.
+
+(** evar instantiation *)
+Section test_evar.
+  Context `{!typeGS Σ}.
+  Lemma test1 :
+    ensure_evar_instantiated_pure_goal 5 32.
+  Proof.
+    solve_ensure_evar_instantiated; solve[fail].
+  Abort.
+
+  Lemma test2 :
+    ∃ x : Z,
+    ensure_evar_instantiated_pure_goal x 32.
+  Proof.
+    let Hevar := create_protected_evar Z x in exists (protected Hevar).
+    solve_ensure_evar_instantiated; solve[fail].
+  Abort.
+
+  Lemma test3 :
+    ∃ x : plist type [Z : RT; Z: RT],
+    ensure_evars_instantiated_pure_goal (pzipl _ x) [existT (Z : RT) (int I32); existT (Z : RT) (int U32)].
+  Proof.
+    let Hevar := create_protected_evar (type Z) x in
+    let Hevar2 := create_protected_evar (type Z) x in
+    exists (-[protected Hevar; protected Hevar2]).
+    solve_ensure_evars_instantiated; solve [fail].
+  Abort.
+End test_evar.
+
+(** solve_lft_incl *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test0 E κ κ' κ'' c1 c2 :
+    lctx_lft_incl E [κ ⊑ₗ{c1} [κ; κ']; κ' ⊑ₗ{c2} [κ'']] (κ) (κ'').
+  Proof.
+    (* TODO this diverges because we always greedily expand κ.
+       But probably we cannot have cycles in the local context anyways. *)
+    (*solve_lft_incl; solve[fail].*)
+  Abort.
+
+  Lemma test1 E κ κ' κ'' c1 c2 :
+    lctx_lft_incl E [κ ⊑ₗ{c1} [κ' ; κ]; κ' ⊑ₗ{c2} [κ'']] (κ) (κ'').
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test2 κ κ' :
+    lctx_lft_incl [(* κ' ⊑ₑ κ'; *) κ ⊑ₑ κ'] [] κ κ'.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test2' {rt} (T : type rt) κ κ' :
+    lctx_lft_incl (ty_wf_E T ++ [(* κ' ⊑ₑ κ';*) κ ⊑ₑ κ']) [] κ κ'.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test3 E L κ :
+    lctx_lft_incl E L κ κ.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test4 E κ κ' κ'' κother c2 :
+    lctx_lft_incl E [κ ≡ₗ [κ'; κother]; κ' ⊑ₗ{c2} [κ'']] (κ) (κ'').
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test4' E κ κ' c2 :
+    lctx_lft_incl E [κ ⊑ₗ{c2} [κ']] (κ ⊓ κ) (κ ⊓ κ').
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test5 ϝ0 ϝ ulft_a :
+    lctx_lft_incl_list [ϝ0 ⊑ₑ ϝ; ϝ ⊑ₑ ulft_a] [ϝ ⊑ₗ{ 0} []] [ϝ0] [ulft_a] ∨ False.
+  Proof.
+    solve_lft_incl_list; solve[fail].
+  Abort.
+
+  Lemma test6 E κ κ' κ'' c2 :
+    lctx_lft_incl E [κ ≡ₗ [κ']; κ' ⊑ₗ{c2} [κ'']] (κ') (κ).
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test6_multi_rhs E κ κ2 κ3 ϝ :
+    lctx_lft_incl E [κ2 ≡ₗ [ϝ]; κ ≡ₗ [ϝ]; κ3 ≡ₗ [κ; κ2]] κ κ3.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test6_multi_rhs_reverse E κ κ2 κ3 ϝ :
+    lctx_lft_incl E [κ2 ≡ₗ [ϝ]; κ ≡ₗ [ϝ]; κ3 ≡ₗ [κ; κ2]] κ3 κ.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Definition pair_sls (T_st : syn_type) : struct_layout_spec := mk_sls "pair" [
+    ("p1", T_st);
+    ("p2", T_st)] StructReprRust.
+  Lemma test7 E L {T_rt} (T_ty : type T_rt) :
+    lctx_lft_incl E L (lft_intersect_list (ty_lfts (struct_t (pair_sls (ty_syn_type T_ty MetaNone)) +[T_ty; T_ty]))) (lft_intersect_list (ty_lfts T_ty)).
+  Proof.
+    (* TODO: we cannot handle this currently *)
+    (*solve_lft_incl.*)
+    (*refine (tac_lctx_lft_incl_init_list _ _ _ _ _).*)
+    (*simpl.*)
+  Abort.
+
+  Lemma test8 ϝ0 ϝ ulft_a :
+    lctx_lft_incl_list [ϝ0 ⊑ₑ ϝ; ϝ ⊑ₑ ulft_a] [ϝ ⊑ₗ{ 0} []] [ϝ0] [ϝ] ∨ False.
+  Proof.
+    solve_lft_incl_list; solve[fail].
+  Abort.
+
+  (* This demonstrates that we have to expand both external and local lifetimes from the same direction.
+     If we expand local lifetimes left to right and external lifetimes right to left,
+     we may fail to make any progress. *)
+  Lemma test9 κ κ' κ'' c1 :
+    lctx_lft_incl [κ ⊑ₑ κ'] [κ' ⊑ₗ{ c1} [κ'']] κ κ''.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test10 E κ κ' κ'' :
+    lctx_lft_incl E [κ ⊑ₗ κ'; κ' ⊑ₗ κ''] κ κ''.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+End test.
+
+(** solve_lft_alive *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 κ κ' c1 c2 :
+    lctx_lft_alive [] [κ ⊑ₗ{c1} [κ']; κ' ⊑ₗ{c2} []] κ.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test_dyn_incl κ κ' ϝ c :
+    lctx_lft_alive [] [κ ⊑ₗ κ'; ϝ ⊑ₗ{c} []; ϝ ⊑ₗ κ] κ'.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test2 κ κ' ϝ c :
+    lctx_lft_alive [κ ⊑ₑ κ'; ϝ ⊑ₑ κ] [ϝ ⊑ₗ{c} []] κ'.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test3 κ κ' κ'' ϝ c1 c2 :
+    lctx_lft_alive [κ ⊑ₑ κ'; ϝ ⊑ₑ κ ] [ϝ ⊑ₗ{c1} []; κ'' ⊑ₗ{c2} [κ'; ϝ]] κ''.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test3 κ κ' κ'' ϝ c1 :
+    lctx_lft_alive [κ ⊑ₑ κ'; ϝ ⊑ₑ κ ] [ϝ ⊑ₗ{c1} []; κ'' ≡ₗ [κ'; ϝ]] κ''.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  (* needs backtracking *)
+  Lemma test3 κ κ' ϝ c1 :
+    lctx_lft_alive [κ' ⊑ₑ κ; ϝ ⊑ₑ κ] [ϝ ⊑ₗ{c1} []] κ.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test4 κ κ' c1 c2 :
+    lctx_lft_alive [] [κ ⊑ₗ{c1} [κ']; κ' ⊑ₗ{c2} []] (κ ⊓ κ).
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test5 κ c1 :
+    Forall (lctx_lft_alive [] [κ ⊑ₗ{c1} []]) [κ; κ].
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test6 {W_rt} (W_ty : type W_rt) ϝ :
+    Forall (lctx_lft_alive ((ϝ ⊑ₑ ϝ) ::  ty_wf_E W_ty ++ ty_outlives_E W_ty ϝ) [ϝ ⊑ₗ{0} []]) (ty_lfts W_ty).
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test7 κ ulft_1 ϝ {T_rt : RT} (T_ty : type T_rt) :
+    lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] κ.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test8 κ ulft_1 ϝ {T_rt : RT} (T_ty : type T_rt) :
+    lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] static.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+End test.
+
+(** solve_lft_dead *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 κ :
+    lctx_lft_dead [] [ †ₗ κ] κ.
+  Proof.
+    solve_lft_dead; solve[fail].
+  Abort.
+
+  Lemma test2 κ κ' c :
+    lctx_lft_dead [] [κ' ⊑ₗ{c} []; †ₗ κ] κ.
+  Proof.
+    solve_lft_dead; solve[fail].
+  Abort.
+
+  Lemma test3 κ κ' :
+    Forall (lctx_lft_dead [] [ †ₗ κ; †ₗ κ']) [κ; κ'].
+  Proof.
+    solve_lft_dead; solve[fail].
+  Abort.
+
+  Lemma test4 κ :
+    check_lctx_lft_dead_pure_goal [] [ †ₗ κ] κ true.
+  Proof.
+    solve_check_lctx_lft_dead_goal; solve[fail].
+  Abort.
+
+  Lemma test5 κ :
+    check_lctx_lft_dead_pure_goal [] [] κ false.
+  Proof.
+    solve_check_lctx_lft_dead_goal; solve[fail].
+  Abort.
+End test.
+
+(** simplify_elctx *)
+Section test.
+
+  Section RawVec_sls.
+    Context `{!typeGS Σ}.
+
+    Definition RawVec_sls (T_st : syn_type) : struct_layout_spec := mk_sls "RawVec" [
+      ("ptr", PtrSynType);
+      ("cap", IntSynType USize);
+      ("_marker", UnitSynType)] StructReprRust.
+  End RawVec_sls.
+  Section Vec_sls.
+    Context `{!typeGS Σ}.
+
+    Definition Vec_sls (T_st : syn_type) : struct_layout_spec := mk_sls "Vec" [
+      ("buf", (syn_type_of_sls ((RawVec_sls (T_st)))));
+      ("len", IntSynType USize)] StructReprRust.
+  End Vec_sls.
+  Section RawVec_ty.
+    Context `{!typeGS Σ}.
+    Context {T_rt : RT}.
+    Context (T_ty : type (T_rt)).
+
+    Definition RawVec_ty : type (plist place_rfnRT [_ : RT; Z : RT; unit : RT]) := struct_t (RawVec_sls (ty_syn_type T_ty MetaNone)) +[
+      alias_ptr_t;
+      (int USize);
+      unit_t].
+    Definition RawVec_rt : RT := Eval hnf in rt_of RawVec_ty.
+    Global Typeclasses Transparent RawVec_ty.
+  End RawVec_ty.
+
+  Section RawVec_inv_t.
+    Context `{!typeGS Σ}.
+    Context {T_rt : RT}.
+    Context (T_ty : type (T_rt)).
+
+    Canonical Structure natRT := directRT nat.
+
+    Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)%type) := mk_ex_inv_def
+      (λ π (inner_rfn : RawVec_rt) '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
+      (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
+      (λ _ _ _, True)%I
+      true
+      _
+      ([])
+      ([])
+      _ _ _ _
+    .
+    Next Obligation.
+      intros π x [l cap]. iIntros "(%Heq & $)". iSplit; first done.
+      iPureIntro. intros _. subst. exists *[l; Z.of_nat cap; tt]. done.
+    Qed.
+    Next Obligation. ex_t_solve_persistent. Qed.
+    Next Obligation.
+      ex_plain_t_solve_shr_mono.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_shr.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_ghost_drop.
+    Qed.
+
+    Definition RawVec_inv_t : type ((loc * nat)%type) :=
+      ex_plain_t _ _ RawVec_inv_t_inv_spec (RawVec_ty T_ty).
+  End RawVec_inv_t.
+
+  Section Vec_ty.
+    Context `{!typeGS Σ}.
+    Context {T_rt : RT}.
+    Context (T_ty : type (T_rt)).
+
+    Definition Vec_ty : type (plist place_rfnRT [_ : RT; Z : RT]) := struct_t (Vec_sls (ty_syn_type T_ty MetaNone)) +[
+      (RawVec_inv_t (T_ty));
+      (int USize)].
+    Definition Vec_rt : RT := Eval hnf in rt_of Vec_ty.
+    Global Typeclasses Transparent Vec_ty.
+  End Vec_ty.
+
+  Section Vec_inv_t.
+    Context `{!typeGS Σ}.
+    Context {T_rt : RT}.
+    Context (T_ty : type (T_rt)).
+
+    Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) := mk_ex_inv_def
+      (λ π (inner_rfn : Vec_rt) 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
+      (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
+      (λ _ _ _, True)%I
+      true
+      _
+      ([] ++ (ty_lfts T_ty))
+      ([] ++ (ty_wf_E T_ty))
+      _ _ _ _
+    .
+    Next Obligation.
+      intros. iIntros "Hinv". iDestruct "Hinv" as (cap l) "(%Heq & Hcap & Hinv)".
+      iSplitL "Hcap Hinv". { iExists cap, l. by iFrame. }
+      iPureIntro. intros _. subst. exists *[(l, cap); Z.of_nat (length y)]. done.
+    Qed.
+    Next Obligation.
+      ex_t_solve_persistent.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_shr_mono.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_shr.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_ghost_drop.
+    Qed.
+
+    Definition Vec_inv_t : type (list (place_rfn T_rt)) :=
+      ex_plain_t _ _ Vec_inv_t_inv_spec (Vec_ty T_ty).
+    Hint Unfold Vec_inv_t : tyunfold.
+  End Vec_inv_t.
+
+  Lemma test1 `{!typeGS Σ} {T_rt : RT} (T_ty : type T_rt) xs γ x ulft__ ϝ : ∃ E',
+    ([] ++
+   tyl_wf_E
+     (map map_rtype
+        [existT (place_rfn (list (place_rfn T_rt)) * gname : RT)%type
+           (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
+        existT T_rt (T_ty, x)]) ++
+   tyl_outlives_E
+     (map map_rtype
+        [existT (place_rfn (list (place_rfn T_rt)) * gname : RT)%type
+           (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
+        existT T_rt (T_ty, x)]) ϝ ++ ty_wf_E unit_t ++ ty_outlives_E unit_t ϝ) = E' ∧ E' = E'.
+  Proof.
+    eexists. split; [solve [simplify_elctx] | done].
+  Abort.
+End test.
+
+(** reorder_elctx *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma test1 E0 E1 κ1 κ2 :
+    ∃ K0, (κ1 ⊑ₑ κ2) :: E0 ++ (κ2 ⊑ₑ κ1) :: E1 ≡ₚ K0 ∧ K0 = (κ1 ⊑ₑ κ2) :: (κ2 ⊑ₑ κ1) :: E0 ++ E1.
+  Proof.
+    eexists _. split.
+    { reorder_elctx. }
+    done.
+  Abort.
+
+  Lemma test1 E0 E1 κ1 κ2 :
+    ∃ K0, (κ1 ⊑ₑ κ2) :: E0 ++ E1 ++ [κ2 ⊑ₑ κ1] ≡ₚ K0 ∧ K0 = (κ1 ⊑ₑ κ2) :: (κ2 ⊑ₑ κ1) :: E0 ++ E1.
+  Proof.
+    eexists _. split.
+    { reorder_elctx. }
+    done.
+  Abort.
+
+  Lemma test_bor_kind_outlives_symbolic {rt rt0} (T_ty : type rt)
+      (ty0 : type rt0) ϝ k :
+    ∃ E',
+      ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty ++
+        bor_kind_outlives_elctx k ϝ ++ ty_wf_E ty0 ++ ty_outlives_E ty0 ϝ ≡ₚ E' ∧
+      E' = bor_kind_outlives_elctx k ϝ ++
+        ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty ++
+        ty_wf_E ty0 ++ ty_outlives_E ty0 ϝ.
+  Proof.
+    eexists. split; first reorder_elctx. done.
+  Abort.
+End test.
+
+(** optimize_elctx *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma test1 E1 κ1 κ2 :
+    ∃ K0, K0 ⊆+ (κ1 ⊑ₑ κ2) :: (κ1 ⊑ₑ κ1) :: (κ2 ⊑ₑ κ1) :: E1 ∧ K0 = (κ1 ⊑ₑ κ2) :: (κ2 ⊑ₑ κ1) :: E1.
+  Proof.
+    eexists _. split.
+    { optimize_elctx. }
+    done.
+  Abort.
+End test.
+
+
+(** solve_elctx_sat *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 κ κ' :
+    elctx_sat [κ ⊑ₑ κ'] [] [κ ⊑ₑ κ'; κ ⊑ₑ κ'].
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test2 κ κ' κ'' c1 :
+    elctx_sat [κ ⊑ₑ κ'] [κ' ⊑ₗ{c1} [κ'']] [κ ⊑ₑ κ''].
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test3 ϝ0 ϝ c1 :
+    elctx_sat ((ϝ0 ⊑ₑ ϝ) :: ty_outlives_E (uninit (IntSynType I32)) ϝ) [ϝ ⊑ₗ{c1} []] (ty_outlives_E (uninit (IntSynType I32)) ϝ).
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test4 ϝ0 ϝ :
+    elctx_sat [ϝ0 ⊑ₑ ϝ] [ϝ ⊑ₗ{ 0} []] (lfts_outlives_E (ty_lfts alias_ptr_t) ϝ0).
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test5 ϝ0 ϝ {rt} (T_ty : type rt) :
+    elctx_sat (ty_outlives_E (T_ty) ϝ ++ (ϝ0 ⊑ₑ ϝ) :: ty_outlives_E (T_ty) ϝ) [ϝ ⊑ₗ{ 0} []] ((ϝ ⊑ₑ ϝ) :: ty_outlives_E (T_ty) ϝ0).
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test6 ϝ0 ϝ {rt} (T_ty : type rt) :
+    elctx_sat ((ϝ0 ⊑ₑ ϝ) :: ty_wf_E (T_ty)) [ϝ ⊑ₗ{ 0} []] ((ϝ ⊑ₑ ϝ) :: ty_wf_E (T_ty)).
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test7 ϝ0 ϝ {rt} (T_ty : type rt) :
+    elctx_sat ((ϝ0 ⊑ₑ ϝ) :: ty_outlives_E T_ty ϝ ++ ty_wf_E (T_ty)) [ϝ ⊑ₗ{ 0} []] ((ϝ ⊑ₑ ϝ) :: ty_wf_E (T_ty)).
+  Proof. solve_elctx_sat; solve[fail]. Abort.
+  Lemma test8 ϝ0 ϝ {rt} (T_ty : type rt) :
+    elctx_sat ((ϝ ⊑ₑ ϝ0) :: ty_outlives_E T_ty ϝ ++ ty_outlives_E T_ty ϝ0 ++ ty_wf_E (T_ty)) [ϝ ⊑ₗ{ 0} []] (ty_outlives_E T_ty ϝ0).
+  Proof.
+    (* Test case demonstrates that we need to backtrack on using [ty_outlives_E] assumptions *)
+    solve_elctx_sat; solve[fail].
+  Abort.
+
+  Lemma test9 ϝ0 ϝ κ ulft_1 {T_rt U_rt} (T_ty : type T_rt) (U_ty : type U_rt) :
+    elctx_sat
+    ((ϝ0 ⊑ₑ κ)
+     :: (ϝ0 ⊑ₑ ϝ)
+        :: (ϝ ⊑ₑ ulft_1)
+           :: (ϝ ⊑ₑ ulft_1)
+              :: ty_outlives_E T_ty ϝ ++
+                 ty_wf_E T_ty ++
+                 ty_outlives_E U_ty ϝ ++
+                 ty_wf_E U_ty ++
+                 ty_outlives_E T_ty ulft_1 ++
+                 ty_outlives_E T_ty ϝ ++
+                 ty_wf_E U_ty ++
+                 ty_outlives_E U_ty ϝ)
+    [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []]
+    (ty_outlives_E U_ty ϝ0).
+  Proof.
+    solve_elctx_sat; solve[fail].
+  Abort.
+End test.
+
+(** solve_bor_kind_alive *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 E L :
+    lctx_bor_kind_alive E L (Owned).
+  Proof. solve[solve_bor_kind_alive]. Abort.
+
+  Lemma test2 κ γ c1 :
+    lctx_bor_kind_alive [] [κ ⊑ₗ{c1} []] (Uniq κ γ).
+  Proof. solve [solve_bor_kind_alive]. Abort.
+
+  Lemma test3 κ κ' c1 :
+    lctx_bor_kind_alive [κ' ⊑ₑ κ] [κ' ⊑ₗ{c1} []] (Shared κ).
+  Proof. solve[solve_bor_kind_alive]. Abort.
+End test.
+
+(** solve_place_update_kind_incl *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 E L :
+    lctx_place_update_kind_incl E L UpdStrong UpdStrong.
+  Proof. solve[solve_place_update_kind_incl]. Abort.
+
+  Lemma test2 κ γ c1 :
+    lctx_place_update_kind_incl [] [κ ⊑ₗ{c1} []] (UpdStrong ⊓ₚ Uniq κ γ) UpdStrong.
+  Proof. solve[solve_place_update_kind_incl]. Abort.
+
+  Lemma test3 κ γ κ' c1 :
+    lctx_place_update_kind_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (UpdStrong ⊓ₚ Uniq κ γ) (UpdUniq [κ']).
+  Proof. solve[solve_place_update_kind_incl]. Abort.
+
+  Lemma test4 κ κ' γ' c1 :
+    lctx_place_update_kind_incl [κ' ⊑ₑ static] [κ' ⊑ₗ{c1} [κ]] (UpdUniq [κ] ⊓ₚ Uniq κ' γ') (UpdUniq [κ] ⊓ₚ Uniq κ γ').
+  Proof. solve[solve_place_update_kind_incl]. Abort.
+
+  Lemma test5 κ κ' c1 :
+    lctx_place_update_kind_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (UpdUniq [κ]) UpdWeak.
+  Proof. solve[solve_place_update_kind_incl]. Abort.
+End test.
+
+(** solve_bor_kind_direct_incl *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 E L :
+    lctx_bor_kind_direct_incl E L (Owned) (Owned).
+  Proof. solve[solve_bor_kind_direct_incl]. Abort.
+
+  Lemma test2 κ γ c1 :
+    lctx_bor_kind_direct_incl [] [κ ⊑ₗ{c1} []] (Uniq κ γ) (Uniq κ γ).
+  Proof. solve[solve_bor_kind_direct_incl]. Abort.
+
+  Lemma test3 κ γ κ' c1 :
+    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Uniq κ γ) (Uniq κ' γ).
+  Proof. solve[solve_bor_kind_direct_incl]. Abort.
+
+  Lemma test4 κ κ' c1 :
+    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Shared κ) (Shared κ') .
+  Proof. solve[solve_bor_kind_direct_incl]. Abort.
+End test.
+
+(** solve_lft_alive_count *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 κ κ' :
+    lctx_lft_alive_count [] [κ ⊑ₗ{0} [κ']; κ' ⊑ₗ{0} []] κ [κ; κ'] [κ ⊑ₗ{1} [κ']; κ' ⊑ₗ{1} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test2 κ κ' ϝ c :
+    lctx_lft_alive_count [κ ⊑ₑ κ'; ϝ ⊑ₑ κ] [ϝ ⊑ₗ{c} []] κ' [ϝ] [ϝ ⊑ₗ{S c} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test3 κ κ' κ'' ϝ c1 c2 :
+    lctx_lft_alive_count [κ ⊑ₑ κ'; ϝ ⊑ₑ κ ] [ϝ ⊑ₗ{c1} []; κ'' ⊑ₗ{c2} [κ'; ϝ]] κ'' [κ''; ϝ; ϝ] [ϝ ⊑ₗ{2+ c1} []; κ'' ⊑ₗ{S c2} [κ'; ϝ]].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test3 κ κ' κ'' ϝ c1 :
+    lctx_lft_alive_count [κ ⊑ₑ κ'; ϝ ⊑ₑ κ ] [ϝ ⊑ₗ{c1} []; κ'' ≡ₗ[κ'; ϝ]] κ'' [ϝ; ϝ] [ϝ ⊑ₗ{2+ c1} []; κ'' ≡ₗ [κ'; ϝ]].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  (* needs backtracking *)
+  Lemma test3 κ κ' ϝ c :
+    lctx_lft_alive_count [κ' ⊑ₑ κ; ϝ ⊑ₑ κ] [ϝ ⊑ₗ{c} []] κ [ϝ] [ϝ ⊑ₗ{S c} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test4 κ κ' :
+    lctx_lft_alive_count [] [κ ⊑ₗ{0} [κ']; κ' ⊑ₗ{0} []] (κ ⊓ κ) [κ; κ'; κ; κ'] [κ ⊑ₗ{2} [κ']; κ' ⊑ₗ{2} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test5 {rt} (T_ty : type rt) ulft__ ϝ :
+    lctx_lft_alive_count ((ϝ ⊑ₑ ulft__) :: ty_outlives_E T_ty ϝ ++ ty_outlives_E T_ty ϝ ++ ty_outlives_E T_ty ulft__ ++ ty_wf_E T_ty) [ϝ ⊑ₗ{ 0} []] ulft__ [ϝ] [ϝ ⊑ₗ{ 1} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test6 κ κ' ϝ c :
+    lctx_lft_alive_count [] [κ ⊑ₗ κ'; ϝ ⊑ₗ{c} []; ϝ ⊑ₗ κ] κ' [ϝ]
+      [κ ⊑ₗ κ'; ϝ ⊑ₗ{S c} []; ϝ ⊑ₗ κ].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test_bor_kind_outlives {rt rt0} (T_ty : type rt) (ty0 : type rt0)
+      κ ϝ :
+    lctx_lft_alive_count
+      (bor_kind_outlives_elctx (Shared κ) ϝ ++
+        ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty ++
+        ty_wf_E ty0 ++ ty_outlives_E ty0 ϝ)
+      [ϝ ⊑ₗ{0} []] κ [ϝ] [ϝ ⊑ₗ{1} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+End test.
+
+(** solve_llctx_release_toks *)
+Section test.
+  Context `{!invGS Σ, !lctxGS Σ, !lftGS Σ lft_userE}.
+  (*Context `{typeGS Σ}.*)
+
+  Lemma test1 κ κ' :
+    llctx_release_toks [κ ⊑ₗ{1} [κ']; κ' ⊑ₗ{1} []] [κ; κ'] [κ ⊑ₗ{0} [κ']; κ' ⊑ₗ{0} []].
+  Proof.
+    solve_llctx_release_toks; solve[fail].
+  Abort.
+  Lemma test2 ϝ c :
+    llctx_release_toks [ϝ ⊑ₗ{S c} []] [ϝ] [ϝ ⊑ₗ{c} []].
+  Proof.
+    solve_llctx_release_toks; solve[fail].
+  Abort.
+  Lemma test3 κ' κ'' ϝ c1 c2 :
+    llctx_release_toks [ϝ ⊑ₗ{2+ c1} []; κ'' ⊑ₗ{S c2} [κ'; ϝ]] [κ''; ϝ; ϝ] [ϝ ⊑ₗ{c1} []; κ'' ⊑ₗ{c2} [κ'; ϝ]].
+  Proof.
+    solve_llctx_release_toks; solve[fail].
+  Abort.
+  Lemma test3 ϝ c :
+    llctx_release_toks [ϝ ⊑ₗ{S c} []] [ϝ] [ϝ ⊑ₗ{c} []].
+  Proof.
+    solve_llctx_release_toks; solve[fail].
+  Abort.
+  Lemma test4 κ κ' :
+    llctx_release_toks [κ ⊑ₗ{2} [κ']; κ' ⊑ₗ{2} []] [κ; κ'; κ; κ'] [κ ⊑ₗ{0} [κ']; κ' ⊑ₗ{0} []].
+  Proof.
+    solve_llctx_release_toks; solve[fail].
+  Abort.
+  Lemma test5 κ κ' κ2 :
+    llctx_release_toks [κ ⊑ₗ{2} [κ']; κ' ⊑ₗ{2} []] [κ2; κ; κ'; κ; κ'; κ2] [κ ⊑ₗ{0} [κ']; κ' ⊑ₗ{0} []].
+  Proof.
+    solve_llctx_release_toks; solve[fail].
+  Abort.
+End test.
+
+
+(** solve_llctx_find_llft *)
+Section test.
+  Lemma lft_find_test (κ κ' κ2 : lft) :
+    ∃ L', llctx_find_llft [κ2 ≡ₗ []; κ ⊑ₗ{1} []; κ' ⊑ₗ{0} [κ]] κ' LlctxFindLftFull [κ] L' ∧ L' = [κ2 ≡ₗ []; κ ⊑ₗ{1} []].
+  Proof.
+    eexists. split; first solve[solve_llctx_find_llft]. done.
+  Abort.
+
+  Lemma lft_find_test2 (κ κ' κ2 : lft) :
+    ∃ L' κs, llctx_find_llft [κ2 ≡ₗ []; κ ⊑ₗ{1} []; κ' ⊑ₗ{0} [κ]] κ2 LlctxFindLftAlias κs L' ∧ κs = [].
+  Proof.
+    eexists _, _.
+    split; first solve[solve_llctx_find_llft]. done.
+  Abort.
+
+  Lemma lft_find_test3 (κ κ' κ2 : lft) :
+    ∃ L' κs, llctx_find_llft [κ2 ≡ₗ []; κ ⊑ₗ{1} []; κ' ⊑ₗ{0} [κ]] κ LlctxFindLftOwned κs L' ∧ κs = [].
+  Proof.
+    eexists _, _.
+    split; first solve[solve_llctx_find_llft]. done.
+  Abort.
+End test.
+
+(** solve_llctx_remove_dead_aliases *)
+Section test.
+  Lemma llctx_remove_dead_aliases_test_1 κ :
+    ∃ L2, llctx_remove_dead_aliases [] L2 κ ∧ L2 = [].
+  Proof.
+    eexists; split; first solve_llctx_remove_dead_aliases; last done; solve [fail].
+  Abort.
+
+  Lemma llctx_remove_dead_aliases_test_2 κ1 κ2 κ3  :
+    ∃ L2, llctx_remove_dead_aliases [κ1 ⊑ₗ{0} []; κ2 ≡ₗ [κ3]] L2 κ3 ∧ L2 = [κ1 ⊑ₗ{0} []; †ₗ κ2].
+  Proof.
+    eexists; split; first solve_llctx_remove_dead_aliases; last done; solve [fail].
+  Abort.
+
+End test.
+
+(** solve_place_update_kind_outlives *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma lctx_place_update_kind_outlives_test1 κ1 κ2 :
+    lctx_place_update_kind_outlives [] [κ1 ⊑ₗ{0} [κ2]] (UpdUniq [κ2]) [κ1].
+  Proof.
+    solve_place_update_kind_outlives; solve [fail].
+  Abort.
+End test.
+
+
+(** solve_inhabited *)
+Section test.
+  Context (T : Type) `{!Inhabited T}.
+  Inductive inh_test1 :=
+  | None
+  | Some (x : T).
+
+  Instance: Inhabited inh_test1.
+  Proof. solve_inhabited; done. Abort.
+
+  Inductive inh_test2 :=
+  | inA (x : nat)
+  | inB (y : Z).
+
+  Instance: Inhabited inh_test2.
+  Proof. solve_inhabited; done. Abort.
+End test.

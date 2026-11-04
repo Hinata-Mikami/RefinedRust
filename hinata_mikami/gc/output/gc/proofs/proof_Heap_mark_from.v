@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_mark_from.
 From hinata_mikami.extra_proofs.gc Require Import heap_lemmas.
@@ -8,12 +8,29 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
+(* Avoid the admitted Vec ghost resolvers in the upstream specifications.
+   These functions carry concrete element refinements and need no resolution. *)
+#[local] Remove Hints
+  generated_specs_vec.resolve_ghost_Vec_T_owned_inst
+  generated_specs_vec.resolve_ghost_Vec_T_uniq_inst : typeclass_instances.
+
+Local Lemma resolve_ghost_Vec_concrete
+    {T_rt : RT} (T_ty : type T_rt) {A_rt : RT} (A_ty : type A_rt)
+    A_attrs π E L rm lb l bk rs T :
+  T L (#rs) True false ⊢
+  resolve_ghost π E L rm lb l
+    (◁ (Vec_inv_t T_rt A_rt A_attrs <TY> T_ty <TY> A_ty <INST!>)) bk (#rs) T.
+Proof. apply resolve_ghost_ofty_default. Qed.
+Local Definition resolve_ghost_Vec_concrete_inst :=
+  [instance @resolve_ghost_Vec_concrete].
+Local Existing Instance resolve_ghost_Vec_concrete_inst | 1.
+
 Lemma Heap_mark_from_proof (π : thread_id) :
   Heap_mark_from_lemma π.
 Proof.
   Heap_mark_from_prelude.
 
-  rep <-! liRStep; liShow.
+  1: rep <-! <3000 liRStep; liShow.
 
   iRename select
     ([∗ list] k ↦ x ∈ (id <$> h),
@@ -69,7 +86,7 @@ Proof.
 
   apply_update updateable_strip_guards.
 
-  rep <-! liRStep; liShow.
+  1: rep <-! <3000 liRStep; liShow.
 
   {
     iRename select
@@ -80,7 +97,7 @@ Proof.
 
     iRevert "Hnode Hfree Hclose".
 
-    rep <-! liRStep; liShow.
+    1: rep <-! <3000 liRStep; liShow.
 
     rep liRStep; liShow.
 
@@ -129,13 +146,24 @@ Proof.
     iIntros "Hnode Hfree Hclose".
     rep liRStep; liShow.
 
-    iApply
-    (prove_with_subtype_big_sepL_acc
-      _ _ _ _ h P i vi _
-      with "Hclose").
-    
-    unfold P.
+    iApply (prove_with_subtype_stratify l).
+    rep liRStep; liShow.
 
+    (* Stratification returns the folded node as an implication premise.
+       Introduce it before rebuilding the list ownership. *)
+    iApply prove_with_subtype_default.
+    iSplitL "Hfree Hclose Hcred".
+    {
+      iIntros "Hnode _".
+      iApply "Hclose".
+      unfold P.
+      iExists l, nexti, true.
+      iFrame "Hfree".
+      iSplit; first done.
+      iSplit; first done.
+      iSplit; first done.
+      iApply guarded_intro. iFrame.
+    }
     rep liRStep; liShow.
 
   }
@@ -148,7 +176,7 @@ Proof.
     iAcquireCredits as "Hcred".
     liShow.
 
-    rep <-! liRStep; liShow.
+    1: rep <-! <3000 liRStep; liShow.
 
     - rep liRStep; liShow.
       liInst Hevar_x1 h.
@@ -205,7 +233,7 @@ Proof.
       {
         iApply
         (prove_with_subtype_big_sepL_acc
-          _ _ _ _ h Pnew i vi _
+          _ _ _ _ h Pnew i vi _ _
           with "Hclose").
 
         unfold Pnew.
@@ -229,9 +257,10 @@ Proof.
         {
           intro Heq.
           subst nexti.
-          apply H17.
-          unfold NULL_loc.
-          reflexivity.
+          match goal with
+          | Hnonnull : loc_a NULL_loc ≠ 0 |- _ => apply Hnonnull
+          end.
+          unfold NULL_loc. reflexivity.
         }
 
         assert (Hnext_mem : nexti ∈ h0).
@@ -320,7 +349,7 @@ Proof.
           {
             rewrite list_lookup_insert_eq.
             - done.
-            - exact H14.
+            - lia.
           }
 
           iAssert (Pnew i vi)%I

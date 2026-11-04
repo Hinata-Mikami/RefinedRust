@@ -1,55 +1,107 @@
 {
   cargoRefinedRust,
   pkgs,
-  rrPkgs,
-}: {
-  libDeps ? [],
+  stdlib,
+}:
+{
+  libDeps ? [ ],
   opam-name ? pname,
   pname,
-  propagatedBuildInputs ? [],
+  propagatedBuildInputs ? [ ],
   src,
+  generateFiles ? true,
   useDune ? true,
   withStdlib ? true,
   withTheories ? false,
-  cargoRefinedRustArgs ? {},
-  rocqArgs ? {},
-  rocqTheoriesArgs ? {},
+  cargoRefinedRustArgs ? { },
+  rocqArgs ? { },
+  rocqTheoriesArgs ? { },
   ...
-} @ origArgs: let
-  args = let
-    fullArgs = origArgs // {inherit cargoRefinedRustArgs libDeps opam-name pname propagatedBuildInputs rocqArgs rocqTheoriesArgs src useDune withTheories;};
-    commonRemoveAttrs = ["cargoRefinedRustArgs" "propagatedBuildInputs" "rocqArgs" "rocqTheoriesArgs" "withTheories"];
-  in rec {
-    cargo = builtins.removeAttrs fullArgs (commonRemoveAttrs ++ ["opam-name" "useDune"]);
-    rocq = builtins.removeAttrs fullArgs (commonRemoveAttrs ++ ["cargoArtifacts" "cargoExtraArgs" "cargoVendorDir" "libDeps" "src" "target" "withStdlib"]);
-    rocqTheories = builtins.removeAttrs rocq ["pname" "opam-name"];
-  };
+}@origArgs:
+let
+  args =
+    let
+      fullArgs = origArgs // {
+        inherit
+          cargoRefinedRustArgs
+          libDeps
+          opam-name
+          propagatedBuildInputs
+          rocqArgs
+          rocqTheoriesArgs
+          src
+          useDune
+          generateFiles
+          withTheories
+          ;
+      };
+      commonRemoveAttrs = [
+        "cargoRefinedRustArgs"
+        "pname"
+        "propagatedBuildInputs"
+        "rocqArgs"
+        "rocqTheoriesArgs"
+        "withTheories"
+      ];
+    in
+    rec {
+      cargo = builtins.removeAttrs fullArgs (
+        commonRemoveAttrs
+        ++ [
+          "opam-name"
+          "useDune"
+          "generateFiles"
+        ]
+      );
+      rocq = builtins.removeAttrs fullArgs (
+        commonRemoveAttrs
+        ++ [
+          "cargoArtifacts"
+          "cargoExtraArgs"
+          "cargoVendorDir"
+          "libDeps"
+          "src"
+          "toolchain"
+          "generateFiles"
+          "withStdlib"
+        ]
+      );
+      rocqTheories = builtins.removeAttrs rocq [ "opam-name" ];
+    };
 
-  theories = pkgs.rocqPackages.mkRocqDerivation ({
+  theories = pkgs.rocqPackages.mkRocqDerivation (
+    {
       src = "${src}/theories";
       propagatedBuildInputs =
-        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
-        ++ libDeps
-        ++ propagatedBuildInputs;
+        (pkgs.lib.optionals withStdlib [ stdlib ]) ++ libDeps ++ propagatedBuildInputs;
 
-      pname = pname + "-theories";
+      pname = "refinedrust-" + pname + "-theories";
       opam-name = opam-name + "-theories";
     }
-    // args.rocqTheories // rocqTheoriesArgs);
+    // args.rocqTheories
+    // rocqTheoriesArgs
+  );
 in
-  pkgs.rocqPackages.mkRocqDerivation ({
-      src = cargoRefinedRust (args.cargo // cargoRefinedRustArgs);
-      propagatedBuildInputs =
-        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
-        ++ libDeps
-        ++ propagatedBuildInputs
-        ++ (pkgs.lib.optionals withTheories [theories]);
+pkgs.rocqPackages.mkRocqDerivation (
+  {
+    src = if generateFiles then cargoRefinedRust (args.cargo // cargoRefinedRustArgs) else src;
+    pname = "refinedrust-" + pname;
 
-      postInstall = let
-        name = pkgs.lib.replaceStrings ["-" "_"] ["/" "/"] pname;
-      in ''
+    propagatedBuildInputs =
+      (pkgs.lib.optionals withStdlib [ stdlib ])
+      ++ libDeps
+      ++ propagatedBuildInputs
+      ++ (pkgs.lib.optionals withTheories [ theories ]);
+
+    postInstall =
+      let
+        name = pkgs.lib.replaceStrings [ "-" "_" ] [ "/" "/" ] pname;
+      in
+      ''
         mkdir -p $out/share/${name}
         find . -name "interface.rrlib" -exec cp {} $out/share/${name}/. \;
       '';
-    }
-    // args.rocq // rocqArgs)
+  }
+  // args.rocq
+  // rocqArgs
+)

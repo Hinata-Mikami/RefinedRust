@@ -1,0 +1,34 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.closures.closures.generated Require Export generated_specs_closures.
+From rrstd.cmp.theories Require Export ordering.
+From rrstd.option.option.generated Require Export generated_specs_option.
+From rrstd.cmp.cmp Require Export generated_code_cmp generated_specs_cmp.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition Ordering_as_raw_lemma (π : thread_id) : Prop :=
+  syn_type_is_layoutable ((Ordering_els : syn_type)) →
+  ⊢ typed_function π (Ordering_as_raw_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_as_raw -[] -[]) (λ π, (True)
+  ∗ ((trait_incl_of_Ordering_as_raw-[] -[]) π))).
+End proof.
+
+Ltac Ordering_as_raw_prelude :=
+  unfold Ordering_as_raw_lemma;
+  set (FN_NAME := FUNCTION_NAME "Ordering_as_raw");
+  intros;
+  iStartProof;
+  let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
+  let self := fresh "self" in
+  start_function "Ordering_as_raw" ϝ fid ( [] ) ( [] ) (  self ) ( self );
+  intros arg_self;
+  let π := get_π in
+  let Σ := get_Σ in
+  specialize (pose_bb_inv (PolyNil)) as loop_map;
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
+  init_tyvars ( ∅ );
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

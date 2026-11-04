@@ -6,14 +6,90 @@ use std::collections::HashMap;
 use std::mem;
 
 use log::trace;
-use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rr_rustc_interface::middle::{metadata, ty};
 use rr_rustc_interface::{hir, span};
 
 use crate::{types, unification};
 
+fn try_resolve_assoc_item<T>(tcx: ty::TyCtxt<'_>, parent: DefId, segment: &T) -> Option<DefId>
+where
+    T: AsRef<str>,
+{
+    // Trait paths enter the trait's associated-item namespace for the final segment, e.g.
+    // `core::cmp::PartialEq::eq` resolves `eq` as an associated item of `PartialEq`.
+    let name = span::Symbol::intern(segment.as_ref());
+    tcx.associated_items(parent)
+        .filter_by_name_unhygienic(name)
+        .next()
+        .map(|item| item.def_id)
+}
+
+const fn can_descend_with_module_children(def_kind: hir::def::DefKind) -> bool {
+    // `module_children` is only valid for containers that rustc treats as modules in name
+    // resolution. Other namespaces, such as trait associated items, need dedicated queries.
+    matches!(def_kind, hir::def::DefKind::Mod | hir::def::DefKind::Enum | hir::def::DefKind::ForeignMod)
+}
+
+const fn is_usable_path_item(def_kind: hir::def::DefKind) -> bool {
+    // Shim paths refer to Rust items. Same-named helper macros can appear in module children but
+    // are not valid targets for shims.
+    !matches!(def_kind, hir::def::DefKind::Macro(_))
+}
+
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.
+pub(crate) fn try_resolve_did_direct_in_crate<T>(
+    tcx: ty::TyCtxt<'_>,
+    krate: CrateNum,
+    path: &[T],
+) -> Option<DefId>
+where
+    T: AsRef<str>,
+{
+    let krate = DefId {
+        krate,
+        index: hir::def_id::CRATE_DEF_INDEX,
+    };
+
+    let mut items: &[metadata::ModChild] = tcx.module_children(krate);
+    let mut path_it = path.iter().peekable();
+
+    while let Some(segment) = path_it.next() {
+        for item in mem::take(&mut items) {
+            let item: &metadata::ModChild = item;
+            if item.ident.name.as_str() == segment.as_ref() {
+                let did = item.res.def_id();
+                let def_kind = tcx.def_kind(did);
+                if path_it.peek().is_none() {
+                    if is_usable_path_item(def_kind) {
+                        return Some(did);
+                    }
+                    continue;
+                }
+
+                if matches!(def_kind, hir::def::DefKind::Trait | hir::def::DefKind::TraitAlias) {
+                    if path_it.len() != 1 {
+                        return None;
+                    }
+                    let assoc_segment = path_it.peek()?;
+                    if let Some(assoc_did) = try_resolve_assoc_item(tcx, did, assoc_segment) {
+                        return Some(assoc_did);
+                    }
+                    // Reexports can leave multiple children with the same name. A same-named trait
+                    // is only the right candidate if it provides the requested associated item.
+                    continue;
+                }
+                if can_descend_with_module_children(def_kind) {
+                    items = tcx.module_children(did);
+                    break;
+                }
+            }
+        }
+    }
+    None
+}
+
 pub(crate) fn try_resolve_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
@@ -21,36 +97,81 @@ where
     tcx.crates(())
         .iter()
         .find(|&&krate| tcx.crate_name(krate).as_str() == path[0].as_ref())
-        .and_then(|krate| {
-            let krate = DefId {
-                krate: *krate,
-                index: hir::def_id::CRATE_DEF_INDEX,
-            };
+        .and_then(|krate| try_resolve_did_direct_in_crate(tcx, *krate, &path[1..]))
+}
 
-            let mut items: &[metadata::ModChild] = tcx.module_children(krate);
-            let mut path_it = path.iter().skip(1).peekable();
+/// If we want to search in the local crate, we cannot use `module_children`, but need to use
+/// `module_children_local`.
+pub(crate) fn try_resolve_did_direct_in_local_crate<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
+where
+    T: AsRef<str>,
+{
+    let krate = DefId {
+        krate: LOCAL_CRATE,
+        index: hir::def_id::CRATE_DEF_INDEX,
+    };
+    let krate = krate.as_local().unwrap();
 
-            while let Some(segment) = path_it.next() {
-                for item in mem::take(&mut items) {
-                    let item: &metadata::ModChild = item;
-                    if item.ident.name.as_str() == segment.as_ref() {
-                        if path_it.peek().is_none() {
-                            return Some(item.res.def_id());
-                        }
+    let mut items: &[metadata::ModChild] = tcx.module_children_local(krate);
+    let mut path_it = path.iter().peekable();
 
-                        items = tcx.module_children(item.res.def_id());
-                        break;
+    while let Some(segment) = path_it.next() {
+        for item in mem::take(&mut items) {
+            let item: &metadata::ModChild = item;
+            if item.ident.name.as_str() == segment.as_ref() {
+                let did = item.res.def_id();
+                let def_kind = tcx.def_kind(did);
+                if path_it.peek().is_none() {
+                    if is_usable_path_item(def_kind) {
+                        return Some(did);
                     }
+                    continue;
+                }
+
+                if matches!(def_kind, hir::def::DefKind::Trait | hir::def::DefKind::TraitAlias) {
+                    if path_it.len() != 1 {
+                        return None;
+                    }
+                    let assoc_segment = path_it.peek()?;
+                    if let Some(assoc_did) = try_resolve_assoc_item(tcx, did, assoc_segment) {
+                        return Some(assoc_did);
+                    }
+                    // Reexports can leave multiple children with the same name. A same-named trait
+                    // is only the right candidate if it provides the requested associated item.
+                    continue;
+                }
+                if can_descend_with_module_children(def_kind)
+                    && let Some(did) = did.as_local()
+                {
+                    items = tcx.module_children_local(did);
+                    break;
                 }
             }
-            None
-        })
+        }
+    }
+    None
 }
 
 pub(crate) fn try_resolve_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
+    // current crate?
+    if path[0].as_ref() == "crate" {
+        return try_resolve_did_direct_in_local_crate(tcx, &path[1..]);
+    }
+
+    // relative to global root (::...) ?
+    if path[0].as_ref() == "" {
+        return try_resolve_did_direct(tcx, &path[1..]);
+    }
+
+    // otherwise, first resolve in current crate
+    if let Some(did) = try_resolve_did_direct_in_local_crate(tcx, path) {
+        return Some(did);
+    }
+
+    // otherwise, try relative to global root
     if let Some(did) = try_resolve_did_direct(tcx, path) {
         return Some(did);
     }
@@ -122,10 +243,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
             trace!("found impl {:?}", impl_ref);
             if let Some(solution) = solution {
-                println!(
-                    "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                    trait_did, for_type, solution, impl_ref.def_id,
-                );
+                tcx.dcx().span_warn(tcx.def_span(trait_did), format!("Library import: ambiguous resolution for impl of trait on type {:?}; solution {:?} but found also {:?}", for_type, solution, impl_ref.def_id));
             } else {
                 solution = Some(*did);
             }
@@ -146,7 +264,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
         let mut solution = None;
         for did in defs {
-            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(*did).instantiate_identity();
+            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(*did).instantiate_identity().skip_norm_wip();
             let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
             trace!("trying to unify types: {for_type:?} and {impl_self_ty:?}");
@@ -173,10 +291,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
                 trace!("found impl {:?}", impl_ref);
                 if let Some(solution) = solution {
-                    println!(
-                        "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                        trait_did, for_type, solution, impl_ref.def_id,
-                    );
+                    tcx.dcx().span_warn(tcx.def_span(trait_did), format!("Library import: ambiguous resolution for impl of trait on type {:?}; solution {:?} but found also {:?}", for_type, solution, impl_ref.def_id));
                 } else {
                     solution = Some(*did);
                 }
@@ -216,13 +331,21 @@ where
 
                     trace!("taking path: {:?}", segment.as_ref());
                     if path_it.peek().is_none() {
-                        return Some(item.res.def_id());
+                        let did = item.res.def_id();
+                        if is_usable_path_item(tcx.def_kind(did)) {
+                            return Some(did);
+                        }
+                        continue;
                     }
 
                     // just the method remaining
                     if path_it.len() != 1 {
-                        items = tcx.module_children(item.res.def_id());
-                        break;
+                        let did = item.res.def_id();
+                        if can_descend_with_module_children(tcx.def_kind(did)) {
+                            items = tcx.module_children(did);
+                            break;
+                        }
+                        return None;
                     }
 
                     let did: DefId = item.res.def_id();

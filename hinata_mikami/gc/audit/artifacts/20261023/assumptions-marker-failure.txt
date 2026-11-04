@@ -1,0 +1,1014 @@
+
+Rocq < 
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-90:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-91:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-89:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_preserves_true"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_preserves_true"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-97:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_marks_start"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-95:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_marks_start"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.nodup_locs_lookup_unique"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.nodup_locs_lookup_unique"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.all_unmarked_closed_except"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.all_unmarked_closed_except"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-107:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-105:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_complete"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_complete"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_exact_root"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_exact_root"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_0"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-90:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_0"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-97:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_length"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-95:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_length"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-90:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_length"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-88:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_length"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-85:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_0"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-83:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_0"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_true"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_true"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-93:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_true"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-91:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_true"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_false"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-99:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_false"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_false"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_false"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-91:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.elem_of_keep_marked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-89:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.elem_of_keep_marked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.simplify_goal_big_sepL_app"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.simplify_goal_big_sepL_app"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-107:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.prove_with_subtype_big_sepL_acc"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-105:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.prove_with_subtype_big_sepL_acc"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.NoDup_snoc_local"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-90:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.NoDup_snoc_local"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_full_ne"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-90:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_full_ne"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-95:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_nz_full_ne"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-93:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_nz_full_ne"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_length_same_mask"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_length_same_mask"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-93:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_NoDup"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-91:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_NoDup"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_Forall"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_Forall"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-111:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.marks_closed_keep_marked_next_valid"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-109:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.marks_closed_keep_marked_next_valid"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.aligned_nodes_cons"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.aligned_nodes_cons"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_cons"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_cons"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_zero_cons"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-99:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_zero_cons"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_init"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_init"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_step"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_step"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_done"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_done"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.elem_of_keep_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.elem_of_keep_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_kept_exact_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_kept_exact_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-107:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reachable_exact_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-105:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reachable_exact_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-103:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition_disjoint"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition_disjoint"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-103:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_exact"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_exact"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-103:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_nodup"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_nodup"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-109:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_unreachable"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-107:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_unreachable"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-108:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair_intro"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair_intro"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-112:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_unprocessed_marks_unchanged"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-110:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_unprocessed_marks_unchanged"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-103:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reset_all_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reset_all_unmarked"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_origin"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_origin"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-95:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_root"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-93:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_root"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-103:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_forward"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_forward"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_backward"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_backward"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-107:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_preserves_reachability"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-105:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_preserves_reachability"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_post_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_post_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-95:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_exact"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-93:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_exact"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-99:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.mark_from_rel_length"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-97:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.mark_from_rel_length"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-112:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_reachability_preserved"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-110:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_reachability_preserved"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-108:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_fields_preserved_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_fields_preserved_filter"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_resets_mark_example"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_resets_mark_example"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_alloc.Heap_alloc_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Heap_alloc.Heap_alloc_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_mark.Heap_mark_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Heap_mark.Heap_mark_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_mark_from.Heap_mark_from_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Heap_mark_from.Heap_mark_from_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_mark_one.Heap_mark_one_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Heap_mark_one.Heap_mark_one_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_new.Heap_new_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-92:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Heap_new.Heap_new_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_sweep.Heap_sweep_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Heap_sweep.Heap_sweep_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-108:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Node_set_marked.Node_set_marked_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Node_set_marked.Node_set_marked_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Node_set_next.Node_set_next_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_Node_set_next.Node_set_next_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_drop_glue_Heap.drop_glue_Heap_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_drop_glue_Heap.drop_glue_Heap_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-96:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_make_node.make_node_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-94:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_make_node.make_node_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-108:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.proof_read_next_value.read_next_value_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.proof_read_next_value.read_next_value_proof"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-155:
+> Eval compute in "RR-BEGIN|refinedrust.examples.gc.proofs.trait_incl_drop_glue_Heap_spec_subsumption_correct.drop_glue_Heap_spec_subsumption_correct"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq < Toplevel input, characters 16-153:
+> Eval compute in "RR-END|refinedrust.examples.gc.proofs.trait_incl_drop_glue_Heap_spec_subsumption_correct.drop_glue_Heap_spec_subsumption_correct"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 
+Rocq < Toplevel input, characters 16-88:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.observed_step_erases"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-86:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.observed_step_erases"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-101:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.every_step_has_unique_observation"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-99:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.every_step_has_unique_observation"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-90:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.observed_call_resolves"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-88:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.observed_call_resolves"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-91:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_dead_branch_calls"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-89:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_dead_branch_calls"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-91:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_live_branch_calls"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-89:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_live_branch_calls"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_uses_selected_pointer"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-102:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_uses_selected_pointer"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-106:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_and_drop_share_box_slot"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-104:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_and_drop_share_box_slot"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-100:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_has_two_calls"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-98:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_has_two_calls"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Toplevel input, characters 16-95:
+> Eval compute in "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_rejected"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < Closed under the global context
+
+Rocq < Toplevel input, characters 16-93:
+> Eval compute in "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_rejected"%string.
+>                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unknown scope delimiting key string.
+
+Rocq < 

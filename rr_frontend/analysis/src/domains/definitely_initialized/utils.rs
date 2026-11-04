@@ -10,8 +10,8 @@
 use std::cmp::Ordering;
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_utils::stable_comparator;
 
 /// Expands a place `x.f.g` of type struct into a vector of places for
 /// each of the struct's fields `{x.f.g.f, x.f.g.g, x.f.g.h}`. If
@@ -36,7 +36,8 @@ fn expand_struct_place<'tcx>(
             let variant = typ.variant_index.map_or_else(|| def.non_enum_variant(), |i| def.variant(i));
             for (index, field_def) in variant.fields.iter().enumerate() {
                 if Some(index) != without_field {
-                    let field_place = tcx.mk_place_field(place, index.into(), field_def.ty(tcx, substs));
+                    let field_place =
+                        tcx.mk_place_field(place, index.into(), field_def.ty(tcx, substs).skip_norm_wip());
                     places.push(field_place);
                 }
             }
@@ -193,7 +194,7 @@ fn cmp_place_elem<'tcx>(tcx: ty::TyCtxt<'tcx>, a: mir::PlaceElem<'tcx>, b: mir::
     place_elem_variant(&a).cmp(&place_elem_variant(&b)).then_with(|| match (a, b) {
         (mir::ProjectionElem::Deref, mir::ProjectionElem::Deref) => Ordering::Equal,
         (mir::ProjectionElem::Field(idx1, ty1), mir::ProjectionElem::Field(idx2, ty2)) => {
-            idx1.cmp(&idx2).then_with(|| cmp_ty(tcx, ty1, ty2))
+            idx1.cmp(&idx2).then_with(|| stable_comparator(tcx).cmp_ty(ty1, ty2))
         },
         (mir::ProjectionElem::Index(idx1), mir::ProjectionElem::Index(idx2)) => idx1.cmp(&idx2),
         (
@@ -223,226 +224,10 @@ fn cmp_place_elem<'tcx>(tcx: ty::TyCtxt<'tcx>, a: mir::PlaceElem<'tcx>, b: mir::
         (mir::ProjectionElem::Downcast(_, idx1), mir::ProjectionElem::Downcast(_, idx2)) => idx1.cmp(&idx2),
         (mir::ProjectionElem::OpaqueCast(ty1), mir::ProjectionElem::OpaqueCast(ty2))
         | (mir::ProjectionElem::UnwrapUnsafeBinder(ty1), mir::ProjectionElem::UnwrapUnsafeBinder(ty2)) => {
-            cmp_ty(tcx, ty1, ty2)
+            stable_comparator(tcx).cmp_ty(ty1, ty2)
         },
         (_, _) => {
             unreachable!();
         },
     })
-}
-
-fn cmp_bound_var_index_kind(a: ty::BoundVarIndexKind, b: ty::BoundVarIndexKind) -> Ordering {
-    match (a, b) {
-        (ty::BoundVarIndexKind::Canonical, ty::BoundVarIndexKind::Canonical) => Ordering::Equal,
-        (ty::BoundVarIndexKind::Canonical, _) => Ordering::Greater,
-        (ty::BoundVarIndexKind::Bound(idx1), ty::BoundVarIndexKind::Bound(idx2)) => idx1.cmp(&idx2),
-        (ty::BoundVarIndexKind::Bound(_), ty::BoundVarIndexKind::Canonical) => Ordering::Less,
-    }
-}
-
-fn region_discriminant(a: ty::Region<'_>) -> u8 {
-    use ty::RegionKind;
-    match a.kind() {
-        RegionKind::ReEarlyParam(_) => 0,
-        RegionKind::ReBound(_, _) => 1,
-        RegionKind::ReLateParam(_) => 2,
-        RegionKind::ReStatic => 3,
-        RegionKind::ReVar(_) => 4,
-        RegionKind::RePlaceholder(_) => 5,
-        RegionKind::ReErased => 6,
-        RegionKind::ReError(_) => 7,
-    }
-}
-
-fn cmp_region<'tcx>(a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> Ordering {
-    region_discriminant(a).cmp(&region_discriminant(b)).then_with(|| {
-        use ty::RegionKind;
-        match (a.kind(), b.kind()) {
-            (RegionKind::ReEarlyParam(a_r), RegionKind::ReEarlyParam(b_r)) => a_r.index.cmp(&b_r.index),
-            (RegionKind::ReBound(a_d, a_r), RegionKind::ReBound(b_d, b_r)) => {
-                cmp_bound_var_index_kind(a_d, b_d).then(a_r.var.cmp(&b_r.var))
-            },
-            (RegionKind::ReLateParam(_a_r), RegionKind::ReLateParam(_b_r)) => {
-                unimplemented!("compare ReLateParam");
-            },
-            (RegionKind::ReVar(a_r), RegionKind::ReVar(b_r)) => a_r.index().cmp(&b_r.index()),
-            (RegionKind::RePlaceholder(_a_r), RegionKind::RePlaceholder(_b_r)) => {
-                unimplemented!("compare RePlaceholder");
-            },
-            (RegionKind::ReStatic, RegionKind::ReStatic)
-            | (RegionKind::ReErased, RegionKind::ReErased)
-            | (RegionKind::ReError(_), RegionKind::ReError(_)) => Ordering::Equal,
-            _ => {
-                unreachable!();
-            },
-        }
-    })
-}
-
-fn cmp_const<'tcx>(_tcx: ty::TyCtxt<'tcx>, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) -> Ordering {
-    unimplemented!("compare Const");
-}
-
-fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
-    use ty::TyKind;
-    match ty.kind() {
-        TyKind::Bool => 0,
-        TyKind::Char => 1,
-        TyKind::Int(_) => 2,
-        TyKind::Uint(_) => 3,
-        TyKind::Float(_) => 4,
-        TyKind::Adt(_, _) => 5,
-        TyKind::Foreign(_) => 6,
-        TyKind::Str => 7,
-        TyKind::Array(_, _) => 8,
-        TyKind::Slice(_) => 9,
-        TyKind::RawPtr(_, _) => 10,
-        TyKind::Ref(_, _, _) => 11,
-        TyKind::FnDef(_, _) => 12,
-        TyKind::FnPtr(..) => 13,
-        TyKind::Dynamic(..) => 14,
-        TyKind::Closure(_, _) => 15,
-        TyKind::CoroutineClosure(_, _) => 16,
-        TyKind::Coroutine(_, _) => 17,
-        TyKind::CoroutineWitness(_, _) => 18,
-        TyKind::Never => 19,
-        TyKind::Tuple(_) => 20,
-        TyKind::Pat(_, _) => 21,
-        TyKind::Alias(_, _) => 22,
-        TyKind::Param(_) => 23,
-        TyKind::Bound(_, _) => 24,
-        TyKind::Placeholder(_) => 25,
-        TyKind::Infer(_) => 26,
-        TyKind::Error(_) => 27,
-        TyKind::UnsafeBinder(_) => 28,
-    }
-}
-
-fn cmp_defid(tcx: ty::TyCtxt<'_>, a: DefId, b: DefId) -> Ordering {
-    let a_hash = tcx.def_path_hash(a);
-    let b_hash = tcx.def_path_hash(b);
-    a_hash.cmp(&b_hash)
-}
-
-fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {
-    ty_discriminant(a).cmp(&ty_discriminant(b)).then_with(|| {
-        use ty::TyKind;
-        match (a.kind(), b.kind()) {
-            (TyKind::Int(a_i), TyKind::Int(b_i)) => a_i.cmp(b_i),
-            (TyKind::Uint(a_u), TyKind::Uint(b_u)) => a_u.cmp(b_u),
-            (TyKind::Float(a_f), TyKind::Float(b_f)) => a_f.cmp(b_f),
-            (TyKind::Adt(a_d, a_s), TyKind::Adt(b_d, b_s)) => {
-                cmp_defid(tcx, a_d.did(), b_d.did()).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
-            },
-            (TyKind::Foreign(a_d), TyKind::Foreign(b_d)) => cmp_defid(tcx, *a_d, *b_d),
-            (TyKind::Array(a_t, a_c), TyKind::Array(b_t, b_c)) => {
-                cmp_ty(tcx, *a_t, *b_t).then_with(|| cmp_const(tcx, *a_c, *b_c))
-            },
-            (TyKind::Pat(..), TyKind::Pat(..)) => {
-                unimplemented!("compare Pat");
-            },
-            (TyKind::Slice(a_t), TyKind::Slice(b_t)) => cmp_ty(tcx, *a_t, *b_t),
-            (TyKind::RawPtr(a_t, a_m), TyKind::RawPtr(b_t, b_m)) => {
-                cmp_ty(tcx, *a_t, *b_t).then_with(|| a_m.cmp(b_m))
-            },
-            (TyKind::Ref(a_r, a_t, a_m), TyKind::Ref(b_r, b_t, b_m)) => {
-                cmp_region(*a_r, *b_r).then_with(|| cmp_ty(tcx, *a_t, *b_t).then_with(|| a_m.cmp(b_m)))
-            },
-            (TyKind::FnDef(a_d, a_s), TyKind::FnDef(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
-            },
-            (TyKind::FnPtr(..), TyKind::FnPtr(..)) => {
-                unimplemented!("compare FnPtr");
-            },
-            (TyKind::Dynamic(..), TyKind::Dynamic(..)) => {
-                unimplemented!("compare Dynamic");
-            },
-            (TyKind::Closure(a_d, a_s), TyKind::Closure(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
-            },
-            (TyKind::CoroutineClosure(a_d, a_s), TyKind::CoroutineClosure(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
-            },
-            (TyKind::Coroutine(a_d, a_s), TyKind::Coroutine(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
-            },
-            (TyKind::CoroutineWitness(a_d, a_s), TyKind::CoroutineWitness(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
-            },
-            (TyKind::Tuple(a_t), TyKind::Tuple(b_t)) => {
-                a_t.iter().cmp_by(b_t.iter(), |a, b| cmp_ty(tcx, a, b))
-            },
-            (TyKind::Alias(a_i, a_p), TyKind::Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| {
-                cmp_defid(tcx, a_p.def_id, b_p.def_id).then_with(|| cmp_arg_refs(tcx, a_p.args, b_p.args))
-            }),
-            (TyKind::Param(a_p), TyKind::Param(b_p)) => a_p.cmp(b_p),
-            (TyKind::Bound(..), TyKind::Bound(..)) => {
-                unimplemented!("compare Bound");
-            },
-            (TyKind::Placeholder(_), TyKind::Placeholder(_)) => {
-                unimplemented!("compare Placeholder");
-            },
-            (TyKind::Infer(_), TyKind::Infer(_)) => {
-                unimplemented!("compare Infer");
-            },
-            (TyKind::Error(_), TyKind::Error(_)) => {
-                unimplemented!("compare Error");
-            },
-            (TyKind::UnsafeBinder(_), TyKind::UnsafeBinder(_)) => {
-                unimplemented!("compare UnsafeBinder");
-            },
-            (TyKind::Bool, TyKind::Bool)
-            | (TyKind::Char, TyKind::Char)
-            | (TyKind::Str, TyKind::Str)
-            | (TyKind::Never, TyKind::Never) => Ordering::Equal,
-            _ => {
-                unreachable!();
-            },
-        }
-    })
-}
-
-const fn generic_arg_kind_variant(a: &ty::GenericArgKind<'_>) -> u8 {
-    match a {
-        ty::GenericArgKind::Const(_) => 0,
-        ty::GenericArgKind::Type(_) => 1,
-        ty::GenericArgKind::Lifetime(_) => 2,
-    }
-}
-
-/// Compare two `GenericArg` deterministically.
-/// Should only be called on equal discriminants.
-fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
-    generic_arg_kind_variant(&a.kind())
-        .cmp(&generic_arg_kind_variant(&b.kind()))
-        .then_with(|| match (a.kind(), b.kind()) {
-            (ty::GenericArgKind::Const(c1), ty::GenericArgKind::Const(c2)) => cmp_const(tcx, c1, c2),
-            (ty::GenericArgKind::Type(ty1), ty::GenericArgKind::Type(ty2)) => cmp_ty(tcx, ty1, ty2),
-            (ty::GenericArgKind::Lifetime(r1), ty::GenericArgKind::Lifetime(r2)) => cmp_region(r1, r2),
-            (_, _) => {
-                unreachable!("Comparing GenericArg with different discriminant");
-            },
-        })
-}
-
-/// Compare two sequences of `GenericArg`s for the same `DefId`, where the discriminants are pairwise equal.
-fn cmp_arg_refs<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    a: &[ty::GenericArg<'tcx>],
-    b: &[ty::GenericArg<'tcx>],
-) -> Ordering {
-    match a.len().cmp(&b.len()) {
-        Ordering::Equal => {
-            // compare elements
-            for (x, y) in a.iter().zip(b.iter()) {
-                // the discriminants are the same as the DefId we are calling into is the same
-                let xy_cmp = cmp_arg_ref(tcx, *x, *y);
-                if xy_cmp != Ordering::Equal {
-                    return xy_cmp;
-                }
-            }
-            Ordering::Equal
-        },
-        o => o,
-    }
 }

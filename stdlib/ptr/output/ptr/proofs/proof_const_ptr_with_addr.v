@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_const_ptr_with_addr.
 
@@ -20,16 +20,25 @@ Proof.
   rewrite /typed_val_expr.
   iIntros (?) "#CTX HE HL Hf HCont".
   iRename select (_ ◁ᵥ{π, _} addr @ int USize)%I into "Hv".
-  iEval (rewrite /ty_own_val/=) in "Hv".
+  iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hv".
   iDestruct "Hv" as "(_ & %)".
-  iApply wp_copy_alloc_id; [done | apply val_to_of_loc | ].
+  iRename select (_ ◁ᵥ{π, _} _ @ alias_ptr_t)%I into "Hv2".
+  iEval (rewrite /ty_own_val/= alias_ptr_own_val_unfold) in "Hv2".
+  iDestruct "Hv2" as "(_ & %)".
+
+  iApply wp_copy_alloc_id; [done | | | ].
+  { done. }
+  { solve_goal. }
   iApply physical_step_intro; iNext.
   set (l2 := Loc x.(loc_p) addr).
   iAssert (l2 ◁ᵥ{π, MetaNone} l2 @ alias_ptr_t)%I as "?".
-  { rewrite /ty_own_val/=. do 2 iR.
-    simpl. iPureIntro. by eapply val_to_Z_in_range. }
+  { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR.
+    simpl. iPureIntro.
+    apply l2v_decodes_to_loc.
+    by eapply val_to_Z_in_range. }
+  iIntros (v2) "%Hv".
   iApply ("HCont" $! _ _ _ (alias_ptr_t) l2 with "HL Hf []").
-  { done. }
+  { rewrite (l2v_correct _ v2); done. }
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

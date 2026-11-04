@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_dangling.
 
@@ -12,12 +12,15 @@ Lemma dangling_proof (π : thread_id) :
 Proof.
   dangling_prelude.
 
+  Typeclasses Transparent freeable_nz.
   repeat liRStep; liShow.
+  specialize (ly_align_ge_1 T_st_ly) as ?.
+  rewrite decide_True; last lia.
+  rep liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  all: specialize (ly_align_ge_1 T_st_ly); lia.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

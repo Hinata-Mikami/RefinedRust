@@ -1,0 +1,20 @@
+Mapping for function open_drop_with_goto_prelude:
+summary: total=17 mapped=17 unmapped=0
+
+bb0[0] StorageLive(_2) -> Source(bb0[0] StorageLive(_2))
+bb0[1] _2 = move (_1.0: std::boxed::Box<u32>) -> Source(bb0[1] _2 = move (_1.0: std::boxed::Box<u32>))
+bb0[2] StorageLive(_3) -> Source(bb0[3] StorageLive(_3))
+bb0[3] _3 = move _2 -> Source(bb0[4] _3 = move _2)
+bb0[4] StorageLive(_4) -> Source(bb0[6] StorageLive(_4))
+bb0[5] StorageLive(_5) -> Source(bb0[7] StorageLive(_5))
+bb0[6] _5 = move _3 -> Source(bb0[8] _5 = move _3)
+bb0[7] _4 = std::mem::drop::<std::boxed::Box<u32>>(move _5) -> [return: bb1, unwind: bb4] -> Source(bb0[9] _4 = std::mem::drop::<std::boxed::Box<u32>>(move _5) -> [return: bb1, unwind: bb5])
+bb1[0] StorageDead(_5) -> Source(bb1[0] StorageDead(_5))
+bb1[1] StorageDead(_4) -> Source(bb1[1] StorageDead(_4))
+bb1[2] _0 = const () -> Source(bb1[2] _0 = const ())
+bb1[3] StorageDead(_3) -> FoldedFrom(bb2[0] StorageDead(_3))
+bb1[4] StorageDead(_2) -> FoldedFrom(bb3[0] StorageDead(_2))
+bb1[5] drop((_1.1: std::boxed::Box<u32>)) -> [return: bb2, unwind: bb3] -> SplitFrom(bb3[1] drop(_1) -> [return: bb4, unwind: bb9])
+bb2[0] return -> Source(bb4[0] return)
+bb3[0] resume -> Source(bb9[0] resume)
+bb4[0] drop((_1.1: std::boxed::Box<u32>)) -> [return: bb3, unwind terminate(cleanup)] -> SplitFrom(bb8[0] drop(_1) -> [return: bb9, unwind terminate(cleanup)])

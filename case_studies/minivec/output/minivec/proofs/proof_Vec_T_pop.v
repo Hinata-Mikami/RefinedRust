@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.minivec.generated Require Import generated_code_minivec generated_specs_minivec.
 From refinedrust.examples.minivec.generated Require Import generated_template_Vec_T_pop.
@@ -15,9 +15,14 @@ Proof.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_typed_array_access l (length xs - 1) (st_of T_ty MetaNone)).
+  2: rep liRStep.
+  apply_update (updateable_typed_array_access l (length xs - 1) (UntypedSynType $ st_of T_ty MetaNone)).
   liRStepUntil typed_call.
   (* We need to manually extract it now *)
+  (* First, project to the T_ty case of maybe_uninit, so that we can extract it as a typed value *)
+  apply_update (updateable_subsume_to (l offsetst{st_of T_ty MetaNone}ₗ (length xs - 1)) (◁ T_ty)%I (((<#> (<$#@{ T_rt }> xs)) !!! (length xs - Z.to_nat 1)%nat))).
+  liRStepUntil typed_call.
+  (* now, extract a typed value *)
   apply_update (updateable_extract_typed_value (l offsetst{st_of T_ty MetaNone}ₗ (length xs - 1))).
   rep <-! liRStep; liShow.
   apply_update (updateable_subsume_to (l offsetst{st_of T_ty MetaNone}ₗ (length xs - 1)) (◁ uninit (st_of T_ty MetaNone))%I (# ())).

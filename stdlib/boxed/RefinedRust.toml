@@ -1,4 +1,5 @@
 generate_dune_project = false
-lib_load_paths = ["../ptr", "../mem", "../alloc", "../option", "../ptr_advanced", "../rr_internal"]
+lib_load_paths = ["../ptr", "../mem", "../alloc", "../option", "../ptr_advanced", "../rr_internal", "../sized"]
 output_dir = "output"
+generate_linking_requirements = true
 extra_specs = "extra_specs.v"

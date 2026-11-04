@@ -9,17 +9,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Debug;
-use log::info;
-use radium::{code, coq};
-use rr_rustc_interface::middle::ty::TypeFolder as _;
-use rr_rustc_interface::middle::{mir, ty};
+use log::{info, warn};
+use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
+use crate::environment::polonius_info;
 use crate::environment::region_folder::*;
-use crate::environment::{Environment, polonius_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::types;
 
 // solve the constraints for the new_regions
 // we first identify what kinds of constraints these new regions are subject to
@@ -35,30 +33,82 @@ pub(crate) struct CallRegions {
     pub early_regions: Vec<Region>,
     pub late_regions: Vec<Region>,
     pub classification: BTreeMap<Region, CallRegionKind>,
+    pub new_regions: BTreeSet<Region>,
+}
+
+#[derive(Default)]
+#[expect(clippy::partial_pub_fields)]
+pub(crate) struct CallRegionDiscovery {
+    pub early_regions: Vec<Region>,
+    pub late_regions: Vec<Region>,
+    pub late_regions_by_bound_var: BTreeMap<usize, Region>,
+    pub new_regions: BTreeSet<Region>,
+    relevant_constraints: Vec<(Region, Region)>,
+}
+
+fn late_region_binder_order(sig: ty::PolyFnSig<'_>) -> Vec<usize> {
+    sig.bound_vars()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, kind)| matches!(kind, ty::BoundVariableKind::Region(_)).then_some(index))
+        .collect()
+}
+
+/// Reproduce the order in which rustc allocates inference variables while instantiating the
+/// signature. This need not be the order of entries in `bound_vars`.
+fn late_region_allocation_order<'tcx>(tcx: ty::TyCtxt<'tcx>, sig: ty::PolyFnSig<'tcx>) -> Vec<usize> {
+    let mut allocation_order = Vec::new();
+    let mut next_region = 0;
+    let (_, _) = tcx.instantiate_bound_regions(sig, &mut |bound: ty::BoundRegion<'tcx>| {
+        allocation_order.push(bound.var.index());
+        let region = ty::Region::new_var(tcx, ty::RegionVid::from_usize(next_region));
+        next_region += 1;
+        region
+    });
+    allocation_order
+}
+
+fn is_contiguous(regions: &[Region]) -> bool {
+    regions.windows(2).all(|pair| pair[0].as_u32() + 1 == pair[1].as_u32())
+}
+
+fn map_allocated_regions_to_binders(
+    binder_order: &[usize],
+    allocation_order: &[usize],
+    regions: &[Region],
+) -> Option<(Vec<Region>, BTreeMap<usize, Region>)> {
+    if allocation_order.len() != regions.len() || binder_order.len() != regions.len() {
+        return None;
+    }
+
+    let allocated: BTreeMap<_, _> = allocation_order.iter().copied().zip(regions.iter().copied()).collect();
+    let by_bound_var: BTreeMap<_, _> = binder_order
+        .iter()
+        .copied()
+        .map(|bound_var| allocated.get(&bound_var).copied().map(|region| (bound_var, region)))
+        .collect::<Option<_>>()?;
+    let ordered = binder_order.iter().map(|bound_var| by_bound_var[bound_var]).collect();
+    Some((ordered, by_bound_var))
 }
 
 /// Compute instantiations for the lifetime parameters of a function.
 /// Each of the lifetimes in the function's signature has one Polonius inference variable at the
 /// call site, and we need to find an instantiation for these.
 /// `substs` are the substitutions for the early-bound regions
-pub(crate) fn compute_call_regions<'tcx>(
-    env: &Environment<'tcx>,
-    incl_tracker: &InclusionTracker<'_, '_>,
+pub(crate) fn discover_call_regions<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    info: &polonius_info::PoloniusInfo<'_, 'tcx>,
     substs: &[ty::GenericArg<'tcx>],
-    loc: mir::Location,
+    resolved_substs: &[ty::GenericArg<'tcx>],
+    sig: ty::PolyFnSig<'tcx>,
+    midpoint: facts::PointIndex,
     num_expected_late_bounds: usize,
-) -> CallRegions {
-    let info = incl_tracker.info();
-
-    let midpoint = info.interner.get_point_index(&facts::Point {
-        location: loc,
-        typ: facts::PointType::Mid,
-    });
-
+) -> CallRegionDiscovery {
     let mut early_regions = Vec::new();
-    for a in substs {
+    for a in substs.iter().chain(resolved_substs) {
         if let ty::GenericArgKind::Lifetime(r) = a.kind()
             && let ty::RegionKind::ReVar(r) = r.kind()
+            && !early_regions.contains(&r.into())
         {
             early_regions.push(r.into());
         }
@@ -84,9 +134,9 @@ pub(crate) fn compute_call_regions<'tcx>(
         _ => r,
     };
 
-    for a in substs {
+    for a in substs.iter().chain(resolved_substs) {
         if let ty::GenericArgKind::Type(c) = a.kind() {
-            let mut folder = RegionFolder::new(env.tcx(), &mut clos);
+            let mut folder = RegionFolder::new(tcx, &mut clos);
             folder.fold_ty(c);
         }
     }
@@ -113,28 +163,91 @@ pub(crate) fn compute_call_regions<'tcx>(
     info!("new regions: {new_regions_sorted:?}");
     info!("relevant constraints: {relevant_constraints:?}");
 
-    // identify the late-bound regions
-    let mut late_regions = Vec::new();
-    for r in &new_regions_sorted {
-        // only take the ones which are not early bound and
-        // which are not due to a generic (the callee doesn't care about generic regions)
-        if !early_regions.contains(r) && !generic_regions.contains(r) {
-            late_regions.push(*r);
-        }
+    let candidates: Vec<_> = new_regions_sorted
+        .iter()
+        .copied()
+        .filter(|region| !early_regions.contains(region) && !generic_regions.contains(region))
+        .collect();
+    let binder_order = late_region_binder_order(sig);
+    let allocation_order = late_region_allocation_order(tcx, sig);
+    let num_source_late_bounds = binder_order.len();
+    if num_source_late_bounds != num_expected_late_bounds {
+        warn!(
+            "call signature and specification disagree on late-bound region count: \
+             signature={num_source_late_bounds}, specification={num_expected_late_bounds}"
+        );
     }
-    info!("computed late regions: {:?}, expected: {num_expected_late_bounds:?}", late_regions.len());
 
-    // Heuristic: if we have too many late bounds here, try to filter spurious extra late bounds.
-    // If a late bound is equal to an early bound, it is likely to be spurious.
-    // Ideally, we'd have a more reliable way of computing an instantiation for late-bounds.
-    if late_regions.len() > num_expected_late_bounds {
-        late_regions.retain(|x| {
-            !early_regions
-                .iter()
-                .any(|y| relevant_constraints.contains(&(*x, *y)) && relevant_constraints.contains(&(*y, *x)))
-        });
-    }
+    // rustc allocates the late-bound inference variables as one run before creating the other
+    // inference variables used to normalize and check the call. Prefer reconstructing that run,
+    // but retain the previous heuristic for calls where the Polonius constraints do not expose it.
+    let strict_regions = candidates.get(..num_source_late_bounds).filter(|regions| {
+        candidates.len() == num_source_late_bounds
+            && allocation_order.len() == num_source_late_bounds
+            && is_contiguous(regions)
+    });
+    let (late_regions, late_regions_by_bound_var) = if let Some(regions) = strict_regions {
+        let (ordered, by_bound_var) =
+            map_allocated_regions_to_binders(&binder_order, &allocation_order, regions)
+                .expect("strict call-region reconstruction has matching binder and allocation counts");
+        info!(
+            "reconstructed call late regions from rustc allocation order: {allocation_order:?} -> {ordered:?}"
+        );
+        (ordered, by_bound_var)
+    } else {
+        let mut late_regions = candidates;
+        // Elided lifetimes in trait impl arguments can appear as extra late-bound regions on the
+        // impl method even though they behave like early-bound regions. Preserve the best-effort
+        // workaround of removing such regions when they equal an early-bound region.
+        // See https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/work_items/25.
+        if late_regions.len() > num_source_late_bounds {
+            late_regions.retain(|x| {
+                !early_regions.iter().any(|y| {
+                    relevant_constraints.contains(&(*x, *y)) && relevant_constraints.contains(&(*y, *x))
+                })
+            });
+        }
+        late_regions.truncate(num_source_late_bounds);
+        let (late_regions, by_bound_var) =
+            map_allocated_regions_to_binders(&binder_order, &allocation_order, &late_regions).unwrap_or_else(
+                || {
+                    let by_bound_var =
+                        binder_order.iter().copied().zip(late_regions.iter().copied()).collect();
+                    (late_regions, by_bound_var)
+                },
+            );
+        warn!(
+            "falling back to heuristic call-region instantiation: expected={num_expected_late_bounds}, \
+             binders={binder_order:?}, allocation_order={allocation_order:?}, candidates={late_regions:?}"
+        );
+        (late_regions, by_bound_var)
+    };
+    info!("computed late regions: {:?}, expected: {num_expected_late_bounds:?}", late_regions.len());
     info!("call region instantiations (late): {:?}", late_regions);
+
+    CallRegionDiscovery {
+        early_regions,
+        late_regions,
+        late_regions_by_bound_var,
+        new_regions,
+        relevant_constraints,
+    }
+}
+
+pub(crate) fn classify_call_regions(
+    incl_tracker: &mut InclusionTracker<'_, '_>,
+    midpoint: facts::PointIndex,
+    discovery: CallRegionDiscovery,
+) -> CallRegions {
+    let CallRegionDiscovery {
+        early_regions,
+        late_regions,
+        new_regions,
+        relevant_constraints,
+        ..
+    } = discovery;
+    let mut new_regions_sorted: Vec<_> = new_regions.iter().copied().collect();
+    new_regions_sorted.sort();
 
     // Notes:
     // - if two of the call regions need to be equal due to constraints on the function, we define the one
@@ -157,7 +270,7 @@ pub(crate) fn compute_call_regions<'tcx>(
                 continue;
             }
             // r1 should be known or a new region
-            if !incl_tracker.is_region_known(*r1, midpoint) && !new_regions.contains(r1) {
+            if !incl_tracker.is_region_known_before_dynamic(*r1, midpoint) && !new_regions.contains(r1) {
                 // this is a constraint that won't help us
                 continue;
             }
@@ -201,46 +314,63 @@ pub(crate) fn compute_call_regions<'tcx>(
         early_regions,
         late_regions,
         classification: new_regions_classification,
+        new_regions,
     }
 }
 
-/// Compute annotations for recovering unconstrained regions that we have recovered by analyzing
-/// the function's signature.\
-/// Returns:
-/// - the vector of annotations to emit
-/// - the set of remaining unconstrained regions for which we have not figured out a mapping
-pub(crate) fn compute_unconstrained_region_annots<'tcx>(
-    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: mir::Location,
-    unconstrained_regions: BTreeSet<facts::Region>,
-    early_region_map: &BTreeMap<coq::Ident, usize>,
-) -> Result<(Vec<code::Annotation>, BTreeSet<facts::Region>), TranslationError<'tcx>> {
-    let info = inclusion_tracker.info();
-    let midpoint = info.interner.get_point_index(&facts::Point {
-        location: loc,
-        typ: facts::PointType::Mid,
-    });
-
-    let mut remaining_regions = BTreeSet::new();
-
-    let mut unconstrained_annotations = Vec::new();
-    for r in unconstrained_regions {
-        let translated_region = ty_translator.translate_region_var(r)?;
-        // check if we have recovered a mapping
-        if let Some(early_region_idx) = early_region_map.get(&translated_region) {
-            let scope = ty_translator.scope.borrow();
-
-            let early_lft_vid = scope.lifetime_scope.early_regions[*early_region_idx].unwrap();
-            let early_lft_name = &scope.lifetime_scope.region_names[&early_lft_vid];
-            unconstrained_annotations
-                .push(code::Annotation::CopyLftName(early_lft_name.lft().to_owned(), translated_region));
-
-            inclusion_tracker.add_static_inclusion(r, early_lft_vid, midpoint);
-            inclusion_tracker.add_static_inclusion(early_lft_vid, r, midpoint);
-        } else {
-            remaining_regions.insert(r);
+impl CallRegions {
+    fn has_definition(&self, region: Region, visiting: &mut BTreeSet<Region>) -> bool {
+        if !self.new_regions.contains(&region) {
+            return true;
         }
+        if !visiting.insert(region) {
+            return false;
+        }
+
+        let defined = match self.classification.get(&region) {
+            Some(CallRegionKind::EqR(source)) => self.has_definition(*source, visiting),
+            Some(CallRegionKind::Intersection(sources)) => {
+                !sources.is_empty() && sources.iter().all(|source| self.has_definition(*source, visiting))
+            },
+            None => false,
+        };
+        visiting.remove(&region);
+        defined
     }
-    Ok((unconstrained_annotations, remaining_regions))
+
+    pub(crate) fn undefined_late_regions(&self) -> Vec<Region> {
+        self.late_regions
+            .iter()
+            .copied()
+            .filter(|region| !self.has_definition(*region, &mut BTreeSet::new()))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_allocation_order_to_binder_order() {
+        let allocated = [Region::from_usize(30), Region::from_usize(31)];
+        let (ordered, by_bound_var) = map_allocated_regions_to_binders(&[0, 1], &[1, 0], &allocated).unwrap();
+
+        assert_eq!(ordered, [Region::from_usize(31), Region::from_usize(30)]);
+        assert_eq!(by_bound_var[&0], Region::from_usize(31));
+        assert_eq!(by_bound_var[&1], Region::from_usize(30));
+    }
+
+    #[test]
+    fn detects_undefined_late_region() {
+        let late = Region::from_usize(1);
+        let regions = CallRegions {
+            early_regions: Vec::new(),
+            late_regions: vec![late],
+            classification: BTreeMap::new(),
+            new_regions: BTreeSet::from([late]),
+        };
+
+        assert_eq!(regions.undefined_late_regions(), [late]);
+    }
 }

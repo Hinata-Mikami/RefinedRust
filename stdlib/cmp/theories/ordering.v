@@ -1,10 +1,10 @@
 From refinedrust Require Import typing.
 From rrstd.cmp.theories Require Export zify.
 
-Notation ordering := comparison (only parsing).
-Notation Less := Lt (only parsing).
-Notation Greater := Gt (only parsing).
-Notation Equal := Eq (only parsing).
+Abbreviation ordering := comparison (only parsing).
+Abbreviation Less := Lt (only parsing).
+Abbreviation Greater := Gt (only parsing).
+Abbreviation Equal := Eq (only parsing).
 
 Canonical Structure comparisonRT := directRT comparison.
 
@@ -621,7 +621,7 @@ Section option.
     end
   .
 
-  Global Instance option_correct_ord {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectEq A_eq} `{!CorrectOrd A_eq A_cmp} :
+  Global Instance option_correct_ord {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectOrd A_eq A_cmp} :
     CorrectOrd (option_partial_eq A_eq) (option_cmp A_cmp).
   Proof.
     econstructor.
@@ -777,7 +777,7 @@ Section option.
     end
   .
 
-  Global Instance option_correct_ord_rev {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectEq A_eq} `{!CorrectOrd A_eq A_cmp} :
+  Global Instance option_correct_ord_rev {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectOrd A_eq A_cmp} :
     CorrectOrd (option_partial_eq A_eq) (option_cmp_rev A_cmp).
   Proof.
     econstructor.
@@ -882,6 +882,31 @@ Section max_list.
     apply correct_ord_antisym.
     apply max_by_lt_l.
     by apply correct_ord_antisym.
+  Qed.
+
+  Lemma max_list_cmp_elem_of xs def :
+    max_list_cmp cmp xs def = def ∨ ∃ x, max_list_cmp cmp xs def = Some x ∧ x ∈ xs.
+  Proof.
+  induction xs as [ | x xs IH] in def |-*; simpl; first by left.
+    destruct (IH (max_by (option_cmp cmp) def (Some x))) as [Hdef | (y & Hmax & Hel)].
+    - rewrite Hdef. destruct def as [def | ]; simpl.
+      + rewrite max_by_Some.
+        unfold max_by. destruct (cmp def x); last by left.
+        all: right; set_solver.
+      + right. rewrite max_by_None_l. set_solver.
+    - rewrite Hmax. right. set_solver.
+  Qed.
+  Lemma min_list_cmp_elem_of xs def :
+    min_list_cmp cmp xs def = def ∨ ∃ x, min_list_cmp cmp xs def = Some x ∧ x ∈ xs.
+  Proof.
+  induction xs as [ | x xs IH] in def |-*; simpl; first by left.
+    destruct (IH (min_by (option_cmp_rev cmp) def (Some x))) as [Hdef | (y & Hmax & Hel)].
+    - rewrite Hdef. destruct def as [def | ]; simpl.
+      + rewrite min_by_Some_rev.
+        unfold min_by. destruct (cmp def x); [by left .. | ].
+        right; set_solver.
+      + right. rewrite min_by_None_l_rev. set_solver.
+    - rewrite Hmax. right. set_solver.
   Qed.
 
   Lemma min_list_cmp_by_acc l acc :

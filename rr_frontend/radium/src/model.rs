@@ -142,7 +142,10 @@ impl From<LTac> for coq::ltac::LTac {
 
 impl LTac {
     #[must_use]
-    pub fn scope<I: Into<coq::ltac::Scope>>(self, scope: I) -> coq::ltac::Attrs {
+    pub fn scope<I>(self, scope: I) -> coq::ltac::Attrs
+    where
+        I: Into<coq::ltac::Scope>,
+    {
         coq::ltac::Attrs::new(self).scope(scope)
     }
 }

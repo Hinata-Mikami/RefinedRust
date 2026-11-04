@@ -9,14 +9,14 @@ use core::mem;
 #[rr::export_as(core::ptr::Unique)]
 #[rr::refined_by("l" : "loc")]
 pub struct Unique<T: ?Sized> {
-    #[rr::field("l")]
-    ptr: NonNull<T>,
+    #[rr::field("#(l)")]
+    pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
     // For details, see:
     // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     _marker: PhantomData<T>,
 }
 
@@ -35,7 +35,7 @@ impl<T: Sized> Unique<T> {
     #[rr::ensures("l `has_layout_loc` {ly_of T}")]
     #[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
     #[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
-    pub const fn empty() -> Self {
+    pub const fn dangling() -> Self {
         unsafe { Self::new_unchecked(ptr::dangling_mut()) }
     }
 }
@@ -46,17 +46,16 @@ impl<T: ?Sized> Unique<T> {
     #[rr::returns("ptr")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         unsafe {
-            Unique { ptr: NonNull::new_unchecked(ptr), _marker: PhantomData }
+            Unique { pointer: NonNull::new_unchecked(ptr), _marker: PhantomData }
         }
     }
 
     #[rr::returns("self")]
-    pub const fn as_ptr(self) -> NonNull<T> { self.ptr }
+    pub const fn as_ptr(self) -> NonNull<T> { self.pointer }
 }
 
 //#[rr::verify]
 //impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     //fn from(ptr: NonNull<T>) -> Self { Self { ptr, _marker: PhantomData } }
 //}
-
 

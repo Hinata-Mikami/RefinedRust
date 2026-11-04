@@ -1,0 +1,23 @@
+diff --git a/hinata_mikami/gc/src/main.rs b/hinata_mikami/gc/src/main.rs
+index 206d18aa..29f49f24 100644
+--- a/hinata_mikami/gc/src/main.rs
++++ b/hinata_mikami/gc/src/main.rs
+@@ -318,17 +318,11 @@ impl Heap {
+     // A[true] → B[false] でBを解放するとdangling pointerになる
+     #[rr::requires("marks_closed locs nexts marks")]
+ 
+-    /* 事後条件
+-     * sweep_post の読み方（locs/nexts/marks は開始時のスナップショット）:
+-     *   - 残る iff 開始時に marked。
+-     *   - mark が正確（marked iff reachable）なら、残る iff 開始時に reachable。
+-     *   - root が marked なら、生存ノードのアドレスで表す reachable は前後で同じ。
+-     * marked ビット自体は false に戻すので、不変とはしない。
+-     */
+     #[rr::ensures("sweep_post locs nexts marks
+         (keep_marked locs marks) (keep_marked nexts marks)")]
+     #[rr::ensures("sweep_fields_preserved vals locs nexts marks")]
+     #[rr::ensures("all_unmarked (replicate (length (keep_marked locs marks)) false)")]
++
+     /* keep_marked xs marks ... xs のうち marks が true のものだけを残す */
+     // 終了後の locs' は locs[i] のうち marks[i] が true のもの
+     #[rr::observe("γ": "

@@ -1,2 +1,4 @@
 generate_dune_project = false
 extra_specs="extra_specs.v"
+output_dir = "output"
+generate_linking_requirements = true

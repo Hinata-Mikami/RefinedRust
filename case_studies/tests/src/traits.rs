@@ -21,6 +21,7 @@ mod add {
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn test_add_2<T>(x: T, y: T) where T: MyAdd {
         MyAdd::my_add(x, y);
     }
@@ -175,11 +176,13 @@ mod foo {
     */
 
     #[rr::verify]
+    #[rr::may_unwind_if("DropGlue_Wastraits_foo_FooT_Output_spec_attrs.(DropGlue_DropGlueUnwind) ∨ {T::DropGlueUnwind}")]
     fn foobar<W, T> (x: &W) where W: Foo<T> {
         x.bar(true);
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("DropGlue_Wastraits_foo_Fooi32_Output_spec_attrs.(DropGlue_DropGlueUnwind)")]
     fn call_foobar2<W>(x: &W) where W: Foo<i32> {
         foobar(x); 
     }
@@ -201,6 +204,7 @@ mod foo {
 
     #[rr::params("w")]
     #[rr::args("w")]
+    #[rr::may_unwind_if("{W::DropGlueUnwind}")]
     fn foobar_ref3<'a, W>(x: W) where W: Foo<&'a mut i32, Output=i32> {
         // I guess at this point I get the vlft4 from the return value, but need to figure out
         // where it comes from. 
@@ -210,6 +214,7 @@ mod foo {
 
     #[rr::params("w")]
     #[rr::args("w")]
+    #[rr::may_unwind_if("{W::DropGlueUnwind}")]
     fn foobar_ref4<'a, W>(x: W) where W: Foo<&'a mut i32, Output=i32> {
         let (_, y, _) = x.bar(32); 
         let _ = *y;
@@ -241,6 +246,7 @@ mod foo {
 
     #[rr::params("w", "v")]
     #[rr::args("w", "v")]
+    #[rr::may_unwind_if("DropGlue_Wastraits_foo_FooT_Output_spec_attrs.(DropGlue_DropGlueUnwind) ∨ {T::DropGlueUnwind} ∨ {W::DropGlueUnwind}")]
     fn foobar_ref2<W, T>(x: W, a: T) where W: Foo<T> {
         x.bar(32); 
     }
@@ -349,6 +355,7 @@ mod assoc_dep {
 
     #[rr::params("x", "y")]
     #[rr::args("x", "y")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind} ∨ {U::DropGlueUnwind}")]
     fn bla<T, U>(x: T, y: U) 
         where T: Foo, U: Foo<Output = T::Output>
     {
@@ -357,6 +364,7 @@ mod assoc_dep {
 
     #[rr::params("x", "y")]
     #[rr::args("x", "y")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind} ∨ {U::DropGlueUnwind}")]
     fn bla2<T, U>(x: T, y: U) 
         where T: Foo, U: Foo<Output = i32>
     {
@@ -515,4 +523,35 @@ mod rec {
     // and this is a true recursive call?
     // TODO test this
 
+}
+
+mod associated_type_cleanup_drop {
+    trait Iter {
+        type Item;
+
+        #[rr::verify]
+        fn next(&mut self) -> Option<Self::Item>;
+
+        #[rr::verify]
+        #[rr::requires("DropGlue_Selfastraits_associated_type_cleanup_drop_Iter_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+        fn after_next(&mut self, item: Self::Item) -> Self::Item {
+            let _ = self.next();
+            item
+        }
+    }
+}
+
+mod panic_spec_override {
+    trait MaybePanic {
+        #[rr::may_unwind_if("True")]
+        fn run();
+    }
+
+    struct NeverPanics;
+
+    impl MaybePanic for NeverPanics {
+        // This must override the trait spec even though it is the only local spec annotation.
+        #[rr::may_unwind_if("False")]
+        fn run() {}
+    }
 }

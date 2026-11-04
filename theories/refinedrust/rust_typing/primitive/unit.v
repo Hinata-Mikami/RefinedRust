@@ -1,0 +1,71 @@
+From refinedrust Require Export type ltypes.
+From refinedrust Require Import programs.
+From refinedrust Require Import options.
+
+(** ** Unit type *)
+(** [unit_t] gets some special treatment, because it occurs frequently and is specced to be a ZST *)
+Section unit.
+  Context `{!typeGS Σ}.
+
+  Program Definition unit_t : type unit := {|
+    st_own π _ v := ⌜v = zst_val⌝;
+    st_syn_type := UnitSynType;
+    st_has_op_type ot := is_unit_ot ot;
+  |}%I.
+  Next Obligation.
+    iIntros (π _ v ->).
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_unit.
+    done.
+  Qed.
+  Next Obligation.
+    intros ot ->%is_unit_ot_layout.
+    by apply syn_type_has_layout_unit.
+  Qed.
+  Next Obligation.
+    intros ot Hot.
+    destruct ot; simpl in Hot; try done.
+    destruct Hot as [-> ->]. done.
+  Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation.
+    simpl. iIntros (ot st π [] v Hot ->).
+    destruct ot; simpl in Hot; try done.
+    - destruct Hot as [-> ->]. iExists (OVStruct unit_sl []). iPureIntro.
+      simp decode_op_val. rewrite bool_decide_true; last by rewrite /unit_sl /=.
+      rewrite /unit_sl /=. done.
+    - subst. iExists (OVUntyped unit_sl []). iPureIntro.
+      simp decode_op_val. rewrite bool_decide_true; done.
+  Qed.
+  Next Obligation.
+    simpl. iIntros (ot st π [] v v' Hot Hsame ->).
+    iPureIntro.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly.
+    rewrite /has_layout_val (is_unit_ot_layout _ Hot) /unit_sl /= in Hly.
+    by destruct v'.
+  Qed.
+  Next Obligation.
+    intros ly Hst.
+    apply syn_type_has_layout_unit_inv in Hst as ->.
+    done.
+  Qed.
+
+  Global Instance unit_copyable : Copyable unit_t.
+  Proof. apply _. Qed.
+  Global Instance unit_sized : TySized unit_t.
+  Proof. apply _. Qed.
+
+  Global Instance unit_timeless l z π m :
+    Timeless (l ◁ᵥ{π, m} z @ unit_t)%I.
+  Proof. apply _. Qed.
+
+  Lemma type_val_unit π (T : typed_value_cont_t):
+    T MetaNone _ (unit_t) () ⊢ typed_value π (zst_val) T.
+  Proof.
+    iIntros "HT #LFT".
+    iExists _, unit_t, (). iFrame "HT". done.
+  Qed.
+  Definition type_val_unit_inst := [instance @type_val_unit].
+  Global Existing Instance type_val_unit_inst.
+End unit.
+
+Global Hint Unfold unit_t : tyunfold.

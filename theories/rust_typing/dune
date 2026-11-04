@@ -1,7 +1,0 @@
-(rocq.theory
- (name refinedrust)
- (package refinedrust)
- (flags :standard -w -notation-incompatible-prefix -w -notation-overridden -w -redundant-canonical-projection)
- (synopsis "RefinedRust")
- (generate_project_file)
- (theories stdpp iris iris_contrib Ltac2 caesium lithium lrust Equations))

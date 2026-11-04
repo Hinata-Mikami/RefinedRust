@@ -1,0 +1,19 @@
+--- before/hinata_mikami/gc/audit/check_assumptions.py
++++ after/hinata_mikami/gc/audit/check_assumptions.py
+@@ -16,6 +16,7 @@
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--report", type=pathlib.Path)
+     parser.add_argument("--raw-output", type=pathlib.Path)
++    parser.add_argument("--date", help="Report date (YYYY-MM-DD)")
+     options = parser.parse_args()
+     root = pathlib.Path(__file__).resolve().parents[3]
+     proofs = root / "hinata_mikami/gc/output/gc/proofs"
+@@ -78,7 +79,7 @@
+         "ProofIrrelevance.proof_irrelevance",
+     }
+     lines = [
+-        "RefinedRust GC 証明依存関係監査（仕様強化後、2026-10-23）",
++        "RefinedRust GC 証明依存関係監査" + (f"（{options.date}）" if options.date else ""),
+         f"対象: {len(names)} 件（補助補題・GC 型付け定理・Drop 検査）",
+         "全対象の通常 .vo と Dune 内ソースの一致を確認。",
+         "許可する基盤公理: functional_extensionality_dep, proof_irrelevance のみ。",

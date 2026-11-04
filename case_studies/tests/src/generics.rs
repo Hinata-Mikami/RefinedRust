@@ -1,5 +1,6 @@
 
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn generic1<T>(x: T) {
 
 }

@@ -25,6 +25,10 @@ fn collect_loop_body(
     body.insert(back_edge_source);
 
     while let Some(current) = work_queue.pop() {
+        if current == head {
+            continue;
+        }
+
         for &predecessor in real_edges.predecessors(current) {
             if body.contains(&predecessor) {
                 continue;

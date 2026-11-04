@@ -40,7 +40,10 @@ impl PartialEq for DefinitelyAllocatedState<'_, '_> {
 impl Eq for DefinitelyAllocatedState<'_, '_> {}
 
 impl Serialize for DefinitelyAllocatedState<'_, '_> {
-    fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
+    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+    where
+        Se: Serializer,
+    {
         let mut seq = serializer.serialize_seq(Some(self.def_allocated_locals.len()))?;
         let oredered_set: BTreeSet<_> = self.def_allocated_locals.iter().collect();
         for local in oredered_set {

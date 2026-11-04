@@ -11,16 +11,39 @@ use parse::{Parse, Peek as _};
 use radium::{code, coq, model, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::mir;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
     IProp, ParamLookup, RRParams, RustPath, RustPathElem, attr_args_tokens, str_err,
 };
+
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("unknown attribute for loop specification: {:?}", _0)]
+    UnknownAttribute(String),
+    #[display("Cannot specify loop invariant on potentially uninitialized variable {}", _0)]
+    InvalidInvariantVariable(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
 
 /// Parse attributes on a const.
 /// Permitted attributes:
 /// TODO
 pub(crate) trait LoopAttrParser {
-    fn parse_loop_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<specs::LoopSpec, String>;
+    fn parse_loop_attrs<'a>(
+        &'a mut self,
+        attrs: &'a [&'a hir::AttrItem],
+    ) -> Result<specs::LoopSpec, SpannedError<ParserError>>;
 }
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
@@ -40,20 +63,29 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
             let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "type" => {
+                    let loc_span = stream.pos().unwrap_or(DUMMY_SP);
                     let loc_str: parse::LitStr = stream.parse(meta)?;
-                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
+                    let (loc_str, mut annot_meta) = meta
+                        .process_coq_literal(loc_span, &loc_str.value())
+                        .map_err(|err| parse::Error::OtherErr(loc_span, err.to_string()))?;
 
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
                     let rfn_str: parse::LitStr = stream.parse(meta)?;
-                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
+                    let (rfn_str, annot_meta2) = meta
+                        .process_coq_literal(rfn_span, &rfn_str.value())
+                        .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta2);
 
                     stream.parse::<_, MToken![@]>(meta)?;
 
+                    let type_span = stream.pos().unwrap_or(DUMMY_SP);
                     let type_str: parse::LitStr = stream.parse(meta)?;
-                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
+                    let (type_str, annot_meta3) = meta
+                        .process_coq_literal(type_span, &type_str.value())
+                        .map_err(|err| parse::Error::OtherErr(type_span, err.to_string()))?;
                     annot_meta.join(&annot_meta3);
 
                     let spec = specs::TyOwnSpec::new(loc_str, rfn_str, type_str, false, annot_meta);
@@ -64,7 +96,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     Ok(Self::Iris(prop.into()))
                 },
                 _ => Err(parse::Error::OtherErr(
-                    stream.pos().unwrap(),
+                    stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
@@ -76,14 +108,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 
                 stream.parse::<_, MToken![:]>(meta)?;
 
+                let pure_span = stream.pos().unwrap_or(DUMMY_SP);
                 let pure_prop: parse::LitStr = stream.parse(meta)?;
-                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
+                let (pure_str, _annot_meta) = meta
+                    .process_coq_literal(pure_span, &pure_prop.value())
+                    .map_err(|err| parse::Error::OtherErr(pure_span, err.to_string()))?;
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
+                let lit_span = stream.pos().unwrap_or(DUMMY_SP);
+                let (lit, _) = meta
+                    .process_coq_literal(lit_span, &name_or_prop_str.value())
+                    .map_err(|err| parse::Error::OtherErr(lit_span, err.to_string()))?;
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -114,18 +152,23 @@ impl From<MetaIProp> for coq::iris::IProp {
 struct InvVar {
     local: String,
     rfn: Option<String>,
+    span: Span,
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let local_str: parse::LitStr = stream.parse(meta)?;
         let local_str = local_str.value();
+        let span = stream.pos().unwrap_or(DUMMY_SP);
 
         let rfn_str = if parse::Colon::peek(stream) {
             stream.parse::<_, MToken![:]>(meta)?;
 
+            let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
             let rfn_str: parse::LitStr = stream.parse(meta)?;
-            let (rfn_str, _) = meta.process_coq_literal(&rfn_str.value());
+            let (rfn_str, _) = meta
+                .process_coq_literal(rfn_span, &rfn_str.value())
+                .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
             Some(rfn_str)
         } else {
             None
@@ -134,6 +177,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
         Ok(Self {
             local: local_str,
             rfn: rfn_str,
+            span,
         })
     }
 }
@@ -173,18 +217,18 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for LoopMetaInfo<'def, '_, T>
                         return Some(info.history_name.clone());
                     },
                     "IterAttrs" => {
-                        let attr_term = info.iter_spec.get_attr_term();
+                        let attr_term = info.iter_spec.get_attr_term()?;
                         let term = format!("({attr_term})");
                         return Some(term);
                     },
                     "IterNext" => {
-                        let attr_term = info.iter_spec.get_attr_term();
+                        let attr_term = info.iter_spec.get_attr_term()?;
                         let next_name = info.iter_spec.of_trait.make_spec_attr_name("Next");
                         let term = format!("({attr_term}).({next_name})");
                         return Some(term);
                     },
                     "IterInv" => {
-                        let attr_term = info.iter_spec.get_attr_term();
+                        let attr_term = info.iter_spec.get_attr_term()?;
                         let next_name = info.iter_spec.of_trait.make_spec_attr_name("Inv");
                         let term = format!("({attr_term}).({next_name})");
                         return Some(term);
@@ -217,7 +261,10 @@ impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
 }
 
 impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, '_, T> {
-    fn parse_loop_attrs<'b>(&'b mut self, attrs: &'b [&'b hir::AttrItem]) -> Result<specs::LoopSpec, String> {
+    fn parse_loop_attrs<'b>(
+        &'b mut self,
+        attrs: &'b [&'b hir::AttrItem],
+    ) -> Result<specs::LoopSpec, SpannedError<ParserError>> {
         let mut invariant: Vec<coq::iris::IProp> = Vec::new();
         let mut inv_vars: Vec<InvVar> = Vec::new();
         let mut inv_var_set: HashSet<String> = HashSet::new();
@@ -234,32 +281,36 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let span = it.span;
 
             match seg.as_str() {
                 "params" => {
-                    let p = RRParams::parse(&buffer, &self.info).map_err(str_err)?;
+                    let p = RRParams::parse(&buffer, &self.info).map_err(|err| parse_err(span, err))?;
                     for param in p.params {
                         params.push(param.into());
                     }
                 },
                 "exists" => {
-                    let params = RRParams::parse(&buffer, &self.info).map_err(str_err)?;
+                    let params = RRParams::parse(&buffer, &self.info).map_err(|err| parse_err(span, err))?;
                     for param in params.params {
                         existentials.push(param.into());
                     }
                 },
                 "inv" | "invariant" => {
-                    let parsed_iprop: MetaIProp = buffer.parse(&self.info).map_err(str_err)?;
+                    let parsed_iprop: MetaIProp =
+                        buffer.parse(&self.info).map_err(|err| parse_err(span, err))?;
                     invariant.push(parsed_iprop.into());
                 },
                 "inv_var" => {
-                    let parsed_inv_var: InvVar = buffer.parse(&self.info).map_err(str_err)?;
+                    let parsed_inv_var: InvVar =
+                        buffer.parse(&self.info).map_err(|err| parse_err(span, err))?;
                     inv_var_set.insert(parsed_inv_var.local.clone());
                     inv_vars.push(parsed_inv_var);
                 },
                 "inv_vars" => {
                     let params: parse::Punctuated<InvVar, MToken![,]> =
-                        parse::Punctuated::<_, _>::parse_terminated(&buffer, &self.info).map_err(str_err)?;
+                        parse::Punctuated::<_, _>::parse_terminated(&buffer, &self.info)
+                            .map_err(|err| parse_err(span, err))?;
                     for x in params {
                         inv_var_set.insert(x.local.clone());
                         inv_vars.push(x);
@@ -269,7 +320,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                     // ignore, this is the spec closure annotation
                 },
                 _ => {
-                    return Err(format!("unknown attribute for loop specification: {:?}", args));
+                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", args))));
                 },
             }
         }
@@ -298,11 +349,8 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let mut declare_iterator_var = None;
 
         // insert params at the front
-        let param_binders = coq::binder::BinderList::new(params);
-        let (param_pat, param_ty) = param_binders.uncurry();
         let param_name = "_params";
         let param_ident = coq::Ident::new(param_name);
-        rfn_binders.push(coq::binder::Binder::new(Some(param_name.to_owned()), param_ty));
 
         // get locals
         for (local, name, kind, initialized, ty) in &self.locals {
@@ -365,15 +413,16 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                     )))));
                 }
             } else {
-                return Err(format!(
-                    "Cannot specify loop invariant on potentially uninitialized variable {}",
-                    inv_var.local
+                return Err(spanned_error(
+                    inv_var.span,
+                    ParserError::InvalidInvariantVariable(inv_var.local),
                 ));
             }
         }
 
         // also add a constraint on the iterator variable
         let mut iterator_init_var = None;
+        let mut param_binder_pos = 0;
         if let Some(iterator_info) = &self.info.iterator_info
             && let Some((name, _, rfn_ty)) = declare_iterator_var
             && let Some(binder_name) = rfn_binder_names.get(&name)
@@ -388,28 +437,38 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             let init_value_ty = coq::term::RocqType::UserDefined(model::Type::RTXT(Box::new(rfn_ty)));
 
             rfn_binders.insert(0, coq::binder::Binder::new(Some(init_value_binder.clone()), init_value_ty));
+            param_binder_pos = 1;
             iterator_init_var = Some(name.clone());
+
+            let iterator_param_name = "_iterator_param";
 
             // history
             existentials.push(coq::binder::Binder::new(
                 Some(iterator_info.history_name.clone()),
                 coq::term::RocqType::Infer,
             ));
-            var_invariants.push(coq::iris::IProp::Atom(format!(
-                "IteratorNextFusedTrans ({}) π {init_value_binder} {} {}",
-                iterator_info.iter_spec.get_attr_term(),
-                iterator_info.history_name,
-                iterator_info.binder_name
-            )));
+            params
+                .push(coq::binder::Binder::new(Some(iterator_param_name.to_owned()), coq::term::Type::Infer));
 
-            // invariant
-            let attr_term = iterator_info.iter_spec.get_attr_term();
-            let inv_name = iterator_info.iter_spec.of_trait.make_spec_attr_name("Inv");
-            var_invariants.push(coq::iris::IProp::Atom(format!(
-                "({attr_term}).({inv_name}) π {}",
-                iterator_info.binder_name
-            )));
+            if let Some(attr_term) = iterator_info.iter_spec.get_attr_term() {
+                var_invariants.push(coq::iris::IProp::Atom(format!(
+                    "IteratorNextFusedTrans ({attr_term}) π {iterator_param_name} {init_value_binder} {} {}",
+                    iterator_info.history_name, iterator_info.binder_name
+                )));
+
+                // invariant
+                let inv_name = iterator_info.iter_spec.of_trait.make_spec_attr_name("Inv");
+                var_invariants.push(coq::iris::IProp::Atom(format!(
+                    "({attr_term}).({inv_name}) π {iterator_param_name} {}",
+                    iterator_info.binder_name
+                )));
+            }
         }
+
+        // prepare params and insert at the front, but after the optional initial iterator state
+        let param_binders = coq::binder::BinderList::new(params);
+        let (param_pat, param_ty) = param_binders.uncurry();
+        rfn_binders.insert(param_binder_pos, coq::binder::Binder::new(Some(param_name.to_owned()), param_ty));
 
         var_invariants.extend(invariant);
         //var_invariants.extend(uninit_locals_prop);

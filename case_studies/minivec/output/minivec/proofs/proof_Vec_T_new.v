@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.minivec.generated Require Import generated_code_minivec generated_specs_minivec.
 From refinedrust.examples.minivec.generated Require Import generated_template_Vec_T_new.

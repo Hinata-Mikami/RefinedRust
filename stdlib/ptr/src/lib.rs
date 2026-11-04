@@ -53,8 +53,7 @@ pub const fn write<T>(dst: *mut T, src:T) {
 #[rr::params("k", "ty" : "xtype")]
 #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-#[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-#[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+#[rr::requires("ty_allows_ops ty.(xtype_ty)")]
 // (`read` does a typed Copy at the syntype of T)
 #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
@@ -75,8 +74,7 @@ pub const fn write_volatile<T>(dst: *mut T, src:T) {
 #[rr::params("k", "ty" : "xtype")]
 #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-#[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-#[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+#[rr::requires("ty_allows_ops ty.(xtype_ty)")]
 #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
 #[rr::ensures(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
@@ -89,8 +87,7 @@ pub const fn read_volatile<T>(src: *const T) -> T {
 #[rr::params("k", "ty" : "xtype")]
 #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-#[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-#[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+#[rr::requires("ty_allows_ops ty.(xtype_ty)")]
 #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
 #[rr::ensures(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
@@ -102,8 +99,7 @@ pub const fn const_ptr_read_volatile<T>(src: *const T) -> T {
 #[rr::params("k", "ty" : "xtype")]
 #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-#[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-#[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+#[rr::requires("ty_allows_ops ty.(xtype_ty)")]
 #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
 #[rr::ensures(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
@@ -115,8 +111,7 @@ pub const fn const_ptr_read<T>(src: *const T) -> T {
 #[rr::params("k", "ty" : "xtype")]
 #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-#[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-#[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+#[rr::requires("ty_allows_ops ty.(xtype_ty)")]
 #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
 #[rr::ensures(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
@@ -128,8 +123,7 @@ pub const fn mut_ptr_read_volatile<T>(src: *mut T) -> T {
 #[rr::params("k", "ty" : "xtype")]
 #[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
-#[rr::requires("ty_allows_reads ty.(xtype_ty)")]
-#[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+#[rr::requires("ty_allows_ops ty.(xtype_ty)")]
 #[rr::requires("st_of ty.(xtype_ty) MetaNone = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
 #[rr::ensures(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
@@ -162,13 +156,11 @@ pub const fn mut_ptr_write<T>(dst: *mut T, src:T) {
   - just take full ownership, similar to dst - but that is unnecessarily strong */
 #[rr::export_as(core::ptr::copy_nonoverlapping)]
 #[rr::code_shim("ptr_copy_nonoverlapping")]
-#[rr::params("vs", "ly")]
-// Sidecondition so that the [ly_of T] gets simplified
-#[rr::requires("ly = (mk_array_layout {ly_of T} (Z.to_nat size))")]
-#[rr::requires(#type "src" : "vs" @ "value_t (UntypedSynType ly)")]
-#[rr::requires(#type "dst" : "()" @ "uninit (UntypedSynType ly)")]
-#[rr::ensures(#type "src" : "vs" @ "value_t (UntypedSynType ly)")]
-#[rr::ensures(#type "dst" : "vs" @ "value_t (UntypedSynType ly)")]
+#[rr::params("vs")]
+#[rr::requires(#type "src" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat size))")]
+#[rr::requires(#type "dst" : "()" @ "uninit (ArraySynType {st_of T} (Z.to_nat size))")]
+#[rr::ensures(#type "src" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat size))")]
+#[rr::ensures(#type "dst" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat size))")]
 pub const fn copy_nonoverlapping<T>(
     src: *const T,
     dst: *mut T,
@@ -184,13 +176,13 @@ pub const fn copy_nonoverlapping<T>(
 #[rr::only_spec]
 #[rr::params("l", "off_src", "off_dst", "count", "len", "vs")]
 #[rr::args("l offsetst{{ {st_of T} }}ₗ off_src", "l offsetst{{ {st_of T} }}ₗ off_dst", "count")]
-#[rr::requires(#type "l" : "vs" @ "value_t (UntypedSynType (mk_array_layout {ly_of T} (Z.to_nat len)))")]
+#[rr::requires(#type "l" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat len))")]
 #[rr::requires("(0 ≤ count)%Z")]
 #[rr::requires("0 ≤ off_src")]
 #[rr::requires("0 ≤ off_dst")]
 #[rr::requires("(off_src + count < len)%Z")]
 #[rr::requires("(off_dst + count < len)%Z")]
-#[rr::ensures(#type "l" : "ptr_copy_result off_src off_dst (Z.to_nat count) vs : val" @ "value_t (UntypedSynType (mk_array_layout {ly_of T} (Z.to_nat len)))")]
+#[rr::ensures(#type "l" : "ptr_copy_result off_src off_dst (Z.to_nat count) vs : val" @ "value_t false (ArraySynType {st_of T} (Z.to_nat len))")]
 pub const fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unimplemented!();
 }
@@ -433,7 +425,8 @@ pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
 #[rr::ensures("l.(loc_a) = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
+// NULL is never valid for reads/writes, not even of size 0
+#[rr::ensures(#iris "if decide (addr ≠ 0) then (l ◁ₗ[π, Owned] .@ ◁ unit_t) else True")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     unimplemented!();
 }
@@ -443,7 +436,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
 #[rr::ensures("l.(loc_a) = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
+// NULL is never valid for reads/writes, not even of size 0
+#[rr::ensures(#iris "if decide (addr ≠ 0) then (l ◁ₗ[π, Owned] .@ ◁ unit_t) else True")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     unimplemented!();
 }
@@ -473,7 +467,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 // alignment
 #[rr::only_spec]
 #[rr::export_as(#method core::ptr::const_ptr::is_aligned_to)]
-#[rr::requires("(∃ align_log, align = 2^align_log)")]
+#[rr::requires("is_power_of_two (Z.to_nat align)")]
 #[rr::returns("bool_decide (a `aligned_to` Z.to_nat align)")]
 pub fn const_ptr_is_aligned_to<T>(a: *const T, align: usize) -> bool {
     if !align.is_power_of_two() {
@@ -494,7 +488,7 @@ where
 
 #[rr::only_spec]
 #[rr::export_as(#method core::ptr::mut_ptr::is_aligned_to)]
-#[rr::requires("(∃ align_log, align = 2^align_log)")]
+#[rr::requires("is_power_of_two (Z.to_nat align)")]
 #[rr::returns("bool_decide (a `aligned_to` Z.to_nat align)")]
 pub fn mut_ptr_is_aligned_to<T>(a: *mut T, align: usize) -> bool {
     if !align.is_power_of_two() {
@@ -518,7 +512,7 @@ where
 #[rr::only_spec]
 #[rr::export_as(core::mem::replace)]
 #[rr::returns("dest.cur")]
-#[rr::observe("dest.ghost": "src")]
+#[rr::observe("dest.ghost": "$# src")]
 pub fn mem_replace<T>(dest: &mut T, src: T) -> T {
     let x = read(dest as *mut T);
     write(dest as *mut T, src);

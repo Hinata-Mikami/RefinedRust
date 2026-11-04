@@ -1,6 +1,21 @@
 Section extra_specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
+(* Learn that the emitted history followed by the remaining iterator state is
+   the initial vector. *)
+Global Program Instance iterator_learn_minivec_iter T_rt DropGlue_T_spec_attrs p :
+  IteratorLearnInductive (IteraTasstd_iter_Iterator_spec_attrs T_rt DropGlue_T_spec_attrs) p :=
+  {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
+Next Obligation.
+  iIntros (?? [] ????) "Hx".
+  iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
+  iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
+  { iDestruct "Hx" as "->". iPureIntro. done. }
+  iDestruct "Hx" as "(%s1' & (_ & ->) & Hx)".
+  iPoseProof ("IH" with "Hx") as "->".
+  done.
+Qed.
+
 Section resolve_ghost.
   Context {T_rt : RT}.
   Context (T_ty : type (T_rt)).
@@ -24,17 +39,33 @@ Section Vec_inv_t_ne.
     TypeContractive (λ ty, RawVec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof.
     intros.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply direct_lft_morph_make_const.
       + solve_type_proper.
-      + simpl. intros. prepare_initial_coq_context. solve_type_proper.
+      + solve_type_proper.
     - cbn. apply _.
   Qed.
   Global Instance RawVec_inv_t_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, RawVec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
+
+  Instance RawVec_inv_t_dep_lft_mor rts (T_rt : RT) (T : mut_types rts → type T_rt) :
+    DepLftMorphism ∅ (λ x : mut_types rts, RawVec_inv_t_inv_spec T_rt *[] *[(T x)]).
+  Proof.
+    simpl.
+    eapply (mk_dep_lft_morph_const _ static []).
+    - abstract (iIntros (?); simpl; iApply lft_equiv_refl).
+    - abstract (done).
+  Defined.
+  Global Instance RawVec_inv_t_dep_lft_mor' rts (T_rt : RT) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, RawVec_inv_t T_rt *[] *[(T x)]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
 End Vec_inv_t_ne.
 
 Section Vec_inv_t_ne.
@@ -45,10 +76,8 @@ Section Vec_inv_t_ne.
     TypeContractive (λ ty, Vec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof.
     intros X.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply ty_lft_morphism_to_direct.
-        apply X.
       + solve_proper_prepare.
         repeat solve_proper_step.
         rewrite type_dist2_st. done.
@@ -62,6 +91,24 @@ Section Vec_inv_t_ne.
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, Vec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
-End Vec_inv_t_ne.
 
+  Instance Vec_inv_t_dep_lft_mor rts (T_rt : RT) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Vec_inv_t_inv_spec T_rt *[] *[(T x)]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - simpl. done.
+    - done.
+  Defined.
+  Global Instance Vec_inv_t_dep_lft_mor' rts (T_rt : RT) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Vec_inv_t T_rt *[] *[(T x)]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
+End Vec_inv_t_ne.
 End extra_specs.

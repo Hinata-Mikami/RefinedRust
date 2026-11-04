@@ -19,7 +19,10 @@ use derive_more::{Deref, DerefMut, Display, From};
 pub struct OpenScope(pub String);
 
 impl OpenScope {
-    pub fn new<I: Into<String>>(scope: I) -> Self {
+    pub fn new<I>(scope: I) -> Self
+    where
+        I: Into<String>,
+    {
         Self(scope.into())
     }
 }

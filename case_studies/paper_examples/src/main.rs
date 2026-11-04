@@ -15,9 +15,9 @@ fn main() {
 
 
 #[rr::params(x : "Z")]
-#[rr::args("x")]
+#[rr::args("(x, tt)")]
 #[rr::requires("(x + 42)%Z ∈ i32")]
-#[rr::returns("(x + 42)")]
+#[rr::returns("(x + 42, tt)")]
 fn box_add_42(mut x : Box<i32>) -> Box<i32> {
     *x += 42;
     x

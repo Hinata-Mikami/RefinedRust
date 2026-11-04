@@ -9,7 +9,7 @@
 #[rr::refined_by("x" : "Z")]
 #[rr::invariant("Zeven x")]
 struct EvenInt {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     num: i32,
 }
 

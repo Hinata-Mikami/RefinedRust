@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_const_ptr_offset.
 
@@ -23,15 +23,15 @@ Proof.
   rep liRStep; liShow.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
+  rewrite {1}/ty_own_val /= int_own_val_unfold. iDestruct "Hv1" as "(_ & %Hv1)".
+  rewrite {1}/ty_own_val /= alias_ptr_own_val_unfold. iDestruct "Hv2" as "(_ & %)".
   iDestruct (loc_in_bounds_ptr_in_range with "Hbounds'") as %[Hran1 Hran2].
   rewrite /size_of_st. simplify_layout_goal.
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply wp_ptr_offset.
-  { apply val_to_of_loc. }
+  { done. }
   { done. }
   { split; simplify_layout_goal; rewrite -?MinInt_eq -?MaxInt_eq; lia. }
   { rewrite /offset_loc. fold (size_of_st (ty_syn_type T_ty MetaNone)).
@@ -53,17 +53,12 @@ Proof.
   { iApply loc_in_bounds_offset; last done. all: sidecond_hammer. }
   iPoseProof (loc_in_bounds_ptr_in_range with "Hlb'") as "[% %Hup]".
   iModIntro.
+  iIntros (?) "%Hv".
   iApply ("Hcont" $! _ _ _ (alias_ptr_t) with "HL Hf").
-  { rewrite /ty_own_val /=.
-    iR.
-    iPureIntro. split; first done.
-    unfold OffsetLocSt in *.
-    simplify_layout_assum.
-    split; first sidecond_hammer.
-    move: Hup.
-    unsafe_unfold_common_caesium_defs.
-    sidecond_hammer.
-  }
+  { rewrite /ty_own_val /= alias_ptr_own_val_unfold.
+    iR. iPureIntro.
+    apply val_to_loc_decodes_to_loc.
+    by apply val_to_of_loc. }
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

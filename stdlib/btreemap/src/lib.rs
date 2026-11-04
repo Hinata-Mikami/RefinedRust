@@ -20,18 +20,19 @@ use std::cmp::Ord;
 #[rr::export_as(alloc::collections::BTreeMap)]
 #[rr::context("EqDecision {xt_of K}")]
 #[rr::context("Countable {xt_of K}")]
-#[rr::refined_by("M" : "gmap {xt_of K} (place_rfn {xt_of V})")]
-#[rr::exists("k", "v", "a")]
+#[rr::refined_by("M" : "directRT (gmap {xt_of K} ({xt_of V}))")]
+#[rr::exists("k" : "{xt_of K}", "v" : "{xt_of V}", "a" : "{xt_of A}")]
+#[rr::skip(drop_glue)]
 pub struct BTreeMap<
     K,
     V,
     A: Allocator + Clone = Global,
 > {
-    #[rr::field("k")]
+    #[rr::field("#($# k)")]
     _k: K,
-    #[rr::field("v")]
+    #[rr::field("#($# v)")]
     _v: V,
-    #[rr::field("a")]
+    #[rr::field("#($# a)")]
     _a: A,
 }
 
@@ -85,7 +86,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     #[rr::only_spec]
     #[rr::params("m", "k", "v", "γ")]
     #[rr::args("(m, γ)", "k", "v")]
-    #[rr::observe("γ": "<$#> (<[k := v]> m)")]
+    #[rr::observe("γ": "(<[k := v]> m)")]
     #[rr::returns("m !! k")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where

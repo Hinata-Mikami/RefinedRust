@@ -1,6 +1,7 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
 #![rr::package("minivec")]
@@ -10,6 +11,11 @@
 #![rr::include("mem")]
 #![rr::include("sized")]
 #![rr::include("rr_internal")]
+#![rr::include("closures")]
+#![rr::include("result")]
+#![rr::include("controlflow")]
+#![rr::include("cmp")]
+#![rr::include("iterator")]
 
 /// Vec implementation from https://doc.rust-lang.org/nomicon/vec/vec-final.html
 
@@ -38,7 +44,7 @@ mod rralloc {
         // will return null on alloc failure due to
         // - memory exhaustion (but abortion is also allowed behavior in this case)
         // - `ly` not meeting the allocator's size or alignment constraints
-        let ptr = alloc::alloc(ly);
+        let ptr = unsafe { alloc::alloc(ly) };
         if ptr.is_null() {
             // due to our assumption, this will abort.
             alloc::handle_alloc_error(ly);
@@ -69,7 +75,7 @@ mod rralloc {
         //   does not account for any padding to handle alignment
         //   => we also handle it that way for now
 
-        let ptr = alloc::realloc(ptr as *mut u8, old_layout, new_layout.size());
+        let ptr = unsafe { alloc::realloc(ptr as *mut u8, old_layout, new_layout.size()) };
         if ptr.is_null() {
             // due to our assumption, this will abort.
             alloc::handle_alloc_error(new_layout);
@@ -79,7 +85,7 @@ mod rralloc {
 
     #[rr::shim("dealloc_array", "type_of_dealloc_array", "trait_incl_of_dealloc_array")]
     pub unsafe fn dealloc_array<T>(len: usize, ptr: *mut T) {
-        alloc::dealloc(ptr as *mut u8, Layout::array::<T>(len).unwrap());
+        unsafe { alloc::dealloc(ptr as *mut u8, Layout::array::<T>(len).unwrap()) };
     }
 
     /// Check that an array of `T` with length `len` is layoutable.
@@ -167,11 +173,11 @@ mod rrptr {
 #[rr::invariant(#iris "freeable_nz l (size_of_array_in_bytes {st_of T} cap) 1 HeapAlloc")]
 pub struct RawVec<T> {
     // *const T because it is covariant in T
-    #[rr::field("l")]
+    #[rr::field("#(l)")]
     ptr: *const T,
-    #[rr::field("Z.of_nat cap")]
+    #[rr::field("#(Z.of_nat cap)")]
     cap: usize,
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     _marker: PhantomData<T>,
 }
 
@@ -179,24 +185,61 @@ pub struct RawVec<T> {
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
 #[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
 #[rr::invariant("Hxs" : "xs = project_vec_els len els")]
-#[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat 
-                → els !! i = Some (#(Some (xs !!! i)))")]
-#[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat 
-                → els !! i = Some (#None)")]
+#[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
+#[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
+#[rr::invariant("Hels_len": "length els = cap")]
 #[rr::invariant("Hlen_eq": "len = length xs")]
 #[rr::invariant("Hcap": "len ≤ cap")]
-// invariant due to GEP / ptr::offset limits: the total size 
-// of the allocation should not exceed isize::max bytes
-// we need the ZST case to know that we never call grow 
-// except when we have reached the capacity limit
-#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) 
-                    then cap = Z.to_nat (MaxInt USize) 
-                else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
+// invariant due to GEP / ptr::offset limits: the total size of the allocation should not exceed isize::max bytes
+// we need the ZST case to know that we never call grow except when we have reached the capacity limit
+#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
 pub struct Vec<T> {
-    #[rr::field("(l, cap)")]
+    #[rr::field("#((l, cap))")]
     buf: RawVec<T>,
-    #[rr::field("Z.of_nat $ len")]
+    #[rr::field("#(Z.of_nat $ len)")]
     len: usize,
+}
+
+#[rr::refined_by("remaining" : "(listRT (directRT {xt_of T}))")]
+#[rr::exists("xs" : "list {xt_of T}", "index" : "nat")]
+#[rr::invariant("remaining = (drop index xs)")]
+#[rr::invariant("index ≤ length xs")]
+pub struct Iter<'a, T: 'a> {
+    #[rr::field("# #(<#> <$#> xs)")]
+    vec: &'a Vec<T>,
+    #[rr::field("# Z.of_nat index")]
+    index: usize,
+}
+
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Inv" := "λ π _ self, True%I")]
+#[rr::instantiate("Next" := "λ π _ xs ret xs',
+    (⌜if_None ret (xs = [] ∧ xs' = [])⌝ ∗
+     ⌜if_Some ret (λ x, xs = x :: xs')⌝)%I")]
+impl<'a, T: 'a> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let vec = self.vec;
+        if self.index < vec.len() {
+            let value = unsafe { vec.get_unchecked(self.index) };
+            self.index += 1;
+            Some(value)
+        } else {
+            None
+        }
+    }
+}
+
+#[rr::instantiate("IntoIter" := "λ x, x")]
+impl<'a, T> IntoIterator for &'a Vec<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    #[rr::default_spec]
+    fn into_iter(self: &'a Vec<T>) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 impl<T> RawVec<T> {
@@ -218,7 +261,7 @@ impl<T> RawVec<T> {
 
     #[rr::exists("l" : "loc", "cap" : "nat")]
     #[rr::ensures("cap = if decide (size_of_st {st_of T} = 0%nat) then Z.to_nat (MaxInt USize) else 0%nat")]
-    #[rr::ensures(#type "l" : "(replicate cap #None)" @ "array_t cap (maybe_uninit {T})")]
+    #[rr::ensures(#type "l" : "(replicate cap (#None))" @ "array_t cap (maybe_uninit {T})")]
     #[rr::returns("(l, cap)")]
     pub fn new() -> Self {
         // !0 is usize::MAX. This branch should be stripped at compile time.
@@ -239,7 +282,7 @@ impl<T> RawVec<T> {
     #[rr::requires(#type "l" : "xs" @ "array_t cap (maybe_uninit {T})")]
     #[rr::exists("new_cap" : "nat", "l'" : "loc")]
     #[rr::observe("γ": "(l', new_cap)")]
-    #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) #None)" @ "array_t new_cap (maybe_uninit {T})")]
+    #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) (#None))" @ "array_t new_cap (maybe_uninit {T})")]
     #[rr::ensures("new_cap > cap")]
     #[rr::ensures("(size_of_array_in_bytes {st_of T} new_cap ≤ MaxInt ISize)%Z")]
     pub fn grow(&mut self) {
@@ -287,28 +330,27 @@ impl<T> RawVec<T> {
 
 impl<T> Vec<T> {
 
-    // private function, take an unfolded type
-    // we do not move ownership out, but return an alias to the ptr
-    #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "( *[(l, cap); len])")]
-    #[rr::returns("l")]
-    fn ptr<'a>(&'a self) -> *mut T {
+    #[rr::inline]
+    fn ptr(&self) -> *mut T {
         self.buf.ptr() as *mut T
     }
 
-    // private function, take an unfolded type
-    #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "( *[(l, cap); len])")]
-    #[rr::returns("cap")]
-    fn cap<'a>(&'a self) -> usize {
+    #[rr::inline]
+    fn cap(&self) -> usize {
         self.buf.cap
     }
 
-    #[rr::params("xs")]
-    #[rr::args("xs")]
-    #[rr::returns("length xs")]
+    #[rr::returns("length self")]
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    #[rr::returns("self")]
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            vec: self,
+            index: 0,
+        }
     }
 
     #[rr::returns("[]")]

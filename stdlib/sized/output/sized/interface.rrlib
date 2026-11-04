@@ -1,0 +1,39 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "allowed_attrs": [],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": true,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Sized",
+      "path": [
+        "core",
+        "marker",
+        "Sized"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "drop": "trait_incl_of_Drop_drop"
+      },
+      "name": "Drop",
+      "path": [
+        "core",
+        "ops",
+        "Drop"
+      ]
+    }
+  ],
+  "module_dependencies": [],
+  "refinedrust_module": "generated_specs_sized",
+  "refinedrust_name": "sized",
+  "refinedrust_path": "rrstd.sized.sized.generated"
+}

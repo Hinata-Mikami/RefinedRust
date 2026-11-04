@@ -5,10 +5,10 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 use rr_rustc_interface::type_ir::{TypeFoldable, TypeSuperFoldable as _, TypeVisitableExt as _};
 
 use crate::environment::polonius_info::{PoloniusInfo, RegionKind};
-use crate::regions;
 use crate::regions::EarlyLateRegionMap;
 
 pub(crate) fn relabel_erased_regions<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> (T, usize)
@@ -86,7 +86,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 
                 // We need to do some hacks here to find the right Polonius region:
                 // `r` is the non-placeholder region that the variable gets, but we are
                 // looking for the corresponding placeholder region
-                let r2 = regions::init::find_placeholder_region_for(v.into(), self.info).unwrap();
+                let r2 = super::init::find_placeholder_region_for(v.into(), self.info).unwrap();
 
                 let lft = self.info.mk_atomic_region(r2);
                 self.substitution.ensure_closure_region(lft);
@@ -193,10 +193,10 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'_, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<ty::TyCtxt<'tcx>>>(
-        &mut self,
-        t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    where
+        T: TypeFoldable<ty::TyCtxt<'tcx>>,
+    {
         self.binders_passed += 1;
         let t = t.super_fold_with(self);
         self.binders_passed -= 1;
@@ -332,7 +332,10 @@ impl<'tcx> ArgFolder<'_, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_vars_through_binders<T: TypeFoldable<ty::TyCtxt<'tcx>>>(&self, val: T) -> T {
+    fn shift_vars_through_binders<T>(&self, val: T) -> T
+    where
+        T: TypeFoldable<ty::TyCtxt<'tcx>>,
+    {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             return val;
         }

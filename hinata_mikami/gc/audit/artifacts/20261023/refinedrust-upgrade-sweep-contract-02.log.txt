@@ -1,0 +1,9 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/extra_proofs/gc 
+command: dune build -j 1 --display=short
+Entering directory '/home/mikam/RefinedRust'
+        rocq hinata_mikami/extra_proofs/gc/.hinata_mikami.extra_proofs.theory.d
+        rocq hinata_mikami/extra_proofs/gc/sweep_contract.{glob,vo} (exit 1)
+File "./hinata_mikami/extra_proofs/gc/sweep_contract.v", line 69, characters 57-87:
+Error: Cannot infer the implicit parameter A of elem_of whose type is "Type".
+
+Leaving directory '/home/mikam/RefinedRust'

@@ -6,39 +6,194 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{BTreeMap, HashMap, hash_map};
+use std::collections::{HashMap, hash_map};
+use std::hash::Hash;
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
 use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeFoldable as _;
+use rr_rustc_interface::middle::ty::{RegionExt as _, TypeFoldable as _, TypeSuperFoldable as _};
+use rr_rustc_interface::middle::{span_bug, ty};
+use rr_rustc_interface::span::DUMMY_SP;
 
 use crate::base::*;
-use crate::environment::Environment;
-use crate::regions;
+use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
-use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
-use crate::traits::registry::GenericTraitUse;
-use crate::traits::{self, registry};
+use crate::traits::registry::{GenericTraitUse, TraitKey, VirtualTrait};
+use crate::traits::{registry, requirements, resolution};
 use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
+use crate::{environment, regions};
 
-/// Key used for resolving early-bound parameters for function calls.
-/// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
-/// independent of lifetimes.
+/// Coarse key used to find trait-use and generic-argument candidates.
+///
+/// All lifetime arguments and regions nested in types are erased. Consequently, this key is not a
+/// unique trait-use identity: distinct HRTBs can intentionally have the same key.
 /// TODO: handle early-bound lifetimes?
 pub(crate) type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
+
+struct GenericKeyFolder<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+}
+
+struct RegionOccurrenceCollector<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    regions: Vec<ty::Region<'tcx>>,
+}
+
+fn region_instantiation_is_consistent<K, V>(occurrences: impl IntoIterator<Item = (Option<K>, V)>) -> bool
+where
+    K: Copy + Eq + Hash,
+    V: Copy + Eq,
+{
+    let mut instantiation = HashMap::new();
+    for (variable, requested) in occurrences {
+        let Some(variable) = variable else {
+            continue;
+        };
+        match instantiation.entry(variable) {
+            hash_map::Entry::Occupied(entry) if *entry.get() != requested => return false,
+            hash_map::Entry::Occupied(_) => {},
+            hash_map::Entry::Vacant(entry) => {
+                entry.insert(requested);
+            },
+        }
+    }
+    true
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionOccurrenceCollector<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        self.regions.push(r);
+        ty::Region::new_from_kind(self.tcx, ty::RegionKind::ReErased)
+    }
+
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        let t = t.super_fold_with(self);
+        match t.kind() {
+            ty::TyKind::Alias(_, alias) => ty::Ty::new_alias(self.tcx, ty::IsRigid::No, *alias),
+            _ => t,
+        }
+    }
+}
+
+/// Check whether the regions in `candidate_args` can be instantiated to those in `args`.
+///
+/// The erased type shapes must agree. For regions that `LateBoundUnifier` treats as variables, all
+/// occurrences of the same variable must map to the same requested region. Different variables may
+/// map to the same region.
+fn trait_args_match_region_pattern<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    candidate_args: &[ty::GenericArg<'tcx>],
+    args: &[ty::GenericArg<'tcx>],
+    bound_region_count: usize,
+) -> bool {
+    if candidate_args.len() != args.len() {
+        return false;
+    }
+
+    // The boolean distinguishes late-bound variables from early parameter indices.
+    let mut region_occurrences = Vec::new();
+    let mut record_region = |candidate: ty::Region<'tcx>, requested: ty::Region<'tcx>| {
+        let variable = match candidate.kind() {
+            ty::RegionKind::ReBound(_, bound) if bound.var.index() < bound_region_count => {
+                Some((true, bound.var.index()))
+            },
+            ty::RegionKind::ReEarlyParam(early) => Some((false, early.index as usize)),
+            _ => None,
+        };
+        region_occurrences.push((variable, requested));
+    };
+
+    for (candidate, requested) in candidate_args.iter().zip(args) {
+        match (candidate.kind(), requested.kind()) {
+            (ty::GenericArgKind::Lifetime(candidate), ty::GenericArgKind::Lifetime(requested)) => {
+                record_region(candidate, requested);
+            },
+            (ty::GenericArgKind::Type(candidate), ty::GenericArgKind::Type(requested)) => {
+                let mut candidate_collector = RegionOccurrenceCollector {
+                    tcx,
+                    regions: Vec::new(),
+                };
+                let mut requested_collector = RegionOccurrenceCollector {
+                    tcx,
+                    regions: Vec::new(),
+                };
+                let candidate_shape = candidate.fold_with(&mut candidate_collector);
+                let requested_shape = requested.fold_with(&mut requested_collector);
+                if candidate_shape != requested_shape
+                    || candidate_collector.regions.len() != requested_collector.regions.len()
+                {
+                    return false;
+                }
+                for (candidate, requested) in
+                    candidate_collector.regions.into_iter().zip(requested_collector.regions)
+                {
+                    record_region(candidate, requested);
+                }
+            },
+            (ty::GenericArgKind::Const(candidate), ty::GenericArgKind::Const(requested)) => {
+                if candidate != requested {
+                    return false;
+                }
+            },
+            _ => return false,
+        }
+    }
+    region_instantiation_is_consistent(region_occurrences)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::region_instantiation_is_consistent;
+
+    #[test]
+    fn repeated_region_variable_rejects_distinct_regions() {
+        assert!(!region_instantiation_is_consistent([(Some(0), 10), (Some(0), 11),]));
+    }
+
+    #[test]
+    fn independent_region_variables_accept_distinct_regions() {
+        assert!(region_instantiation_is_consistent([(Some(0), 10), (Some(1), 11),]));
+    }
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for GenericKeyFolder<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, _: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        ty::Region::new_from_kind(self.tcx, ty::RegionKind::ReErased)
+    }
+
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        let ty = t.super_fold_with(self);
+        match ty.kind() {
+            // `skip_norm_wip` changes this marker while preserving the same projection.
+            ty::TyKind::Alias(_, alias) => ty::Ty::new_alias(self.tcx, ty::IsRigid::No, *alias),
+            _ => ty,
+        }
+    }
+}
+
+pub(crate) fn erase_regions<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+    ty.fold_with(&mut TyRegionEraseFolder::new(tcx))
+}
 
 /// Generate a key for indexing into structures indexed by `GenericArg`s.
 pub(crate) fn generate_args_inst_key<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     ty_params: &[ty::GenericArg<'tcx>],
-) -> Result<GenericsKey<'tcx>, TranslationError<'tcx>> {
+) -> Result<GenericsKey<'tcx>, TranslationError> {
     // erase parameters to their syntactic types
     let mut key = Vec::new();
-    let mut region_eraser = TyRegionEraseFolder::new(tcx);
+    let mut key_folder = GenericKeyFolder { tcx };
     for p in ty_params {
         match p.kind() {
             ty::GenericArgKind::Lifetime(_) => {
@@ -47,13 +202,13 @@ pub(crate) fn generate_args_inst_key<'tcx>(
             ty::GenericArgKind::Type(t) => {
                 // TODO: this should erase to the syntactic type.
                 // Is erasing regions enough for that?
-                let t_erased = t.fold_with(&mut region_eraser);
+                let t_erased = t.fold_with(&mut key_folder);
                 key.push(t_erased);
             },
             ty::GenericArgKind::Const(_c) => {
-                return Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does not support const generics".to_owned(),
-                });
+                return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
+                    "RefinedRust does not support const generics".to_owned(),
+                ))));
             },
         }
     }
@@ -116,23 +271,29 @@ pub(crate) struct Params<'tcx, 'def> {
     external_scope: Vec<specs::LftParam>,
 
     // lifetime constraints
-    lifetime_inclusions: Vec<specs::LftConstr<'def>>,
+    lifetime_inclusions: Vec<specs::LftConstrWithOrigin<'def>>,
 
     /// conversely, map the declaration name of a lifetime to an early index
     lft_names: HashMap<String, usize>,
     /// map types to their index
-    ty_names: HashMap<String, usize>,
+    ty_names: HashMap<String, u32>,
 
     /// the trait instances which are in scope
     trait_scope: Traits<'tcx, 'def>,
 }
 
-#[expect(clippy::fallible_impl_from)]
 impl<'tcx, 'def> From<Params<'tcx, 'def>>
     for specs::GenericScope<'def, specs::traits::LiteralSpecUseRef<'def>>
 {
-    fn from(mut x: Params<'tcx, 'def>) -> Self {
-        let mut scope = Self::empty();
+    fn from(x: Params<'tcx, 'def>) -> Self {
+        x.into_radium_scope(registry::ScopePurpose::Specification)
+    }
+}
+
+impl<'def> Params<'_, 'def> {
+    pub(crate) fn into_radium_scope(self, purpose: registry::ScopePurpose) -> specs::GenericScope<'def> {
+        let x = self;
+        let mut scope = specs::GenericScope::empty();
         for x in x.scope {
             match x {
                 Param::Region(lft) => {
@@ -152,9 +313,10 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
         for lft in x.external_scope {
             scope.add_lft_param(lft);
         }
-        for key in x.trait_scope.ordered_assumptions {
-            let trait_use = x.trait_scope.used_traits.remove(&key).unwrap();
-            if !trait_use.is_self_use {
+        let mut requirements = x.trait_scope.trait_use_entries;
+        registry::order_scope_requirements(&mut requirements);
+        for trait_use in requirements {
+            if !trait_use.is_self_use && purpose.includes(&trait_use.key) {
                 scope.add_trait_requirement(trait_use.trait_use);
             }
         }
@@ -192,72 +354,88 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
     }
 }
 
-impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
-    fn determine_trait_attr_requirement_origin(
+impl<'tcx, 'def> Params<'tcx, 'def> {
+    /// Restrict annotation lookup to dependencies available in this kind of attribute.
+    pub(crate) fn attribute_scope(&self, include: impl Fn(specs::traits::AttrDependency) -> bool) -> Self {
+        self.restrict_annotation_scope(|_, dependency| include(dependency))
+    }
+
+    pub(crate) fn annotation_scope_for_purpose(&self, purpose: registry::ScopePurpose) -> Self {
+        self.restrict_annotation_scope(|key, _| purpose.includes(&key))
+    }
+
+    fn restrict_annotation_scope(
         &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        let typaram_idx = self.ty_names.get(typaram)?;
+        include: impl Fn(TraitKey, specs::traits::AttrDependency) -> bool,
+    ) -> Self {
+        let mut result = self.clone();
 
-        // NB: order of iteration doesn't matter for result.
-        #[expect(clippy::iter_over_hash_type)]
-        for ((_, ty), trait_use_ref) in &self.trait_scope.used_traits {
-            // check if the Self parameter matches up
-            if ty[0].is_param(*typaram_idx as u32) {
-                let trait_use = trait_use_ref.trait_use.borrow();
-                let trait_use = trait_use.as_ref();
-                let Some(spec_use) = trait_use else {
-                    continue;
-                };
+        // Remove all non-self requirement shorthands before replaying the included entries below.
+        // This lets an included entry become visible when the original winner is filtered out.
+        for entry in &self.trait_scope.trait_use_entries {
+            if entry.is_self_use {
+                continue;
+            }
+            let borrowed = entry.trait_use.borrow();
+            let requirement = borrowed.as_ref().unwrap();
+            let self_ty = &requirement.trait_inst.get_direct_ty_params()[0];
+            let specs::Type::LiteralParam(self_param) = self_ty else {
+                continue;
+            };
 
-                let trait_ref = &spec_use.trait_ref;
-
-                if !trait_ref.declared_attrs.contains(&attr.to_owned()) {
-                    continue;
-                }
-
-                trace!("determine_trait_attr_requirement_origin: found trait_ref={trait_ref:?}");
-
-                return Some(trait_use_ref.trait_use);
+            for attr in &requirement.trait_ref.declared_attrs {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(attr.to_owned()),
+                ];
+                result.trait_scope.attribute_names.remove(&path);
+            }
+            for assoc_ty in &requirement.trait_ref.assoc_tys {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(assoc_ty.to_owned()),
+                ];
+                result.trait_scope.assoc_ty_names.remove(&path);
             }
         }
-        None
+
+        for entry in &self.trait_scope.trait_use_entries {
+            if entry.is_self_use {
+                continue;
+            }
+            let borrowed = entry.trait_use.borrow();
+            let requirement = borrowed.as_ref().unwrap();
+            if !include(entry.key.clone(), requirement.attr_dependency) {
+                continue;
+            }
+            let self_ty = &requirement.trait_inst.get_direct_ty_params()[0];
+            let specs::Type::LiteralParam(self_param) = self_ty else {
+                continue;
+            };
+
+            for (idx, assoc_ty) in requirement.trait_ref.assoc_tys.iter().enumerate() {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(assoc_ty.to_owned()),
+                ];
+                if let hash_map::Entry::Vacant(entry) = result.trait_scope.assoc_ty_names.entry(path) {
+                    entry.insert(requirement.make_assoc_type_use(idx));
+                }
+            }
+            for attr in &requirement.trait_ref.declared_attrs {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(attr.to_owned()),
+                ];
+                result
+                    .trait_scope
+                    .attribute_names
+                    .insert(path, requirement.make_attr_item_term_in_spec(attr).to_string());
+            }
+        }
+        result
     }
 
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
-        let mut trait_ref = trait_use.borrow_mut();
-        let trait_ref = trait_ref.as_mut().unwrap();
-
-        let trait_use = trait_ref.trait_ref;
-        let trait_inst = &trait_ref.trait_inst;
-
-        let assoc_types_inst = trait_ref.get_assoc_ty_inst();
-
-        let attrs = specs::traits::SpecAttrsInst::new(reqs.to_owned());
-        // name for the definition
-        let name = format!("{name_prefix}_{}trait_req", trait_ref.mangled_base);
-
-        let specialization = specs::functions::SpecTraitReqSpecialization::new(
-            trait_use,
-            trait_inst.to_owned(),
-            assoc_types_inst,
-            attrs,
-            name.clone(),
-        );
-
-        trait_ref.overridden_attrs = Some(name);
-
-        Some(specialization)
-    }
-}
-
-impl<'tcx, 'def> Params<'tcx, 'def> {
     pub(crate) const fn trait_scope(&self) -> &Traits<'tcx, 'def> {
         &self.trait_scope
     }
@@ -275,8 +453,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         let mut ty_names = HashMap::new();
         let mut lft_names = HashMap::new();
 
-        for p in x {
-            if let Some(r) = p.as_region() {
+        for (num, p) in (0_u32..).zip(x) {
+            let param = if let Some(r) = p.as_region() {
                 if let Some(name) = r.get_name(tcx)
                     && name.as_str() != "'_"
                 {
@@ -286,39 +464,43 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     let ty::RegionKind::ReEarlyParam(early) = r.kind() else {
                         unreachable!("should have early param");
                     };
+
                     let origin = if let Some(of_did) = with_origin {
                         determine_origin_of_lft_param(of_did, tcx, early)
                     } else {
                         specs::LftParamOrigin::LocalEarlyBound
                     };
 
-                    scope.push(Param::Region(specs::LftParam::new(coq::Ident::new(&name), origin)));
+                    Param::Region(specs::LftParam::new(coq::Ident::new(&name), origin))
                 } else {
                     let name = coq::Ident::new(&format!("ulft_{}", region_count));
                     region_count += 1;
-                    scope.push(Param::Region(specs::LftParam::new(
-                        name,
-                        specs::LftParamOrigin::LocalEarlyBound,
-                    )));
+
+                    Param::Region(specs::LftParam::new(name, specs::LftParamOrigin::LocalEarlyBound))
                 }
             } else if let Some(ty) = p.as_type() {
-                if let ty::TyKind::Param(x) = ty.kind() {
-                    ty_names.insert(x.name.as_str().to_owned(), scope.len());
-                    let name = strip_coq_ident(x.name.as_str());
-
-                    let lit = if let Some(of_did) = with_origin {
-                        let origin = Self::determine_origin_of_param(of_did, tcx, *x);
-                        specs::LiteralTyParam::new_with_origin(&name, origin)
-                    } else {
-                        specs::LiteralTyParam::new(&name)
-                    };
-                    scope.push(Param::Ty(lit));
-                } else {
+                let ty::TyKind::Param(x) = ty.kind() else {
                     unreachable!("Should not convert a non-parametric GenericArgsRef to a Params");
-                }
+                };
+
+                ty_names.insert(x.name.as_str().to_owned(), num);
+                let name = strip_coq_ident(x.name.as_str());
+
+                let lit = if let Some(of_did) = with_origin {
+                    let origin = Self::determine_origin_of_param(of_did, tcx, *x);
+                    specs::LiteralTyParam::new_with_origin(&name, origin)
+                } else {
+                    specs::LiteralTyParam::new(&name)
+                };
+
+                Param::Ty(lit)
             } else if p.as_const().is_some() {
-                scope.push(Param::Const);
-            }
+                Param::Const
+            } else {
+                unreachable!("Should not be a Term");
+            };
+
+            scope.push(param);
         }
         Self {
             scope,
@@ -333,8 +515,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Lookup a type parameter by its De Bruijn index.
     #[must_use]
-    pub(crate) fn lookup_ty_param_idx(&self, idx: usize) -> Option<&specs::LiteralTyParam> {
-        let ty = self.scope.get(idx)?;
+    pub(crate) fn lookup_ty_param_idx(&self, idx: u32) -> Option<&specs::LiteralTyParam> {
+        let ty = self.scope.get(idx as usize)?;
         ty.as_type()
     }
 
@@ -351,18 +533,6 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         let binder = self.late_scope.get(binder)?;
         let lft = binder.get(var)?;
         Some(lft)
-    }
-
-    /// Get all type parameters in scope.
-    #[must_use]
-    pub(crate) fn tyvars(&self) -> Vec<specs::LiteralTyParam> {
-        let mut tyvars = Vec::new();
-        for x in &self.scope {
-            if let Param::Ty(ty) = x {
-                tyvars.push(ty.to_owned());
-            }
-        }
-        tyvars
     }
 
     /// Add bound regions when descending under a for<...> binder.
@@ -450,24 +620,26 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // replace all existing constraints
         self.lifetime_inclusions = Vec::new();
         // add lifetime constraints
-        for constr in &map.constraints {
+        for (constr, origin) in &map.constraints {
             match constr {
                 regions::LftConstr::RegionOutlives(r1, r2) => {
                     let lft1 = map.lookup_region(*r1).unwrap();
                     let lft2 = map.lookup_region(*r2).unwrap();
 
-                    self.lifetime_inclusions.push(specs::LftConstr::LftOutlives(
+                    let constr = specs::LftConstr::LftOutlives(
                         specs::UniversalLft::Local(lft2.lft().to_owned()),
                         specs::UniversalLft::Local(lft1.lft().to_owned()),
-                    ));
+                    );
+                    self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, *origin));
                 },
                 regions::LftConstr::TypeOutlives(ty, r) => {
                     let lft = map.lookup_region(*r).unwrap();
 
-                    self.lifetime_inclusions.push(specs::LftConstr::TypeOutlives(
+                    let constr = specs::LftConstr::TypeOutlives(
                         ty.to_owned(),
                         specs::UniversalLft::Local(lft.lft().to_owned()),
-                    ));
+                    );
+                    self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, *origin));
                 },
             }
         }
@@ -493,39 +665,47 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Add the lifetime constraints of a `ParamEnv`.
     fn add_lifetime_constraints(
         &mut self,
+        did: DefId,
+        tcx: ty::TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         type_translator: &TX<'def, 'tcx>,
-    ) -> Result<(), TranslationError<'tcx>> {
-        let clauses = typing_env.param_env.caller_bounds();
-        for cl in clauses {
+    ) -> Result<(), TranslationError> {
+        let clauses_with_origin = requirements::get_clauses_with_origin(tcx, did, typing_env.param_env);
+        for (cl, origin) in clauses_with_origin {
             let cl_kind = cl.kind();
             let cl_kind = cl_kind.skip_binder();
 
             if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
                 info!("region outlives: {:?} {:?}", region_pred.0, region_pred.1);
-                let lft1 = self
-                    .translate_region(region_pred.0)
-                    .ok_or(TranslationError::UnknownRegion(region_pred.0))?;
-                let lft2 = self
-                    .translate_region(region_pred.1)
-                    .ok_or(TranslationError::UnknownRegion(region_pred.1))?;
+                let lft1 = self.translate_region(region_pred.0).ok_or_else(|| {
+                    TranslationError::ErrorReported(
+                        type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.0)),
+                    )
+                })?;
+                let lft2 = self.translate_region(region_pred.1).ok_or_else(|| {
+                    TranslationError::ErrorReported(
+                        type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.1)),
+                    )
+                })?;
 
                 let constr = specs::LftConstr::LftOutlives(
                     specs::UniversalLft::Local(lft2),
                     specs::UniversalLft::Local(lft1),
                 );
-                self.lifetime_inclusions.push(constr);
+                self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, origin));
             }
             if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
                 info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
                 let translated_ty =
                     type_translator.translate_type_in_scope(&*self, typing_env, outlives_pred.0)?;
-                let lft = self
-                    .translate_region(outlives_pred.1)
-                    .ok_or(TranslationError::UnknownRegion(outlives_pred.1))?;
+                let lft = self.translate_region(outlives_pred.1).ok_or_else(|| {
+                    TranslationError::ErrorReported(
+                        type_translator.tcx().dcx().err(Message::UnknownRegion(outlives_pred.1)),
+                    )
+                })?;
 
                 let constr = specs::LftConstr::TypeOutlives(translated_ty, specs::UniversalLft::Local(lft));
-                self.lifetime_inclusions.push(constr);
+                self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, origin));
             }
         }
 
@@ -535,48 +715,66 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     fn add_trait_requirements(
         &mut self,
         did: DefId,
-        env: &Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
-        let typing_env = ty::TypingEnv::post_analysis(env.tcx(), did);
-        let is_trait = env.tcx().is_trait(did);
-        let requirements = traits::requirements::get_trait_requirements_with_origin(env, did);
+        requirements: &[requirements::TraitReqMeta<'tcx>],
+    ) -> Result<(), TranslationError> {
+        let typing_env = ty::TypingEnv::post_analysis(tcx, did);
+        let is_trait = tcx.is_trait(did);
 
-        // pre-register all the requirements, in order to resolve dependencies
-        for req in &requirements {
-            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
+        // Pre-register in dependency order so every dependency and cycle edge can resolve a cell.
+        // The saved values are indices into the append-only `trait_use_entries` vector, not
+        // requirement positions. They remain unambiguous when several HRTBs share an erased key.
+        let mut trait_use_entry_indices = Vec::with_capacity(requirements.len());
+        for req in requirements {
+            let key = (
+                TraitKey::rust(tcx, req.trait_ref.def_id),
+                generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
+            );
             if req.is_self_in_trait_decl {
                 assert!(req.bound_regions.is_empty());
                 let dummy_trait_use = trait_registry.make_trait_self_use(req.trait_ref);
-                self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
+                trait_use_entry_indices.push(self.trait_scope.insert_trait_use(key, dummy_trait_use));
             } else {
-                let dummy_trait_use =
-                    trait_registry.make_empty_trait_use(req.trait_ref, req.bound_regions.as_slice());
-                self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
+                debug_assert_eq!(
+                    req.assoc_constraints.len(),
+                    environment::get_trait_assoc_types(tcx, req.trait_ref.def_id).len()
+                );
+                let dummy_trait_use = trait_registry.make_empty_trait_use(
+                    req.trait_ref,
+                    req.bound_regions.as_slice(),
+                    &req.assoc_constraints,
+                );
+                trait_use_entry_indices.push(self.trait_scope.insert_trait_use(key, dummy_trait_use));
             }
-            self.trait_scope.ordered_assumptions.push(key);
         }
+        debug_assert_eq!(requirements.len(), trait_use_entry_indices.len());
 
-        for req in requirements.iter().rev() {
+        // The next three passes run from dependents to dependencies. All cells already exist, so
+        // references may point to entries that have not yet been finalized. This also permits the
+        // finite cycles retained by requirement collection.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            // TODO: do we get into trouble with recursive trait requirements somewhere?
-            // lookup the trait in the trait registry
+            // Look up the trait declaration in the registry.
             let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
-                return Err(traits::Error::UnregisteredTrait(req.trait_ref.def_id).into());
+                return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
+                    tcx.def_span(req.trait_ref.def_id),
+                    Message::TraitNotRegisteredWithRefinedRust,
+                )));
             };
 
-            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
-            let entry = &self.trait_scope.used_traits[&key];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             registry::TR::fill_trait_use(
                 entry,
                 req.trait_ref,
                 trait_spec,
                 req.is_used_in_self_trait,
+                req.is_assoc_bound,
                 // trait associated types are fully generic for now, we make a second pass
                 // below
                 Vec::new(),
@@ -584,24 +782,26 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             );
         }
 
-        // make a second pass to specify constraints on associated types
-        // We do this in a second pass so that we can refer to the other associated types
-        for req in requirements.iter().rev() {
+        // Constraint types can themselves instantiate ADTs with ambient requirements
+        // (e.g. Item = Result<A, E>), so these must exist before translating constraints.
+        trait_registry.add_implicit_drop_glue_assumptions(self, did, typing_env, requirements)?;
+
+        // Install associated-type constraints only after all trait-use shells are initialized, so
+        // translating a constraint can refer to another trait use.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            // TODO: does that always work? Or do we get potentially cyclic problems because we
-            // don't process requirements according to some dependency ordering?
             let translated_constraints: Vec<_> = req
                 .assoc_constraints
                 .iter()
-                .map(|ty| ty.map(|ty| type_translator.translate_type_in_scope(self, typing_env, ty).unwrap()))
-                .collect();
+                .map(|ty| {
+                    ty.map(|ty| type_translator.translate_type_in_scope(self, typing_env, ty)).transpose()
+                })
+                .collect::<Result<_, _>>()?;
 
-            // lookup the trait use
-            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
-            let entry = &self.trait_scope.used_traits[&key];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             {
                 let mut trait_use_ref = entry.trait_use.borrow_mut();
@@ -611,30 +811,27 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
 
-        // we make a third pass to finally resolve the scope of the trait, i.e. translate its args
-        // and trait requirements
-        for req in requirements.iter().rev() {
+        // Finally resolve each trait use's arguments and requirements.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
-            let entry = &self.trait_scope.used_traits[&key];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             // finalize the entry by adding dependencies on other trait parameters
             trait_registry.finalize_trait_use(entry, &*self, typing_env, req.trait_ref)?;
         }
 
-        // make a final pass to precompute the paths to associated types and attributes
-        for req in requirements {
+        // Restore dependency order for externally visible assumptions and path-collision priority.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices) {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
-            let entry = &self.trait_scope.used_traits[&key];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
-            let assoc_tys = entry.get_associated_types(env);
+            let assoc_tys = entry.get_associated_types(tcx);
 
             {
                 let trait_use_ref = entry.trait_use.borrow();
@@ -673,13 +870,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // finally, if we are in a trait declaration or impl declaration, add notation shorthands
         // to the scope
-        if let Some(trait_did) = env.tcx().trait_of_assoc(did) {
+        if let Some(trait_did) = tcx.trait_of_assoc(did) {
             // we are in a trait declaration
             if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
                 // make the parameter for the attrs that the function is parametric over
                 if let Some(trait_use_ref) = self.trait_scope.get_self_trait_use().cloned() {
                     // add the associated types
-                    for (name, ty) in trait_use_ref.get_associated_types(env) {
+                    for (name, ty) in trait_use_ref.get_associated_types(tcx) {
                         let path = vec![RustPathElem::AssocItem(name.clone())];
                         if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
                             e.insert(ty);
@@ -700,8 +897,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
 
-        if let Some(impl_did) = env.tcx().impl_of_assoc(did)
-            && env.tcx().impl_is_of_trait(impl_did)
+        if let Some(impl_did) = tcx.impl_of_assoc(did)
+            && tcx.impl_is_of_trait(impl_did)
         {
             // we are in a trait impl
             let (impl_ref, _, _) = trait_registry.get_trait_impl_info(impl_did)?;
@@ -715,9 +912,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // if we are declaring the trait itself, add the associated types of the trait to the scope
         // (we skip the self trait requirement above)
         if is_trait {
-            let assoc_types = env.get_trait_assoc_types(did);
+            let assoc_types = environment::get_trait_assoc_types(tcx, did);
             for ty_did in &assoc_types {
-                let name = env.get_assoc_item_name(*ty_did).unwrap();
+                let name = environment::get_assoc_item_name(tcx, *ty_did).unwrap();
                 let path = vec![RustPathElem::AssocItem(name.clone())];
                 let ty = specs::Type::LiteralParam(specs::LiteralTyParam::new(&name));
                 if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
@@ -734,17 +931,79 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     pub(crate) fn add_param_env(
         &mut self,
         did: DefId,
-        env: &Environment<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         trace!("Enter add_param_env for did = {did:?}");
-        let typing_env = ty::TypingEnv::post_analysis(env.tcx(), did);
+        let typing_env = ty::TypingEnv::post_analysis(tcx, did);
+        let requirements = requirements::get_trait_requirements_with_origin(tcx, did)?;
 
-        self.add_lifetime_constraints(typing_env, type_translator)?;
-        self.add_trait_requirements(did, env, type_translator, trait_registry)?;
+        self.add_lifetime_constraints(did, tcx, typing_env, type_translator)?;
+        self.add_trait_requirements(did, tcx, type_translator, trait_registry, &requirements)?;
 
         trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);
+        Ok(())
+    }
+
+    pub(crate) fn add_virtual_trait_assumption(
+        &mut self,
+        tcx: ty::TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_registry: &registry::TR<'tcx, 'def>,
+        virtual_trait: VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+        origin: specs::TyParamOrigin,
+    ) -> Result<(), TranslationError> {
+        let spec_ref = trait_registry.lookup_virtual_trait(virtual_trait).ok_or_else(|| {
+            TranslationError::ErrorReported(tcx.dcx().err(Message::TraitResolution(format!(
+                "virtual trait not registered with RefinedRust: {virtual_trait:?}"
+            ))))
+        })?;
+
+        let trait_ref = match virtual_trait {
+            VirtualTrait::DropGlue => registry::TraitUseRef::VirtualDropGlue { self_ty },
+        };
+        let key = (trait_ref.trait_key(tcx), trait_ref.args_for_key(tcx)?);
+        if self.trait_scope.entry_indices_by_erased_key.contains_key(&key) {
+            return Ok(());
+        }
+
+        let trait_use = trait_registry.make_empty_virtual_trait_use(virtual_trait, self_ty);
+        let entry_idx = self.trait_scope.insert_trait_use(key, trait_use);
+        let entry = &self.trait_scope.trait_use_entries[entry_idx];
+        registry::TR::fill_virtual_trait_use(entry, self_ty, spec_ref, origin);
+        trait_registry.finalize_virtual_trait_use(entry, self, typing_env, self_ty)?;
+
+        let attribute_names = {
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
+            let trait_use_ref = entry.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+            let self_ty = &trait_use.trait_inst.get_direct_ty_params()[0];
+
+            if let specs::Type::LiteralParam(self_param) = self_ty {
+                trait_use
+                    .trait_ref
+                    .declared_attrs
+                    .iter()
+                    .map(|attr| {
+                        let path = vec![
+                            RustPathElem::AssocItem(self_param.rust_name.clone()),
+                            RustPathElem::AssocItem(attr.to_owned()),
+                        ];
+                        let term = trait_use.make_attr_item_term_in_spec(attr).to_string();
+                        (path, term)
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        for (path, term) in attribute_names {
+            self.trait_scope.attribute_names.insert(path, term);
+        }
+
         Ok(())
     }
 }
@@ -786,7 +1045,7 @@ pub(crate) fn determine_origin_of_lft_param<'tcx>(
 
 impl<'tcx> Params<'tcx, '_> {
     /// Determine the declaration origin of a type parameter of a function.
-    fn determine_origin_of_param(
+    pub(crate) fn determine_origin_of_param(
         did: DefId,
         tcx: ty::TyCtxt<'tcx>,
         param: ty::ParamTy,
@@ -796,7 +1055,9 @@ impl<'tcx> Params<'tcx, '_> {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
             for this_param in &generics.own_params {
-                if this_param.name == param.name {
+                if matches!(this_param.kind, ty::GenericParamDefKind::Type { .. })
+                    && this_param.index == param.index
+                {
                     return specs::TyParamOrigin::SurroundingTrait;
                 }
             }
@@ -806,7 +1067,9 @@ impl<'tcx> Params<'tcx, '_> {
             let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
 
             for this_param in &generics.own_params {
-                if this_param.name == param.name {
+                if matches!(this_param.kind, ty::GenericParamDefKind::Type { .. })
+                    && this_param.index == param.index
+                {
                     return specs::TyParamOrigin::SurroundingImpl;
                 }
             }
@@ -841,29 +1104,40 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
         let mut ty_names = HashMap::new();
         let mut lft_names = HashMap::new();
 
-        for (num, p) in x.iter().enumerate() {
+        for (num, p) in (0_u32..).zip(x) {
             let mut name = strip_coq_ident(p.name.as_str());
             if name == "_" {
                 name = format!("p{num}");
             }
-            match p.kind {
-                ty::GenericParamDefKind::Const { .. } => {
-                    scope.push(Param::Const);
-                },
+
+            let param = match p.kind {
+                ty::GenericParamDefKind::Const { .. } => Param::Const,
                 ty::GenericParamDefKind::Type { .. } => {
                     let lit = specs::LiteralTyParam::new(&name);
-                    ty_names.insert(p.name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Ty(lit));
+                    ty_names.insert(p.name.as_str().to_owned(), num);
+                    Param::Ty(lit)
                 },
                 ty::GenericParamDefKind::Lifetime => {
-                    lft_names.insert(p.name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(specs::LftParam::new(
-                        coq::Ident::new(&format!("ulft_{}", name)),
-                        specs::LftParamOrigin::LocalEarlyBound,
-                    )));
+                    let name = p.name.as_str().to_owned();
+                    if name.as_str() == "'_" {
+                        Param::Region(specs::LftParam::new(
+                            coq::Ident::new(&format!("ulft_{}", num)),
+                            specs::LftParamOrigin::LocalEarlyBound,
+                        ))
+                    } else {
+                        let sanitized_name = name.replace('\'', "");
+                        lft_names.insert(sanitized_name.clone(), scope.len());
+                        Param::Region(specs::LftParam::new(
+                            coq::Ident::new(&format!("ulft_{}", sanitized_name)),
+                            specs::LftParamOrigin::LocalEarlyBound,
+                        ))
+                    }
                 },
-            }
+            };
+
+            scope.push(param);
         }
+
         Self {
             scope,
             late_scope: Vec::new(),
@@ -877,10 +1151,14 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
 }
 
 /// A scope for translated trait requirements from `where` clauses.
+///
+/// `trait_use_entries` is the authoritative append-only sequence of requirement occurrences.
+/// `entry_indices_by_erased_key` is a secondary, non-unique index into that sequence. Its values
+/// remain valid because entries are never removed or reordered.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Traits<'tcx, 'def> {
-    used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
-    ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
+    trait_use_entries: Vec<GenericTraitUse<'tcx, 'def>>,
+    entry_indices_by_erased_key: HashMap<(TraitKey, GenericsKey<'tcx>), Vec<usize>>,
 
     /// mapping of associated type paths in scope
     assoc_ty_names: HashMap<RustPath, specs::Type<'def>>,
@@ -890,6 +1168,39 @@ pub(crate) struct Traits<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> Traits<'tcx, 'def> {
+    fn insert_trait_use(
+        &mut self,
+        key: (TraitKey, GenericsKey<'tcx>),
+        trait_use: GenericTraitUse<'tcx, 'def>,
+    ) -> usize {
+        let entry_idx = self.trait_use_entries.len();
+        self.trait_use_entries.push(trait_use);
+        self.entry_indices_by_erased_key.entry(key).or_default().push(entry_idx);
+        entry_idx
+    }
+
+    /// Select among entries sharing an erased key without losing region-equality constraints.
+    fn find_matching_rust_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        entry_indices: &[usize],
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
+        // Prefer literal equality so non-region details do not depend on the coarser matcher.
+        for &entry_idx in entry_indices {
+            let entry = self.trait_use_entries.get(entry_idx)?;
+            if entry.rust_trait_ref().is_some_and(|trait_ref| trait_ref.args.as_slice() == args) {
+                return Some(entry);
+            }
+        }
+        entry_indices.iter().find_map(|&entry_idx| {
+            let entry = self.trait_use_entries.get(entry_idx)?;
+            let trait_ref = entry.rust_trait_ref()?;
+            trait_args_match_region_pattern(tcx, trait_ref.args, args, entry.bound_regions.len())
+                .then_some(entry)
+        })
+    }
+
     /// Lookup the trait use for a specific trait with given parameters.
     /// (here, args includes the self parameter as the first element)
     pub(crate) fn lookup_trait_use(
@@ -897,24 +1208,122 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
+    ) -> &GenericTraitUse<'tcx, 'def> {
+        self.try_lookup_trait_use(tcx, trait_did, args).unwrap_or_else(|| {
+            span_bug!(
+                tcx.def_span(trait_did),
+                "could not find local instance for trait with generic args {:?}",
+                tcx.mk_args(args)
+            )
+        })
+    }
+
+    pub(crate) fn try_lookup_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_did: DefId,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
         if !tcx.is_trait(trait_did) {
-            return Err(traits::Error::NotATrait(trait_did));
+            span_bug!(tcx.def_span(trait_did), "expected trait, found non-trait item");
         }
 
-        let key = (trait_did, generate_args_inst_key(tcx, args).unwrap());
-        trace!("looking up trait use {key:?} in {:?}", self.used_traits);
-        if let Some(trait_ref) = self.used_traits.get(&key) {
-            Ok(trait_ref)
-        } else {
-            Err(traits::Error::UnknownLocalInstance(trait_did, tcx.mk_args(args)))
+        let key = (TraitKey::rust(tcx, trait_did), generate_args_inst_key(tcx, args).unwrap());
+        trace!("looking up trait use {key:?} in {:?}", self.trait_use_entries);
+        if let Some(indices) = self.entry_indices_by_erased_key.get(&key)
+            && let Some(trait_use) = self.find_matching_rust_trait_use(tcx, indices, args)
+        {
+            return Some(trait_use);
         }
+
+        let equalities = self
+            .trait_use_entries
+            .iter()
+            .filter_map(|trait_use| Some((trait_use.rust_trait_ref()?, trait_use)))
+            .flat_map(|(trait_ref, trait_use)| {
+                environment::get_trait_assoc_types(tcx, trait_ref.def_id)
+                    .into_iter()
+                    .zip(&trait_use.assoc_constraints)
+                    .filter_map(move |(assoc_did, constraint)| {
+                        constraint.map(|constraint| (assoc_did, trait_ref.args, constraint))
+                    })
+            })
+            .collect::<Vec<_>>();
+        let trait_ref = ty::TraitRef::new(tcx, trait_did, args.iter().copied());
+        let normalized = requirements::normalize_trait_ref(tcx, trait_ref, &equalities);
+        let normalized_key =
+            (TraitKey::rust(tcx, trait_did), generate_args_inst_key(tcx, normalized.args).unwrap());
+        if let Some(indices) = self.entry_indices_by_erased_key.get(&normalized_key)
+            && let Some(trait_use) = self.find_matching_rust_trait_use(tcx, indices, normalized.args)
+        {
+            return Some(trait_use);
+        }
+        if let Some(trait_use) = self.trait_use_entries.iter().find(|trait_use| {
+            if trait_use.key != TraitKey::rust(tcx, trait_did) {
+                return false;
+            }
+            let Some(candidate_ref) = trait_use.rust_trait_ref() else {
+                return false;
+            };
+            let normalized_candidate = requirements::normalize_trait_ref(tcx, candidate_ref, &equalities);
+            generate_args_inst_key(tcx, normalized_candidate.args).unwrap() == normalized_key.1
+                && trait_args_match_region_pattern(
+                    tcx,
+                    normalized_candidate.args,
+                    normalized.args,
+                    trait_use.bound_regions.len(),
+                )
+        }) {
+            return Some(trait_use);
+        }
+        None
+    }
+
+    pub(crate) fn lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> &GenericTraitUse<'tcx, 'def> {
+        self.try_lookup_virtual_trait_use(tcx, trait_key, args).unwrap_or_else(|| {
+            span_bug!(
+                DUMMY_SP,
+                "could not find local instance for virtual trait with generic args {:?}",
+                tcx.mk_args(args)
+            )
+        })
+    }
+
+    pub(crate) fn try_lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
+        let key = (TraitKey::Virtual(trait_key), generate_args_inst_key(tcx, args).unwrap());
+        trace!("looking up virtual trait use {key:?} in {:?}", self.trait_use_entries);
+        let idx = self.entry_indices_by_erased_key.get(&key).and_then(|indices| indices.first())?;
+        self.trait_use_entries.get(*idx)
+    }
+
+    pub(crate) fn try_lookup_normalized_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_key: VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
+        let target = resolution::normalize_type(tcx, typing_env, self_ty).ok()?;
+        self.trait_use_entries.iter().find(|entry| {
+            entry.key == TraitKey::Virtual(trait_key)
+                && resolution::normalize_type(tcx, typing_env, entry.trait_ref.self_ty())
+                    .is_ok_and(|candidate| erase_regions(tcx, candidate) == erase_regions(tcx, target))
+        })
     }
 
     /// Within a trait declaration, get the Self trait use.
     pub(crate) fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'tcx, 'def>> {
-        #[expect(clippy::iter_over_hash_type)]
-        for trait_use in self.used_traits.values() {
+        for trait_use in &self.trait_use_entries {
             // check if this is the Self trait use
             {
                 let spec_use_ref = trait_use.trait_use.borrow();

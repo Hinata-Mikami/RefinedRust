@@ -1,0 +1,699 @@
+
+Rocq < 
+Rocq < 
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.reachable_from_trans"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound_unmarked"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_sound_unmarked"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_preserves_true"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_preserves_true"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_marks_start"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_marks_start"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.nodup_locs_lookup_unique"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.nodup_locs_lookup_unique"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.all_unmarked_closed_except"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.all_unmarked_closed_except"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed_unmarked"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_final_closed_unmarked"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_complete"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_complete"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_exact_root"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.mark_from_rel_exact_root"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_0"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_0"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_length"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_length"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_length"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_length"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_0"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_0"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_true"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_true"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_true"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_true"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_false"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.keep_marked_suffix_step_false"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_false"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.sweep_marks_step_false"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.gc_defs.elem_of_keep_marked"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.gc_defs.elem_of_keep_marked"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.simplify_goal_big_sepL_app"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.simplify_goal_big_sepL_app"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.prove_with_subtype_big_sepL_acc"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.prove_with_subtype_big_sepL_acc"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.NoDup_snoc_local"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.NoDup_snoc_local"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_full_ne"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_full_ne"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_nz_full_ne"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.freeable_nz_full_ne"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_length_same_mask"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_length_same_mask"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_NoDup"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_NoDup"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_Forall"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.keep_marked_Forall"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.marks_closed_keep_marked_next_valid"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.marks_closed_keep_marked_next_valid"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.aligned_nodes_cons"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.aligned_nodes_cons"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_cons"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_cons"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_zero_cons"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_zero_cons"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_init"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_init"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_step"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_step"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_done"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.heap_lemmas.sweep_nodes_inv_done"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.elem_of_keep_unmarked"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.elem_of_keep_unmarked"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_kept_exact_filter"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_kept_exact_filter"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reachable_exact_filter"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reachable_exact_filter"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition_disjoint"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_partition_disjoint"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_exact"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_exact"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_nodup"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_nodup"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_unreachable"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_drop_targets_unreachable"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair_intro"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_pair_intro"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_unprocessed_marks_unchanged"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_unprocessed_marks_unchanged"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reset_all_unmarked"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_reset_all_unmarked"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_origin"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_lookup_origin"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_root"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.keep_marked_root"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_forward"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_forward"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_backward"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.reachable_filter_backward"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_preserves_reachability"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_preserves_reachability"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_post_filter"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_post_filter"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_exact"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_exact"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.mark_from_rel_length"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.mark_from_rel_length"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_reachability_preserved"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.mark_sweep_reachability_preserved"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_fields_preserved_filter"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_fields_preserved_filter"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_resets_mark_example"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.extra_proofs.gc.sweep_contract.sweep_resets_mark_example"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_alloc.Heap_alloc_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Heap_alloc.Heap_alloc_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_mark.Heap_mark_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Heap_mark.Heap_mark_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_mark_from.Heap_mark_from_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Heap_mark_from.Heap_mark_from_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_mark_one.Heap_mark_one_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Heap_mark_one.Heap_mark_one_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_new.Heap_new_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Heap_new.Heap_new_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Heap_sweep.Heap_sweep_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Heap_sweep.Heap_sweep_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Node_set_marked.Node_set_marked_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Node_set_marked.Node_set_marked_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_Node_set_next.Node_set_next_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_Node_set_next.Node_set_next_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_drop_glue_Heap.drop_glue_Heap_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_drop_glue_Heap.drop_glue_Heap_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_make_node.make_node_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_make_node.make_node_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.proof_read_next_value.read_next_value_proof"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.proof_read_next_value.read_next_value_proof"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|refinedrust.examples.gc.proofs.trait_incl_drop_glue_Heap_spec_subsumption_correct.drop_glue_Heap_spec_subsumption_correct"%string
+     : string
+
+Rocq < Axioms:
+ProofIrrelevance.proof_irrelevance : forall (P : Prop) (p1 p2 : P), p1 = p2
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+
+Rocq <      = "RR-END|refinedrust.examples.gc.proofs.trait_incl_drop_glue_Heap_spec_subsumption_correct.drop_glue_Heap_spec_subsumption_correct"%string
+     : string
+
+Rocq < 
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.observed_step_erases"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.observed_step_erases"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.every_step_has_unique_observation"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.every_step_has_unique_observation"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.observed_call_resolves"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.observed_call_resolves"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_dead_branch_calls"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_dead_branch_calls"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_live_branch_calls"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_live_branch_calls"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_uses_selected_pointer"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_uses_selected_pointer"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_and_drop_share_box_slot"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_from_raw_and_drop_share_box_slot"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_has_two_calls"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_has_two_calls"%string
+     : string
+
+Rocq <      = "RR-BEGIN|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_rejected"%string
+     : string
+
+Rocq < Closed under the global context
+
+Rocq <      = "RR-END|hinata_mikami.gc.audit.drop_calls.sweep_without_drop_rejected"%string
+     : string
+
+Rocq < 

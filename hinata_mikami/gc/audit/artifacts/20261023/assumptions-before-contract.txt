@@ -1,0 +1,84 @@
+RefinedRust GC 証明依存関係監査（2026-10-23）
+対象: 補助35補題 + GC 12定理（既存10関数、Heap drop glue、subsumption）
+Rocq 9.2.0 / OCaml 4.14.2 / official RR fd52421ed8cdada51bb911f69a7287ab2b3ac73d
+全対象は通常の .vo コンパイル済み。Print Assumptions により依存関係を確認。
+47件監査後に drop_glue_Heap_proof の Vec resolver を修正し、この1件を再監査した。
+他の46件の証明ソースにその間の変更はない。
+未証明の generated_specs_vec.resolve_ghost_Vec_T_owned/uniq への依存: 0
+
+基盤の論理公理:
+  FunctionalExtensionality.functional_extensionality_dep
+  ProofIrrelevance.proof_irrelevance
+
+注意: 呼び出し先仕様は各型付け定理の前提に現れるため、only_spec の信頼境界は
+Print Assumptions では検出されない。Box::drop、vec_index 等の実装全体を
+無条件に証明したという意味ではない。詳細は sweep_proof_log.md の適用範囲を参照。
+
+定理ごとの監査結果:
+reachable_from_trans: Closed under the global context
+mark_from_rel_sound: Closed under the global context
+mark_from_rel_sound_unmarked: Closed under the global context
+mark_from_rel_preserves_true: Closed under the global context
+mark_from_rel_marks_start: Closed under the global context
+nodup_locs_lookup_unique: Closed under the global context
+all_unmarked_closed_except: Closed under the global context
+mark_from_rel_final_closed: Closed under the global context
+mark_from_rel_final_closed_unmarked: Closed under the global context
+mark_from_rel_complete: Closed under the global context
+mark_from_rel_exact_root: Closed under the global context
+keep_marked_suffix_0: Closed under the global context
+keep_marked_suffix_length: Closed under the global context
+sweep_marks_length: Closed under the global context
+sweep_marks_0: Closed under the global context
+keep_marked_suffix_step_true: Closed under the global context
+sweep_marks_step_true: Closed under the global context
+keep_marked_suffix_step_false: Closed under the global context
+sweep_marks_step_false: Closed under the global context
+elem_of_keep_marked: Closed under the global context
+simplify_goal_big_sepL_app: Closed under the global context
+prove_with_subtype_big_sepL_acc: Closed under the global context
+NoDup_snoc_local: Closed under the global context
+freeable_full_ne: Closed under the global context
+freeable_nz_full_ne: Closed under the global context
+keep_marked_length_same_mask: Closed under the global context
+keep_marked_NoDup: Closed under the global context
+keep_marked_Forall: Closed under the global context
+marks_closed_keep_marked_next_valid: Closed under the global context
+aligned_nodes_cons: Closed under the global context
+sweep_nodes_inv_cons: Closed under the global context
+sweep_nodes_inv_zero_cons: Closed under the global context
+sweep_nodes_inv_init: Closed under the global context
+sweep_nodes_inv_step: Closed under the global context
+sweep_nodes_inv_done: Closed under the global context
+Heap_alloc_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Heap_mark_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Heap_mark_from_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Heap_mark_one_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Heap_new_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Heap_sweep_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Node_set_marked_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+Node_set_next_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+drop_glue_Heap_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+make_node_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+read_next_value_proof: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+drop_glue_Heap_spec_subsumption_correct: ProofIrrelevance.proof_irrelevance, FunctionalExtensionality.functional_extensionality_dep
+
+対象手動ソースの SHA256:
+c4ed1ef6f6c2b21299e1c62d46b9b1e750068af5aeaf377602e340f21f1eae67  hinata_mikami/extra_proofs/gc/gc_defs.v
+4c7d9b3ad73b7407afd51eb9207da1f1d0f233eaa967444412f7b6c006980c82  hinata_mikami/extra_proofs/gc/heap_lemmas.v
+d66bbb1e2372908714c621f76e49896ca5e7174e1262b59a5e94e4d1c241f38c  hinata_mikami/gc/output/gc/proofs/proof_Heap_alloc.v
+06f4bbd4cf75f1e3b3c2bb68207d4ebc794373dd1b822a36e79062ac8119cf0f  hinata_mikami/gc/output/gc/proofs/proof_Heap_mark.v
+23182f85abfe034b023b7e48ca2528dac15f52a51ab47e459ea0a41158d744b7  hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_from.v
+e134bb78f317224d01f54706f6b2c3f6d78fda06609880df726739c531d8475b  hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_one.v
+bd2c7d486db0cc0e7930984406b18499afc5aec7a5b05db898d7efdb1e874788  hinata_mikami/gc/output/gc/proofs/proof_Heap_new.v
+f0df763efce8e06b3fcd79626d18939d389e26b0ef5a16d5969a0622fb9e7895  hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v
+815d98c0fbcf474915e7c4696241dcc9058aab7488b827b4e9f206dd0d4ae6ff  hinata_mikami/gc/output/gc/proofs/proof_Node_set_marked.v
+3ec2ca8410f390af5b0b7ec1d07799d31e9d747dcdbb6d48f5caf90c6d3e5269  hinata_mikami/gc/output/gc/proofs/proof_Node_set_next.v
+64ed5df5cbddbf240d84a87ea32c24a700c1ec77f172059adfdc05d39e172cb2  hinata_mikami/gc/output/gc/proofs/proof_drop_glue_Heap.v
+3551c71a068372774cfb1ce9e44098d5e348c130ef19c93b428f888e3ea1891b  hinata_mikami/gc/output/gc/proofs/proof_make_node.v
+fb3f5e8031a5964783061f881c6d5df8a732c25ababd4bb746899a1666b6444e  hinata_mikami/gc/output/gc/proofs/proof_read_next_value.v
+0d7842dc10e423da387cd7f197c4b8895ebc6cad6cf34ecdb1df8151dea8d6bc  hinata_mikami/gc/output/gc/proofs/trait_incl_drop_glue_Heap_spec_subsumption_correct.v
+
+元ログ（旧 Drop の検出と、修正後の再監査をそのまま保存）:
+/home/mikam/RefinedRust-backups/20261023/post-upgrade/refinedrust-upgrade-assumptions-final.log
+/home/mikam/RefinedRust-backups/20261023/post-upgrade/refinedrust-upgrade-assumptions-drop-final.log

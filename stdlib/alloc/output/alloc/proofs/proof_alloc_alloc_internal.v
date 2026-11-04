@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.alloc.alloc.generated Require Import generated_code_alloc generated_specs_alloc generated_template_alloc_alloc_internal.
 
@@ -19,7 +19,7 @@ Proof.
   typed_val_expr_bind. repeat liRStep; liShow.
   iSelect (_ ◁ᵥ{_, _} size @ _)%I (fun H => iRename H into "Hsize").
   iSelect (_ ◁ᵥ{_, _} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "(_ & %Hsize)".
+  rewrite {1 2}/ty_own_val /= !int_own_val_unfold. iDestruct "Hsize" as "(_ & %Hsize)".
   iDestruct "Halign_log2" as "(_ & %Halign_log2)".
   rewrite /typed_val_expr.
   iIntros (Φ) "#CTX HE HL Hf Hcont".
@@ -30,18 +30,21 @@ Proof.
     apply val_to_Z_unsigned_nonneg in Halign_log2; last done. lia. }
   { lia. }
   iApply physical_step_intro; iNext.
-  iIntros (ld) "Hl Hfd %Hly".
+  iIntros (ld vd) "Hl Hfd %Hly %Hv".
   iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
   iApply ("Hcont" $! _ _  _ (alias_ptr_t) ld with "HL Hf []").
-  { rewrite /ty_own_val /=.
-    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
-    iPureIntro. done. }
+  { rewrite /ty_own_val /= alias_ptr_own_val_unfold.
+    iR. iPureIntro.
+    apply val_to_loc_decodes_to_loc.
+    by apply val_to_of_loc. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
-  iAssert (ld ◁ₗ[π, Owned ] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".
+  iAssert (ld ◁ₗ[π, Owned ] .@ ◁ (uninit (LiteralSynType ly)))%I with "[Hl]" as "Hl'".
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    assert (syn_type_has_layout (UntypedSynType ly) ly) as Hly'.
+    assert (syn_type_has_layout (LiteralSynType ly) ly) as Hly'.
     { solve_layout_alg. }
-    iExists ly. simpl. do 3 iR.
+    iExists ly. simpl.
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
+    do 2 iR.
     iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }
     iExists tt. iR.
     iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iR. iExists ly.

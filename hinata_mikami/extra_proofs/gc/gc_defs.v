@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing.
 
 
@@ -419,10 +419,15 @@ Definition marks_closed
     (locs nexts : list loc)
     (marks : list bool) : Prop :=
   forall p q l,
+    (* p 番目が true *)
     marks !! p = Some true ->
+    (* p の next が l*)
     nexts !! p = Some l ->
+    (* l が null でない*)
     loc_a l <> 0 ->
+    (* l は locs[q]*)
     locs !! q = Some l ->
+    (* q番目も true*)
     marks !! q = Some true.
 
 

@@ -1,6 +1,7 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.range")]
@@ -11,12 +12,13 @@
 
 #[rr::export_as(core::ops::Range)]
 #[rr::refined_by("(rstart, rend)" : "{rt_of Idx} * {rt_of Idx}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{Idx::DropGlueUnwind}")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
-    #[rr::field("rstart")]
+    #[rr::field("#(rstart)")]
     pub start: Idx,
     /// The upper bound of the range (exclusive).
-    #[rr::field("rend")]
+    #[rr::field("#(rend)")]
     pub end: Idx,
 }
 

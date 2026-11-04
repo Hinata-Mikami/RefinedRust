@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.iterator.iterator.generated Require Import generated_code_iterator generated_specs_iterator generated_template_adapters_map_MapMIMFastraits_iterator_Iterator_next.
 
@@ -14,26 +14,32 @@ Proof.
 
   repeat liRStep. liShow.
 
-  iRename select (traits_iterator_Iterator_Inv _ _ _) into "Hinv".
+  iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".
   iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
-  unfold MapInv. iDestruct "Hinv" as "(%Inv & Hinv & Hinv_nested & Hsome & Hnone)".
-  rep <-! liRStep; liShow. 
-  rep liRStep; liShow.
+  unfold MapInv. iDestruct "Hinv" as "(%Hpanic & %Inv & Hinv & Hinv_nested & Hsome & Hnone)".
+  rep <-! liRStep; liShow.
+  rename x'0 into inner_el.
 
+  destruct inner_el as [inner_el | ].
   { (* obtain an element *)
-    iRename select (traits_iterator_Iterator_Next _ _ _ _ _) into "Hnext".
+    iRename select (traits_iterator_Iterator_Next _ _ _ _ _ _) into "Hnext".
     iPoseProof (li_sealed_use_pers with "Hsome") as "#Hsome'".
     iPoseProof (li_sealed_use_pers with "Hnone") as "#Hnone'".
     iPoseProof (boringly_intro with "Hnext") as "#Hnext_x".
-    iPoseProof ("Hsome'" with "Hnext_x Hinv") as "(Hpre & Hinv_clos)".
+    iPoseProof ("Hsome'" with "Hnext_x Hinv") as "(%p & %Hpred & Hpre & Hinv_clos)".
     iPoseProof (boringly_intro with "Hpre") as "#Hpre_x".
+
     rep <-! liRStep. liShow.
-    iRename select (FnMut_PostMut _ _ _ _ _ _) into "Hpost".
+    all: try solve [apply Hpanic; unfold closure_may_unwind; eauto].
+    iRename select (FnOnce_PostMut _ _ _ _ _ _ _) into "Hpost".
     iPoseProof (boringly_intro with "Hpost") as "#Hpost_x".
-    iPoseProof ("Hinv_clos" with "Hpost") as "Hinv".
+    iPoseProof ("Hinv_clos" with "Hpost_x") as "Hinv".
+    match goal with | H : FnOnce_Params _ |- _ => rename H into p end.
     rep liRStep. liShow.
-    liInst Hevar_e_inner r.
-    rep liRStep. 
+    liInst Hevar_e_inner inner_el.
+    rep liRStep.
+    liInst Hevar_x p.
+    rep <- 1 liRStep.
     iEval (rewrite /traits_iterator_Iterator_Inv/=).
     rewrite /MapInv.
     rep liRStep; liShow.
@@ -41,12 +47,12 @@ Proof.
     rep liRStep.
   }
   { (* no element *)
-    iRename select (traits_iterator_Iterator_Next _ _ _ _ _) into "Hnext".
+    iRename select (traits_iterator_Iterator_Next _ _ _ _ _ _) into "Hnext".
     iPoseProof (li_sealed_use_pers with "Hnone") as "#Hnone'".
     iPoseProof (boringly_intro with "Hnext") as "#Hnext_x".
     iPoseProof ("Hnone'" with "Hnext_x Hinv") as "Hinv".
-    rep <-! liRStep. liShow. 
-    rep liRStep. 
+    rep <-! liRStep. liShow.
+    rep <- 1 liRStep.
     iEval (rewrite /traits_iterator_Iterator_Inv/=).
     rewrite /MapInv.
     rep liRStep; liShow.
@@ -54,15 +60,8 @@ Proof.
     rep liRStep. }
 
   all: print_remaining_goal.
-  Unshelve. 
-  (* TODO: this is a bug in the contract...: For an instantiation, we also need to be able to assume that its elctx is okay. I.e., similar to how we add typaram_wf *)
-  1: { admit. } 
-  1: sidecond_solver.
-  1: admit.
-  1: sidecond_solver.
-  1: admit.
-
+  Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   Unshelve. all: print_remaining_sidecond.
-Admitted.
+Qed.
 End proof.

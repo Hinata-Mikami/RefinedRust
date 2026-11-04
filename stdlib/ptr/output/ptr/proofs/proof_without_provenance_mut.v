@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_without_provenance_mut.
 
@@ -12,7 +12,7 @@ Lemma without_provenance_mut_proof (π : thread_id) :
 Proof.
   without_provenance_mut_prelude.
 
-  repeat liRStep.
+  repeat liRStep. destruct addr; rep liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

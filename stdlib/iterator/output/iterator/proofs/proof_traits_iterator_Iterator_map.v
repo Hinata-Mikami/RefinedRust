@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.iterator.iterator.generated Require Import generated_code_iterator generated_specs_iterator generated_template_traits_iterator_Iterator_map.
 
@@ -12,7 +12,7 @@ Lemma traits_iterator_Iterator_map_proof (π : thread_id) :
 Proof.
   traits_iterator_Iterator_map_prelude.
 
-  repeat liRStep; liShow.
+  rep <- 1 liRStep; liShow.
   iEval (rewrite /traits_iterator_Iterator_Inv/=).
   unfold MapInv.
   repeat liRStep; liShow.

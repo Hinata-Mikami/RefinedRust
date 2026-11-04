@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.evenint.generated Require Import generated_code_evenint generated_specs_evenint generated_template_EvenInt_add_two.
 
@@ -11,15 +11,10 @@ Lemma EvenInt_add_two_proof (π : thread_id) :
   EvenInt_add_two_lemma π.
 Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
+  generalize RR_CONFIG_DONT_INTERPRET_TYPING_HINTS; intros ?.
   EvenInt_add_two_prelude.
 
   rep <-! liRStep; liShow.
-  liRStepUntil interpret_typing_hint.
-  iApply interpret_typing_hint_ignore.
-  rep <-! liRStep; liShow. 
-  liRStepUntil interpret_typing_hint.
-  iApply interpret_typing_hint_ignore.
-  rep <-! liRStep; liShow. 
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

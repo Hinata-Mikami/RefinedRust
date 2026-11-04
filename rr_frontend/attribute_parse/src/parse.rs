@@ -65,9 +65,10 @@ impl Buffer {
         }
     }
 
-    pub fn parse<U, T: Parse<U>>(&self, meta: &U) -> Result<T>
+    pub fn parse<U, T>(&self, meta: &U) -> Result<T>
     where
         U: ?Sized,
+        T: Parse<U>,
     {
         T::parse(self, meta)
     }
@@ -586,7 +587,10 @@ impl<T, P> FromIterator<T> for Punctuated<T, P>
 where
     P: Default,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
         let mut ret = Self::new();
         ret.extend(iter);
         ret
@@ -597,7 +601,10 @@ impl<T, P> Extend<T> for Punctuated<T, P>
 where
     P: Default,
 {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+    fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = T>,
+    {
         for value in iter {
             self.push(value);
         }

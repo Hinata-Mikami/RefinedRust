@@ -1,0 +1,17 @@
+cwd: /home/mikam/RefinedRust 
+command: python3 /tmp/refinedrust-check-source.py /home/mikam/RefinedRust/hinata_mikami/gc/audit/drop_calls.v
+Chars 0 - 41 [From~radium~Require~Import~lan...] 2.296 secs (1.741u,0.537s)
+Chars 42 - 114 [From~refinedrust.examples.gc.g...] 1.752 secs (1.51u,0.291s)
+Chars 115 - 137 [Open~Scope~expr_scope.] 0. secs (0.u,0.s)
+Chars 444 - 532 [Record~call_entry~:=~~CallEntr...] 0.003 secs (0.u,0.003s)
+Chars 534 - 752 [Definition~call_observation~(s...] 0.012 secs (0.006u,0.005s)
+Chars 754 - 771 [Section~observer.] 0. secs (0.u,0.s)
+Chars 772 - 801 [Context~`{RC~:~RadiumConfig}.] 0.001 secs (0.001u,0.s)
+Chars 803 - 975 [Definition~observed_stmt_step~...] 0.004 secs (0.004u,0.s)
+Chars 977 - 1166 [Lemma~observed_step_erases~s~π...] 0.002 secs (0.002u,0.s)
+Chars 1167 - 1173 [Proof.] 0. secs (0.u,0.s)
+Chars 1174 - 1194 [by~intros~[Hstep~_].] 0.001 secs (0.001u,0.s)
+Chars 1195 - 1199 [Qed.] 0.001 secs (0.001u,0.s)
+File "/tmp/refinedrust-local-drop_calls/drop_calls.v", line 35, characters 5-6:
+Error: Syntax error: [open_binders] expected after '∃' (in [term]).
+

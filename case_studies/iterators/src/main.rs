@@ -111,40 +111,89 @@ fn test_iterator_3() -> Vec<i32> {
     res
 }
 
-#[rr::observe("v.ghost" : "<#> replicate (length v.cur) 0")]
-pub fn all_zero(v: &mut Vec<usize>) {
-    for x in vec_iter_mut(v) {
-        #[rr::invariant(#iris "ObsList ({Hist}.*2) (replicate (length {Hist}) 0)")]
-        #[rr::ignore] || {};
-        *x = 0;
+#[rr::exists("xs" : "list Z")]
+#[rr::returns("Ok xs")]
+fn test_collect_result_ok() -> Result<Vec<i32>, i32> {
+    (0..10).map(#[rr::returns("Ok x")] |x| Ok(x)).collect()
+}
+
+#[rr::returns("Err 0")]
+fn test_collect_result_err() -> Result<Vec<i32>, i32> {
+    (0..10).map(#[rr::returns("Err x")] |x| Err(x)).collect()
+}
+
+#[rr::returns("Some 2")]
+fn test_step_by() -> Option<i32> {
+    let mut iter = (0..10).step_by(2);
+    match iter.next() {
+        Some(_) => match iter.next() {
+            Some(value) => Some(value),
+            None => None,
+        },
+        None => None,
     }
 }
 
+// !start spec(all_zero)
+#[rr::observe("v.ghost" : "<#> replicate (length v.cur) 0")]
+// !end spec
+// !start code(all_zero)
+pub fn all_zero(v: &mut Vec<usize>) {
+    for x in vec_iter_mut(v) {
+        // !end code
+        // !start spec(all_zero)
+        #[rr::invariant(#iris "ObsList ({Hist}.*2) (replicate (length {Hist}) 0)")]
+        #[rr::ignore] || {};
+        // !end spec
+        // !start code(all_zero)
+        *x = 0;
+    }
+}
+// !end code
+
+// !start spec(decuple_range)
 #[rr::returns("(λ x, x * 10) <$> seqZ 0 10")]
+// !end spec
+// !start code(decuple_range)
 pub fn decuple_range() -> Vec<u32> {
     let v: Vec<_> = (0..10)
         .map(
+            // !end code
+            // !start spec(decuple_range)
             #[rr::requires("x < 100")]
             #[rr::returns("x * 10")]
+            // !end spec
+            // !start code(decuple_range)
             |x: u32| x * 10
         )
         .collect();
     v
 }
+// !end code
 
+// !start spec(skip_take)
 #[rr::params("p")] 
-#[rr::requires(#iris "{I::Inv} π p iter")]
+#[rr::requires(#iris "{I::Inv} π p iter")] 
+#[rr::requires("DropGlue_Iasstd_iter_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+#[rr::may_unwind_if("{I::DropGlueUnwind}")]
+// !end spec
+// !start code(skip_take)
 pub fn skip_take<I: Iterator>(iter: I, n: usize) {
     let res = iter.take(n).skip(n).next();
 
     assert!(res.is_none());
 }
+// !end code
 
+// !start spec(concat_vec)
 #[rr::returns("v1 ++ v2")]
+// !end spec
+// !start code(concat_vec)
 pub fn extend_index(mut v1: Vec<u32>, v2: Vec<u32>) -> Vec<u32> {
     Extend::extend(&mut v1, v2.into_iter());
     v1
 }
+// !end code
 
 /// Axiomatized version of extend to get the same spec as Creusot without Vec bounds checking.
 #[rr::exists("ExtendResult" : "{xt_of Self} → list {xt_of A} → {xt_of Self}")]

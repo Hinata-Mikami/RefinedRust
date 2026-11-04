@@ -1,0 +1,13 @@
+Mapping for function assert_div_by_zero:
+summary: total=10 mapped=10 unmapped=0
+
+bb0[0] StorageLive(_3) -> Source(bb0[0] StorageLive(_3))
+bb0[1] _3 = copy _1 -> Source(bb0[1] _3 = copy _1)
+bb0[2] StorageLive(_4) -> Source(bb0[2] StorageLive(_4))
+bb0[3] _4 = copy _2 -> Source(bb0[3] _4 = copy _2)
+bb0[4] _5 = Eq(copy _4, const 0_u32) -> Source(bb0[4] _5 = Eq(copy _4, const 0_u32))
+bb0[5] assert(!move _5, "attempt to divide `{}` by zero", copy _3) -> [success: bb1, unwind continue] -> Source(bb0[5] assert(!move _5, "attempt to divide `{}` by zero", copy _3) -> [success: bb1, unwind: bb2])
+bb1[0] _0 = Div(move _3, move _4) -> Source(bb1[0] _0 = Div(move _3, move _4))
+bb1[1] StorageDead(_4) -> Source(bb1[1] StorageDead(_4))
+bb1[2] StorageDead(_3) -> Source(bb1[2] StorageDead(_3))
+bb1[3] return -> Source(bb1[3] return)

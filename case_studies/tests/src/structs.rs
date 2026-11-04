@@ -1,5 +1,6 @@
 
 #[repr(C)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {U::DropGlueUnwind}")]
 struct Pair<T, U> {
     x: T,
     y: U,
@@ -14,14 +15,98 @@ impl<T, U> Pair<T, U> {
 }
 
 
+#[rr::verify]
+fn tuple_shrblocked_read() {
+    let x = (1, 2);
+    let xr = &x.0;
+
+    // can be copied even while the first field is share-borrowed.
+    let y = x;
+
+    assert!(*xr == 1);
+}
+
+#[rr::verify]
+fn tuple_shrblocked_read_shared(x: &(i32, i32)) {
+    let xb = x.0;
+    let xr = &x.0;
+
+    // can be copied even while the first field is share-borrowed.
+    let y = x;
+
+    assert!(*xr == xb);
+}
+
+#[rr::verify]
+fn tuple_owned_overwrite_after_read() {
+    let mut x = (1i32, 2i32);
+    let first = x.0;
+
+    x = (3, 4);
+
+    assert!(first == 1);
+    assert!(x.0 == 3);
+}
+
+#[rr::verify]
+fn tuple_uniq_overwrite_after_read(x: &mut (i32, i32)) {
+    let first = x.0;
+
+    *x = (3, 4);
+
+    assert!(x.0 == 3);
+    assert!(first == first);
+}
 
 
+#[rr::verify]
+fn mutref_reborrow_overwrite() {
+    let mut x = 34;
+    let mut xr = &mut x;
+    let mut xrr = &mut (*xr);
+
+    let mut y = 42;
+    // xr gets killed here
+    xr = &mut y;
+
+
+    assert!(*xrr == 34);
+    assert!(*xr == 42);
+
+}
+
+#[rr::verify]
+fn mutref_reborrow_overwrite_nested(b : bool) {
+    let mut x = 34;
+    let mut xr = &mut x;
+    let mut xrr = &mut xr;
+
+    let zr = &mut (**xrr);
+
+    let mut y = 42;
+    let yr = &mut y;
+
+    if b {
+        // *xrr gets killed here
+        *xrr = yr;
+
+        assert!(**xrr == 42);
+    }
+    else {
+        // NB: this is illegal in Rust, even though it could conceivably be allowed
+        //y = 2;
+    }
+
+
+    assert!(*zr == 34);
+
+}
 
 
 #[rr::refined_by("x" : "Z")]
 #[rr::invariant("Zeven x")]
 struct EvenInt {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     num: i32,
 }
 
@@ -32,10 +117,9 @@ impl EvenInt {
         Self {num: x}
     }
 
-    #[rr::params("x", "γ")]
-    #[rr::args(#raw "((-[x]), γ)")]
-    #[rr::requires("(x + 1 ≤ MaxInt i32)%Z")]
-    #[rr::observe("γ": "(-[#(x+1)%Z] : plistRT _)")]
+    // Internal function breaking the invariant.
+    // Instead of giving it a spec, we inline its proof at call sites.
+    #[rr::inline]
     fn add(&mut self) {
         self.num += 1;
     }
@@ -72,4 +156,16 @@ impl Foo {
     pub fn b(&mut self) {
         assert!(true);
     }
+}
+
+#[rr::refined_by("x" : "place_rfn Z")]
+#[rr::invariant("True")]
+struct BorrowableFoo {
+    #[rr::field("x")]
+    x: i32,
+}
+
+#[rr::verify]
+fn borrow_x(foo: &mut BorrowableFoo) -> &mut i32 {
+    &mut foo.x
 }

@@ -1,13 +1,13 @@
 RUST_TARGET = $(shell rustc -vV | sed -n 's|host: ||p')
 RUST_PATH =	target/$(RUST_TARGET)/release
 
-CASE_STUDIES = case_studies/paper_examples case_studies/tests case_studies/minivec case_studies/minicell case_studies/evenint case_studies/refinedrust-20-paper-examples case_studies/hillel
+CASE_STUDIES = case_studies/paper_examples case_studies/tests case_studies/adequacy case_studies/minivec case_studies/linkedlist case_studies/minicell case_studies/evenint case_studies/hillel case_studies/iterators case_studies/knights_tour case_studies/smtcoq case_studies/verifythis2026
 
 ### generic build targets
 all: frontend typesystem stdlib.proof
 .PHONY: all
 
-generate_all: generate_stdlib generate_case_studies
+generate_all: frontend generate_stdlib generate_case_studies
 .PHONY: generate_all
 
 clean: clean_case_studies clean_stdlib
@@ -18,6 +18,11 @@ clean: clean_case_studies clean_stdlib
 all_with_examples: frontend generate_stdlib generate_case_studies
 	dune build --display short
 .PHONY: all_with_examples
+
+build:
+	dune build --display short
+.PHONY: build
+
 
 ### Project setup
 setup-nix:
@@ -44,15 +49,19 @@ setup-dune-workspace: setup-dune
 
 ### core components
 typesystem:
-	cd theories && dune build --display short
+	cd theories/refinedrust && dune build --display short
 .PHONY: typesystem
+
+smtcoq:
+	cd theories/smtcoq && dune build --display short
+.PHONY: smtcoq
 
 frontend:
 	cd rr_frontend && ./refinedrust build
 .PHONY: frontend
 
 ### case studies
-case_studies.proof: typesystem generate_case_studies
+case_studies.proof: typesystem smtcoq generate_case_studies
 	cd case_studies && dune build --display short
 .PHONY: case_studies.proof
 
@@ -103,31 +112,55 @@ description: """
 ---
 """
 license: "BSD-3-Clause"
-depends: [
 endef
 export BUILDDEP_OPAM_BODY
 
-# Create a virtual Opam package with the same deps as RefinedC, but no
+# Create a virtual Opam package with the same deps as RefinedRust, but no
 # build.
 builddep/refinedrust-builddep.opam: theories/refinedrust.opam Makefile
 	@echo "# Creating builddep package."
 	@mkdir -p builddep
 	@echo "$$BUILDDEP_OPAM_BODY" > $@
+	@echo 'depends: [' >> $@
 	@opam show -f depends: ./theories/refinedrust.opam >> $@
-	@echo "]" >> $@
-	@echo "pin-depends:" >> $@
-	@opam show --normalise -f pin-depends: ./theories/refinedrust.opam >> $@
+	@echo ']' >> $@
+	@echo 'pin-depends: [' >> $@
+	@opam show -f pin-depends: ./theories/refinedrust.opam >> $@
+	@echo ']' >> $@
 
+# Create a virtual Opam package with the same deps as RefinedRust-smtcoq, but no
+# build.
+builddep/refinedrust-smtcoq-builddep.opam: theories/refinedrust-smtcoq.opam Makefile
+	@echo "# Creating builddep package."
+	@mkdir -p builddep
+	@echo "$$BUILDDEP_OPAM_BODY" > $@
+	@echo 'depends: [' >> $@
+	@opam show -f depends: ./theories/refinedrust-smtcoq.opam | sed 's/"refinedrust".*//g' >> $@
+	@echo ']' >> $@
+	@echo 'pin-depends: [' >> $@
+	@opam show -f pin-depends: ./theories/refinedrust-smtcoq.opam >> $@
+	@echo ']' >> $@
 
 # Install the virtual Opam package to ensure that:
 #  1) dependencies of RefinedRust are installed,
 #  2) they will remain satisfied even if other packages are updated/installed,
 #  3) we do not have to pin the RefinedRust package itself (which takes time).
+builddep-all: builddep/refinedrust-builddep.opam builddep/refinedrust-smtcoq-builddep.opam 
+	@opam -y remove refinedrust-builddep refinedrust-smtcoq-builddep || true
+	@opam -y pin remove refinedrust-builddep refinedrust-smtcoq-builddep || true
+	@echo "# Installing package builddep/refinedurst-builddep."
+	@opam install $(OPAMFLAGS) builddep/refinedrust-builddep.opam
+	@echo "# Installing package builddep/refinedrust-smtcoq-builddep."
+	@opam install $(OPAMFLAGS) builddep/refinedrust-smtcoq-builddep.opam
+.PHONY: builddep-all
+
 builddep: builddep/refinedrust-builddep.opam
+	@opam -y remove refinedrust-builddep || true
+	@opam -y pin remove refinedrust-builddep || true
 	@echo "# Installing package $^."
 	@opam install $(OPAMFLAGS) $^
 .PHONY: builddep
 
-builddep-opamfiles: builddep/refinedrust-builddep.opam
+builddep-opamfiles: builddep/refinedrust-builddep.opam builddep/refinedrust-smtcoq-builddep.opam
 	@true
 .PHONY: builddep-opamfiles

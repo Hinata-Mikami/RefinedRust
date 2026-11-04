@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.minivec.generated Require Import generated_code_minivec generated_specs_minivec.
 From refinedrust.examples.minivec.generated Require Import generated_template_RawVec_T_grow.
@@ -14,8 +14,9 @@ Proof.
   RawVec_T_grow_prelude.
 
   rep <-! liRStep.
+  2: rep liRStep.
   (* Manual step to extract the array value before the call to realloc *)
-  apply_update (updateable_extract_value l).
+  apply_update (updateable_extract_untyped_value l).
   repeat liRStep.
 
   all: print_remaining_goal.

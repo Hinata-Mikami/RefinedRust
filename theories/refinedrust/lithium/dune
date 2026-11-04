@@ -1,0 +1,6 @@
+(rocq.theory
+ (name lithium)
+ (package refinedrust)
+ (synopsis "Lithium")
+ (generate_project_file)
+ (theories stdpp iris iris_contrib Ltac2 Stdlib))

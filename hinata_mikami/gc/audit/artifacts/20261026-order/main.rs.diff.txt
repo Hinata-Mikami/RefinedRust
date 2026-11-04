@@ -1,0 +1,77 @@
+--- before/hinata_mikami/gc/src/main.rs
++++ after/hinata_mikami/gc/src/main.rs
+@@ -318,41 +318,19 @@
+     // A[true] → B[false] でBを解放するとdangling pointerになる
+     #[rr::requires("marks_closed locs nexts marks")]
+ 
+-    #[rr::ensures("sweep_post locs nexts marks
+-        (keep_marked locs marks) (keep_marked nexts marks)")]
+-    #[rr::ensures("sweep_fields_preserved vals locs nexts marks")]
+-    #[rr::ensures("all_unmarked (replicate (length (keep_marked locs marks)) false)")]
+-
+-    /* keep_marked xs marks ... xs のうち marks が true のものだけを残す */
+-    // 終了後の locs' は locs[i] のうち marks[i] が true のもの
++    // 1. 実際の終了後の Vec を、開始時 marked のノードだけに更新する。
+     #[rr::observe("γ": "
+     let locs' := keep_marked locs marks in
+     (-[# (<#> locs')] : plistRT [_])
+     ")]
+ 
+-    /* invariant としていたものの構築 */
+-    // vals', nexts' も同様
+-    // locs'/nexts' と vals' の長さは同じ
+-    #[rr::ensures("
+-    let vals' := keep_marked vals marks in
+-    let locs' := keep_marked locs marks in
+-    length locs' = length vals'
+-    ")]
+-    #[rr::ensures("
+-    let vals' := keep_marked vals marks in
+-    let nexts' := keep_marked nexts marks in
+-    length nexts' = length vals'
+-    ")]
+-    #[rr::ensures("
+-    let locs' := keep_marked locs marks in
+-    NoDup locs'
+-    ")]
+-    #[rr::ensures("
+-    let locs' := keep_marked locs marks in
+-    Forall (λ l, l.(loc_a) ≠ 0) locs'
+-    ")]
+-    // 更新後の所有権
+-    // marks' は false を locs' 分複製
++    // 2. 結論: 保持 iff 開始時 marked。mark が正確なら保持 iff reachable。
++    //    root が marked なら、アドレスで表す reachable は前後で同じ。
++    #[rr::ensures("sweep_post locs nexts marks
++        (keep_marked locs marks) (keep_marked nexts marks)")]
++
++    // 3. 生存ノードの実メモリ: value/next を保持し、marked は false にする。
++    //    ノードの所有権と、今後解放するための権限を返す。
+     #[rr::ensures(#iris "
+     let vals' := keep_marked vals marks in
+     let locs' := keep_marked locs marks in
+@@ -372,17 +350,16 @@
+             (ly_size (use_layout_alg' Node_sls))
+             1 HeapAlloc)
+     ")]
+-    /*
+-    * sweep 中は壊してよいが、終了時には
+-    * live node だけに絞った locs'/nexts' について
+-    * Hnext_valid が再成立する。
+-    */
++    // 4. ヒープの整合性: 長さ、重複なし、非 NULL、next の参照先の妥当性。
+     #[rr::ensures("
++    let vals' := keep_marked vals marks in
+     let locs' := keep_marked locs marks in
+     let nexts' := keep_marked nexts marks in
+-    Forall
+-        (λ n, n = NULL_loc ∨ n ∈ locs')
+-        nexts'
++    length locs' = length vals' ∧
++    length nexts' = length vals' ∧
++    NoDup locs' ∧
++    Forall (λ l, l.(loc_a) ≠ 0) locs' ∧
++    Forall (λ n, n = NULL_loc ∨ n ∈ locs') nexts'
+     ")]
+ 
+     /* 

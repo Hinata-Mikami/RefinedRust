@@ -71,6 +71,10 @@ impl<'def> InstanceMethodSpec<'def> {
 
     fn self_trait_attr_inst(&self) -> Option<coq::term::Term> {
         if let Self::DefaultSpec(spec, _, _) = self {
+            if !spec.trait_ref.of_trait.has_spec_attrs {
+                return None;
+            }
+
             Some(coq::term::Term::App(Box::new(spec.trait_ref.get_attr_record_term())))
         } else {
             None
@@ -89,7 +93,7 @@ pub struct InstanceSpec<'def> {
 #[derive(Constructor, Clone, Debug)]
 pub struct SpecAttrsDecl {
     /// a map of attributes and their types
-    attrs: Option<BTreeMap<String, coq::term::Type>>,
+    attrs: Option<Vec<(String, coq::term::Type)>>,
     /// optionally, a semantic interpretation (like `Copy`) of the trait in terms of semantic types
     semantic_interp: Option<String>,
 }
@@ -123,6 +127,9 @@ pub struct LiteralSpec {
 
     /// Whether the attrs record is dependent on the attrs of trait dependencies.
     pub attrs_dependent: bool,
+
+    /// Whether this trait has a specification attributes record.
+    pub has_spec_attrs: bool,
 
     /// declared attributes of the trait
     pub declared_attrs: Vec<String>,
@@ -198,6 +205,30 @@ impl LiteralSpec {
     }
 }
 
+/// Where a semantic requirement may contribute to specification attributes.
+/// All variants remain available to semantic specifications.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum AttrDependency {
+    /// Available in attribute type declarations and value definitions.
+    TypeAndValue,
+    /// Available in attribute value definitions, but not type declarations.
+    ValueOnly,
+    /// Available only to semantic specifications.
+    SemanticOnly,
+}
+
+impl AttrDependency {
+    #[must_use]
+    pub const fn in_attr_type(self) -> bool {
+        matches!(self, Self::TypeAndValue)
+    }
+
+    #[must_use]
+    pub const fn in_attr_value(self) -> bool {
+        matches!(self, Self::TypeAndValue | Self::ValueOnly)
+    }
+}
+
 /// A reference to a trait instantiated with its parameters in the verification of a function.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 #[expect(clippy::partial_pub_fields)]
@@ -210,14 +241,14 @@ pub struct LiteralSpecUse<'def> {
     /// the instantiation of the trait's scope
     pub trait_inst: GenericScopeInst<'def>,
 
-    /// optionally, an override for the trait attr specification we assume
-    pub overridden_attrs: Option<String>,
-
     /// the name including the generic args
     pub mangled_base: String,
 
     /// whether this is a usage in the scope of a trait decl of the same trait
     pub is_used_in_self_trait: bool,
+
+    /// Participation in attribute type declarations and value definitions.
+    pub attr_dependency: AttrDependency,
 
     /// optional constraints for each associated type
     pub assoc_ty_constraints: Vec<Option<Type<'def>>>,
@@ -253,7 +284,7 @@ impl ReqInfo for LiteralSpecUseRef<'_> {
 }
 
 impl<'def> LiteralSpecUse<'def> {
-    fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
+    pub(crate) fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
         let mut assoc_tys = Vec::new();
 
         for (idx, _) in self.trait_ref.assoc_tys.iter().enumerate() {
@@ -264,10 +295,20 @@ impl<'def> LiteralSpecUse<'def> {
         assoc_tys
     }
 
-    /// Get the name for a spec parameter for this trait instance.
+    /// Get the name for a spec realization parameter for this trait instance.
     #[must_use]
-    fn make_spec_param_name(&self) -> String {
-        format!("{}_spec", self.mangled_base)
+    pub(crate) fn make_spec_realization_param_name(&self) -> String {
+        format!("{}_realization", self.mangled_base)
+    }
+
+    #[must_use]
+    pub(crate) fn make_spec_lfts_inst_name(&self) -> String {
+        format!("{}_lfts_inst", self.mangled_base)
+    }
+
+    #[must_use]
+    pub(crate) fn make_spec_tys_inst_name(&self) -> String {
+        format!("{}_tys_inst", self.mangled_base)
     }
 
     /// Get the name for a spec attrs parameter for this trait instance.
@@ -279,7 +320,7 @@ impl<'def> LiteralSpecUse<'def> {
     /// Get the term for the spec attrs of this use.
     #[must_use]
     pub(crate) fn make_spec_attrs_use(&self) -> String {
-        self.overridden_attrs.clone().unwrap_or_else(|| self.make_spec_attrs_param_name())
+        self.make_spec_attrs_param_name()
     }
 
     /// Get the term for accessing a particular attribute in a context where the attribute record
@@ -316,17 +357,37 @@ impl<'def> LiteralSpecUse<'def> {
         params
     }
 
+    #[must_use]
+    fn get_attr_ordered_params_inst(&self) -> Vec<Type<'def>> {
+        let mut params = self.trait_inst.get_direct_ty_params().to_vec();
+        params.append(&mut self.get_assoc_ty_inst());
+        for requirement in self.trait_inst.get_direct_trait_requirements() {
+            if requirement.attr_dependency.in_attr_type() {
+                params.extend(requirement.get_assoc_ty_inst().iter().cloned());
+            }
+        }
+        params
+    }
+
     /// Get the binder for the attribute parameter.
     #[must_use]
-    pub(crate) fn get_attr_param(&self) -> coq::binder::Binder {
-        let ordered_params = self.get_ordered_params_inst();
+    pub(crate) fn get_attr_param(&self) -> Option<coq::binder::Binder> {
+        if !self.trait_ref.has_spec_attrs {
+            return None;
+        }
+
+        let ordered_params = self.get_attr_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
         // also attrs of trait deps
         let mut attr_args = Vec::new();
         if self.trait_ref.attrs_dependent {
             for x in self.trait_inst.get_direct_trait_requirements() {
-                attr_args.push(x.get_attr_term());
+                if x.attr_dependency.in_attr_type()
+                    && let Some(attr_term) = x.get_attr_term()
+                {
+                    attr_args.push(attr_term);
+                }
             }
         }
 
@@ -336,27 +397,30 @@ impl<'def> LiteralSpecUse<'def> {
         push_str_list!(attr_param_ty, &attr_args, " ");
 
         // add the attributes
-        coq::binder::Binder::new(
+        Some(coq::binder::Binder::new(
             Some(self.make_spec_attrs_param_name()),
             coq::term::Type::Literal(attr_param_ty),
-        )
+        ))
     }
 
-    /// Get the binder for the spec record parameter.
+    /// Get the binder for the spec realization and its abstract context.
     #[must_use]
-    pub(crate) fn get_spec_param(&self) -> coq::binder::Binder {
+    pub(crate) fn get_spec_params(&self) -> Vec<coq::binder::Binder> {
         let ordered_params = self.get_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
         let mut spec_param_ty = format!(
-            "spec_with {} [] ({} (RRGS:=RRGS) ",
+            "trait_spec_realization (spec_with {} [] ({} (RRGS:=RRGS) ",
             self.scope.quantified_lfts.len(),
             self.trait_ref.spec_record()
         );
         push_str_list!(spec_param_ty, &all_args, " ");
-        spec_param_ty.push(')');
+        spec_param_ty.push_str("))");
 
-        coq::binder::Binder::new(Some(self.make_spec_param_name()), coq::term::Type::Literal(spec_param_ty))
+        vec![coq::binder::Binder::new(
+            Some(self.make_spec_realization_param_name()),
+            coq::term::Type::Literal(spec_param_ty),
+        )]
     }
 
     /// Get the optional specialized semantic term for this trait assumption.
@@ -370,6 +434,9 @@ impl<'def> LiteralSpecUse<'def> {
             push_str_list!(specialized_semantic, &args, " ", |x| { format!("{}", x.get_rfn_type()) });
             specialized_semantic.push(' ');
             push_str_list!(specialized_semantic, &args, " ", |x| { x.to_string() });
+
+            push_str_list!(specialized_semantic, inst.get_lfts(), " ", |x| { x.to_string() });
+
             Some(specialized_semantic)
         } else {
             None
@@ -378,7 +445,7 @@ impl<'def> LiteralSpecUse<'def> {
 
     /// Make the precondition on the spec parameter we need to require.
     #[must_use]
-    pub(crate) fn make_spec_param_precond(&self) -> coq::term::Term {
+    pub(crate) fn make_spec_param_precond(&self) -> coq::iris::IProp {
         // the spec we have to require for this verification
         let spec_to_require = self.trait_ref.base_spec();
 
@@ -395,24 +462,29 @@ impl<'def> LiteralSpecUse<'def> {
         // specialize to further args
         for req in self.trait_inst.get_direct_trait_requirements() {
             // get attrs + spec term
-            specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
+            if let Some(attr_term) = req.get_attr_term() {
+                specialized_spec.push_str(&format!(" {attr_term}"));
+            }
             //specialized_spec.push_str(&format!(" {}", req.get_spec_term()));
         }
-        specialized_spec.push_str(&format!(" {}", self.make_spec_attrs_use()));
+        if self.trait_ref.has_spec_attrs {
+            specialized_spec.push_str(&format!(" {}", self.make_spec_attrs_use()));
+        }
 
-        // specialize to semtys
-        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("<TY> {}", x) });
-        // specialize to lfts
-        push_str_list!(specialized_spec, self.trait_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        specialized_spec.push_str(" <INST!>)");
+        // specialize to semtys + lfts
+        specialized_spec
+            .push_str(&GenericScopeInst::format_full_instantiation(&all_args, self.trait_inst.get_lfts()));
+        specialized_spec.push(')');
 
+        let realization = self.make_spec_realization_param_name();
+        let lfts_inst = self.make_spec_lfts_inst_name();
+        let tys_inst = self.make_spec_tys_inst_name();
         let spec = format!(
-            "trait_incl_marker (lift_trait_incl {} {} {specialized_spec})",
+            "∃ ({lfts_inst} : prod_vec lft {realization}.(trait_ctx_lfts)) ({tys_inst} : plist type {realization}.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl {} ({realization}.(trait_ctx_spec) {lfts_inst} {tys_inst}) {specialized_spec})⌝ ∗ {realization}.(trait_ctx_wf) {lfts_inst} {tys_inst} π",
             self.trait_ref.spec_incl_name(),
-            self.make_spec_param_name(),
         );
 
-        coq::term::Term::Literal(spec)
+        coq::iris::IProp::Atom(spec)
     }
 
     /// Make the name for the location parameter of a use of a method of this trait parameter.
@@ -488,9 +560,135 @@ pub struct ReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
 
-impl fmt::Display for ReqScopeInst {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write_list!(f, &self.lft_insts, "", |x| format!(" <LFT> {x}"))
+/// A use of a bundled trait specification realization at a particular context instantiation.
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
+pub struct SpecRealizationUse<'def> {
+    realization: coq::term::Term,
+    context_inst: GenericScopeInst<'def>,
+}
+
+impl<'def> SpecRealizationUse<'def> {
+    #[must_use]
+    pub const fn get_realization_term(&self) -> &coq::term::Term {
+        &self.realization
+    }
+
+    /// Replace the complete implementation realization context.
+    #[must_use]
+    pub fn with_context_inst(&self, context_inst: GenericScopeInst<'def>) -> Self {
+        Self::new(self.realization.clone(), context_inst)
+    }
+
+    /// Use the same context instantiation with a different realization term.
+    #[must_use]
+    pub fn with_realization_term(&self, realization: coq::term::Term) -> Self {
+        Self::new(realization, self.context_inst.clone())
+    }
+
+    /// Close the realization at this context instantiation.
+    #[must_use]
+    pub fn get_closed_realization_term(&self) -> coq::term::Term {
+        coq::term::Term::Literal(format!(
+            "(trait_spec_realization_instantiate {} {} {})",
+            self.realization,
+            GenericScopeInst::format_lft_instantiation(self.context_inst.get_lfts()),
+            GenericScopeInst::format_ty_instantiation(&self.context_inst.get_direct_ty_params_with_assocs()),
+        ))
+    }
+
+    /// Project the trait specification and instantiate its inner HRTB scope.
+    #[must_use]
+    pub fn get_trait_spec_term(&self, scope_inst: &ReqScopeInst) -> String {
+        format!(
+            "{}.(trait_ctx_spec) {} {} {}",
+            self.realization,
+            GenericScopeInst::format_lft_instantiation(self.context_inst.get_lfts()),
+            GenericScopeInst::format_ty_instantiation(&self.context_inst.get_direct_ty_params_with_assocs()),
+            GenericScopeInst::format_full_instantiation(&[], &scope_inst.lft_insts),
+        )
+    }
+
+    /// Project the linking condition at the same surrounding context instantiation.
+    #[must_use]
+    pub fn get_wf_term(&self, thread_id: &str) -> String {
+        format!(
+            "{}.(trait_ctx_wf) {} {} {thread_id}",
+            self.realization,
+            GenericScopeInst::format_lft_instantiation(self.context_inst.get_lfts()),
+            GenericScopeInst::format_ty_instantiation(&self.context_inst.get_direct_ty_params_with_assocs()),
+        )
+    }
+}
+
+/// A trait method projected from a particular bundled realization.
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
+pub struct RealizedMethodSpecUse<'def> {
+    realization: SpecRealizationUse<'def>,
+    of_trait: LiteralSpecRef<'def>,
+    method_name: String,
+    scope_inst: ReqScopeInst,
+}
+
+impl<'def> RealizedMethodSpecUse<'def> {
+    #[must_use]
+    pub const fn realization(&self) -> &SpecRealizationUse<'def> {
+        &self.realization
+    }
+
+    #[must_use]
+    pub fn get_spec_term(&self) -> String {
+        format!(
+            "({} (RRGS:=RRGS) ({}))",
+            self.of_trait.make_spec_method_name(&self.method_name),
+            self.realization.get_trait_spec_term(&self.scope_inst),
+        )
+    }
+
+    #[must_use]
+    pub fn get_wf_term(&self, thread_id: &str) -> String {
+        self.realization.get_wf_term(thread_id)
+    }
+
+    /// Project this method from a different term denoting the same realization.
+    #[must_use]
+    pub fn with_realization_term(&self, realization: coq::term::Term) -> Self {
+        Self::new(
+            self.realization.with_realization_term(realization),
+            self.of_trait,
+            self.method_name.clone(),
+            self.scope_inst.clone(),
+        )
+    }
+
+    /// Replace the implementation realization's complete generic context.
+    #[must_use]
+    pub fn with_realization_context_inst(&self, context_inst: GenericScopeInst<'def>) -> Self {
+        Self::new(
+            self.realization.with_context_inst(context_inst),
+            self.of_trait,
+            self.method_name.clone(),
+            self.scope_inst.clone(),
+        )
+    }
+
+    /// Rebind realization lifetimes without replacing its implementation type context.
+    #[must_use]
+    pub fn with_realization_lfts(&self, lfts: Vec<Lft>) -> Self {
+        let num_lfts = self.realization.context_inst.get_lfts().len();
+        let context_inst =
+            self.realization.context_inst.clone().with_lfts(lfts.into_iter().take(num_lfts).collect());
+        self.with_realization_context_inst(context_inst)
+    }
+
+    /// Project a method from a specialized trait implementation realization.
+    #[must_use]
+    pub fn from_specialized_impl(
+        impl_: &SpecializedImpl<'def>,
+        of_trait: LiteralSpecRef<'def>,
+        method_name: String,
+        scope_inst: ReqScopeInst,
+    ) -> Self {
+        Self::new(impl_.get_realization_use(), of_trait, method_name, scope_inst)
     }
 }
 
@@ -501,7 +699,48 @@ pub struct SpecializedImpl<'def> {
     pub(crate) impl_inst: GenericScopeInst<'def>,
 }
 
-impl SpecializedImpl<'_> {
+impl<'def> SpecializedImpl<'def> {
+    #[must_use]
+    fn get_open_realization_term(&self) -> coq::term::Term {
+        let realization_name = self.impl_ref.spec_realization();
+        let tys = self.impl_inst.get_direct_ty_params_with_assocs();
+        let mut out = realization_name.to_owned();
+
+        // Realization constructors quantify first over refinement types, then syntactic types.
+        for ty in &tys {
+            write!(out, " {}", ty.get_rfn_type()).unwrap();
+        }
+        for ty in &tys {
+            write!(out, " {}", lang::SynType::from(ty)).unwrap();
+        }
+
+        // Implementation requirements are bundled realization arguments themselves.
+        for req in self.impl_inst.get_direct_trait_requirements() {
+            if let Some(attr_term) = req.get_attr_term() {
+                write!(out, " {attr_term}").unwrap();
+            }
+            write!(out, " {}", req.get_realization_term()).unwrap();
+        }
+
+        coq::term::Term::Literal(out)
+    }
+
+    /// Get the open realization of this implementation at its implementation context.
+    ///
+    /// Realizations of implementation requirements are constructor arguments. The selected
+    /// implementation itself remains open so its context can provide the method linking condition.
+    #[must_use]
+    pub fn get_realization_use(&self) -> SpecRealizationUse<'def> {
+        let realization = self.get_open_realization_term();
+        let realization = coq::term::Term::Literal(format!("({realization})"));
+        SpecRealizationUse::new(realization, self.impl_inst.clone())
+    }
+
+    #[must_use]
+    fn get_realization_term(&self) -> coq::term::Term {
+        self.get_realization_use().get_closed_realization_term()
+    }
+
     #[must_use]
     fn get_spec_term(&self) -> String {
         let mut out = String::new();
@@ -520,16 +759,16 @@ impl SpecializedImpl<'_> {
         // add trait requirements
         for req in self.impl_inst.get_direct_trait_requirements() {
             // get attrs
-            out.push_str(&format!(" {}", req.get_attr_term()));
+            if let Some(attr_term) = req.get_attr_term() {
+                out.push_str(&format!(" {attr_term}"));
+            }
         }
 
-        // specialize to semtys
-        push_str_list!(out, self.impl_inst.get_direct_ty_params_with_assocs(), " ", |x| {
-            format!("<TY> {}", x)
-        });
-        // specialize to lfts
-        push_str_list!(out, self.impl_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        out.push_str(" <INST!>");
+        // specialize to semtys + lfts
+        out.push_str(&GenericScopeInst::format_full_instantiation(
+            &self.impl_inst.get_direct_ty_params_with_assocs(),
+            self.impl_inst.get_lfts(),
+        ));
 
         out
     }
@@ -547,16 +786,29 @@ pub struct QuantifiedImpl<'def> {
 
 impl QuantifiedImpl<'_> {
     #[must_use]
-    pub(crate) fn get_spec_term(&self) -> String {
-        let mut out = String::new();
+    fn get_realization_term(&self) -> coq::term::Term {
         let spec = self.trait_ref.borrow();
         let spec = spec.as_ref().unwrap();
-        out.push_str(&spec.make_spec_param_name());
-        // instantiate
-        out.push_str(&self.scope_inst.to_string());
-        out.push_str(" <INST!>");
+        coq::term::Term::Literal(spec.make_spec_realization_param_name())
+    }
 
-        out
+    #[must_use]
+    pub(crate) fn get_spec_term_with_context_inst(&self, lfts_inst: &str, tys_inst: &str) -> String {
+        format!(
+            "{}.(trait_ctx_spec) {lfts_inst} {tys_inst} {}",
+            self.get_realization_term(),
+            GenericScopeInst::format_full_instantiation(&[], &self.scope_inst.lft_insts),
+        )
+    }
+
+    #[must_use]
+    pub(crate) fn get_spec_term(&self) -> String {
+        let spec = self.trait_ref.borrow();
+        let spec = spec.as_ref().unwrap();
+        self.get_spec_term_with_context_inst(
+            &spec.make_spec_lfts_inst_name(),
+            &spec.make_spec_tys_inst_name(),
+        )
     }
 }
 
@@ -576,6 +828,8 @@ pub struct ReqInst<'def, T = Type<'def>> {
     pub spec: ReqInstSpec<'def>,
     /// the origin of the trait requirement
     pub origin: TyParamOrigin,
+    /// Participation in attribute type declarations and value definitions.
+    pub attr_dependency: AttrDependency,
     /// instantiation of associated types, excluding the associated types which are already
     /// determined by constraints between associated types at the declaration site of this
     /// requirement
@@ -600,6 +854,7 @@ impl<T> ReqInst<'_, T> {
         &self.assoc_ty_inst
     }
 
+    #[expect(dead_code)]
     #[must_use]
     pub(crate) fn get_spec_term(&self) -> String {
         let mut out = String::new();
@@ -619,32 +874,52 @@ impl<T> ReqInst<'_, T> {
     }
 
     #[must_use]
-    pub fn get_attr_term(&self) -> String {
+    pub fn get_attr_term(&self) -> Option<String> {
+        if !self.of_trait.has_spec_attrs {
+            return None;
+        }
+
         match &self.spec {
             ReqInstSpec::Specialized(s) => {
                 // instantiate the attrs suitably
                 let mut args = Vec::new();
-                for ty in s.impl_inst.get_direct_ty_params_with_assocs() {
+                for ty in s.impl_inst.get_attr_value_direct_ty_params_with_assocs() {
                     args.push(format!("{}", ty.get_rfn_type()));
                 }
                 // get the attr terms this depends on
                 for req in s.impl_inst.get_direct_trait_requirements() {
-                    args.push(req.get_attr_term());
+                    if req.attr_dependency.in_attr_value()
+                        && let Some(attr_term) = req.get_attr_term()
+                    {
+                        args.push(attr_term);
+                    }
                 }
 
                 let attr_term = format!("{}", coq::term::App::new(s.impl_ref.spec_attrs_record(), args));
-                attr_term
+                Some(attr_term)
             },
             ReqInstSpec::Quantified(s) => {
                 let s = s.trait_ref.borrow();
                 let s = s.as_ref().unwrap();
-                s.make_spec_attrs_use()
+                Some(s.make_spec_attrs_use())
             },
         }
     }
 }
 
 impl<'def> ReqInst<'def, Type<'def>> {
+    /// Get the bundled realization satisfying this trait requirement.
+    ///
+    /// Specialized realizations are closed at their implementation context. Quantified
+    /// realizations are forwarded unchanged.
+    #[must_use]
+    pub fn get_realization_term(&self) -> coq::term::Term {
+        match &self.spec {
+            ReqInstSpec::Specialized(impl_) => impl_.get_realization_term(),
+            ReqInstSpec::Quantified(impl_) => impl_.get_realization_term(),
+        }
+    }
+
     pub(crate) fn new_as_identity(req: LiteralSpecUseRef<'def>) -> Self {
         let trait_use = req.borrow();
         let trait_use = trait_use.as_ref().unwrap();
@@ -660,7 +935,14 @@ impl<'def> ReqInst<'def, Type<'def>> {
 
         let assoc_ty_inst = trait_use.get_assoc_ty_params().into_iter().map(Type::LiteralParam).collect();
 
-        Self::new(spec, trait_use.origin, assoc_ty_inst, trait_use.trait_ref, hrtb_scope.to_owned())
+        Self::new(
+            spec,
+            trait_use.origin,
+            trait_use.attr_dependency,
+            assoc_ty_inst,
+            trait_use.trait_ref,
+            hrtb_scope.to_owned(),
+        )
     }
 }
 
@@ -690,6 +972,7 @@ fn make_trait_instance<'def>(
     is_base_spec: bool,
     spec_record_name: &str,
     mut extra_context_items: coq::binder::BinderList,
+    extra_let_binders: Vec<(String, coq::term::Term)>,
 ) -> Result<coq::Document, fmt::Error> {
     let mut document = coq::Document::default();
 
@@ -716,22 +999,31 @@ fn make_trait_instance<'def>(
 
     let param_inst_rts: Vec<_> = param_inst.iter().map(Type::get_rfn_type).collect();
 
-    // also quantify over all trait deps
+    // All requirement attrs are semantic parameters, including value-only and semantic-only dependencies.
     let mut trait_params = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
     def_params.append(&mut trait_params.0);
 
     // for the base spec, we quantify over the attrs
     // Otherwise, we do not have to quantify over the attrs, as we fix one particular attrs record for
     // concrete impls.
-    if is_base_spec {
+    if is_base_spec && of_trait.has_spec_attrs {
         // assemble the type
         // TODO: for trait deps, also instantiate with deps?
-        let mut attrs_params: Vec<_> =
-            param_inst_rts.iter().map(|x| coq::term::Term::Type(Box::new(x.to_owned()))).collect();
+        let attr_assoc_params = scope.get_attr_type_direct_assoc_ty_params();
+        let mut attrs_params: Vec<_> = ty_params
+            .params
+            .iter()
+            .chain(assoc_types)
+            .chain(&attr_assoc_params.params)
+            .map(|param| {
+                let rt = Type::LiteralParam(param.clone()).get_rfn_type();
+                coq::term::Term::Type(Box::new(rt))
+            })
+            .collect();
 
         if of_trait.attrs_dependent {
             attrs_params
-                .append(&mut scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms());
+                .append(&mut scope.get_attr_type_trait_parameters(IncludeSelfReq::Dont).make_using_terms());
         }
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_params);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
@@ -792,13 +1084,15 @@ fn make_trait_instance<'def>(
             write!(body, "{app_body}")?;
 
             // instantiate with surrounding trait specs
-            for x in surrounding_inst.get_direct_trait_requirements() {
-                write!(body, " {}", x.get_attr_term())?;
+            for requirement in surrounding_inst.get_direct_trait_requirements() {
+                if let Some(attr_term) = requirement.get_attr_term() {
+                    write!(body, " {attr_term}")?;
+                }
             }
 
             // This comes after other surrounding trait requirement's attrs, as the Self requirement is always
-            // shuffled last
-            if is_base_spec {
+            // shuffled last.
+            if is_base_spec && of_trait.has_spec_attrs {
                 write!(body, " _ATTRS")?;
             } else if let Some(inst) = spec.self_trait_attr_inst() {
                 write!(body, " {inst}")?;
@@ -841,17 +1135,8 @@ fn make_trait_instance<'def>(
         let record_body = coq::term::RecordBody { items: components };
         let mut term = coq::term::Term::RecordBody(record_body);
 
-        // NOTE: HACK because we don't compute the correct direct scope for default fns for now:
-        // dependencies on other surrounding params/assocs are not instantiated correctly.
-        // Hence we manually introduce the binders necessary here.
-        let self_assoc_inst = spec.methods.iter().next().unwrap().1.self_assoc_types_inst(assoc_types);
-        for (name, inst) in of_trait.assoc_tys.iter().zip(self_assoc_inst) {
-            let assoc_param = LiteralTyParam::new(name);
-            term = coq::term::Term::LetIn(
-                assoc_param.refinement_type(),
-                Box::new(coq::term::Term::Type(Box::new(inst.get_rfn_type()))),
-                Box::new(term),
-            );
+        for (name, bind_term) in extra_let_binders {
+            term = coq::term::Term::LetIn(name, Box::new(bind_term), Box::new(term));
         }
         term
     };
@@ -870,6 +1155,10 @@ fn make_trait_instance<'def>(
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
         body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(term_with_specs)),
+    });
+    document.push(coq::command::Arguments {
+        name: spec_record_name.to_owned(),
+        arguments_string: ": simpl never".to_owned(),
     });
 
     Ok(document)
@@ -904,20 +1193,35 @@ impl SpecDecl<'_> {
         params
     }
 
+    fn get_attr_ordered_params(&self) -> TyParamList {
+        let mut params = self.generics.get_direct_ty_params().to_owned();
+        params.append(self.assoc_types.clone());
+        params.append(self.generics.get_attr_type_direct_assoc_ty_params().params);
+        params
+    }
+
     #[must_use]
     pub fn make_attr_record_decl(&self) -> coq::Document {
+        if !self.lit.has_spec_attrs {
+            return coq::Document::default();
+        }
+
         let Some(attrs) = self.attrs.attrs.as_ref() else {
             return coq::Document::default();
         };
 
         // this is parametric in the params and associated types
-        let ordered_params = self.get_ordered_params();
+        let ordered_params = self.get_attr_ordered_params();
         let mut params = ordered_params.get_coq_ty_rt_params();
 
-        if self.lit.attrs_dependent {
+        let dependent_attr_params = if self.lit.attrs_dependent {
             // also depend on other attrs
-            params.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
-        }
+            self.generics.get_attr_type_trait_parameters(IncludeSelfReq::Dont).0
+        } else {
+            Vec::new()
+        };
+        let dependent_attr_param_count = dependent_attr_params.len();
+        params.append(dependent_attr_params);
 
         params.0.insert(0, coq::binder::Binder::new_rrgs());
 
@@ -992,13 +1296,7 @@ impl SpecDecl<'_> {
 
         let mut attrs_string = String::new();
         // first two are for refinedrustGS, then all the RT + st parameters, then attrs for trait deps
-        let attr_param_count = 2
-            + self.get_ordered_params().params.len()
-            + (if self.lit.attrs_dependent {
-                self.generics.get_direct_trait_requirements().len()
-            } else {
-                0
-            });
+        let attr_param_count = 2 + self.get_attr_ordered_params().params.len() + dependent_attr_param_count;
         for _ in 0..attr_param_count {
             write!(attrs_string, " {{_}}").unwrap();
         }
@@ -1024,6 +1322,10 @@ impl SpecDecl<'_> {
             let mut params = ordered_params.get_coq_ty_rt_params();
             params.0.insert(0, coq::binder::Binder::new_rrgs());
             params.append(ordered_params.get_semantic_ty_params().0);
+
+            for lft in self.generics.get_lfts() {
+                params.0.push(coq::binder::Binder::new(Some(lft.lft.to_string()), model::Type::Lft));
+            }
 
             let body = semantic_interp.to_owned();
 
@@ -1214,6 +1516,152 @@ impl SpecDecl<'_> {
     }
 
     #[must_use]
+    fn make_scope_bindable_instance(&self) -> coq::Document {
+        let mut doc = coq::Document::default();
+
+        let ordered_params = self.get_ordered_params();
+        let mut params = ordered_params.get_coq_ty_rt_params();
+        params.make_implicit(coq::binder::Kind::MaxImplicit);
+
+        let param_uses: Vec<_> = ordered_params
+            .params
+            .iter()
+            .map(|param| coq::term::Term::Ident(coq::Ident::new(&param.refinement_type())))
+            .collect();
+        let spec_record_type = coq::term::App::new(self.lit.spec_record(), param_uses.clone());
+        let ty = coq::term::Type::Literal(format!("ScopeBindable ({spec_record_type})"));
+
+        let spec_record_term =
+            coq::term::App::new(coq::term::Term::Ident(coq::Ident::new(&self.lit.spec_record())), param_uses);
+        let scope_add_typarams_params = coq::binder::BinderList::new(vec![
+            coq::binder::Binder::new(Some("rts".to_owned()), coq::term::Type::Literal("list RT".to_owned())),
+            coq::binder::Binder::new(
+                Some("tys".to_owned()),
+                coq::term::Type::Literal("plist type rts".to_owned()),
+            ),
+            coq::binder::Binder::new(
+                Some("s".to_owned()),
+                coq::term::Type::Literal(spec_record_term.to_string()),
+            ),
+        ]);
+
+        let scope_add_typarams_body = if self.default_spec.methods.is_empty() {
+            coq::term::Term::Ident(coq::Ident::new("s"))
+        } else {
+            let mut items = Vec::new();
+            for (item_name, item_spec) in &self.default_spec.methods {
+                let record_item_name = self.lit.make_spec_method_name(item_name);
+                let direct_scope = item_spec.get_direct_scope();
+
+                let mut field_params = direct_scope.get_direct_ty_params_with_assocs().get_coq_ty_params();
+                field_params.append(direct_scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).0);
+                let field_param_uses = field_params.make_using_terms();
+                let projected_spec = coq::term::App::new(
+                    coq::term::Term::RecordProj(
+                        Box::new(coq::term::Term::Ident(coq::Ident::new("s"))),
+                        record_item_name.clone(),
+                    ),
+                    field_param_uses,
+                );
+                let term =
+                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("scope_add_typarams")), vec![
+                        coq::term::Term::Ident(coq::Ident::new("rts")),
+                        coq::term::Term::Ident(coq::Ident::new("tys")),
+                        coq::term::Term::App(Box::new(projected_spec)),
+                    ]);
+
+                items.push(coq::term::RecordBodyItem {
+                    name: record_item_name,
+                    params: field_params,
+                    term: coq::term::Term::App(Box::new(term)),
+                });
+            }
+
+            coq::term::Term::RecordBody(coq::term::RecordBody { items })
+        };
+
+        let scope_add_elctx_params = coq::binder::BinderList::new(vec![
+            coq::binder::Binder::new(
+                Some("E".to_owned()),
+                coq::term::Type::Literal("lft → elctx".to_owned()),
+            ),
+            coq::binder::Binder::new(
+                Some("s".to_owned()),
+                coq::term::Type::Literal(spec_record_term.to_string()),
+            ),
+        ]);
+
+        let scope_add_elctx_body = if self.default_spec.methods.is_empty() {
+            coq::term::Term::Ident(coq::Ident::new("s"))
+        } else {
+            let mut items = Vec::new();
+            for (item_name, item_spec) in &self.default_spec.methods {
+                let record_item_name = self.lit.make_spec_method_name(item_name);
+                let direct_scope = item_spec.get_direct_scope();
+
+                let mut field_params = direct_scope.get_direct_ty_params_with_assocs().get_coq_ty_params();
+                field_params.append(direct_scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).0);
+                let field_param_uses = field_params.make_using_terms();
+                let projected_spec = coq::term::App::new(
+                    coq::term::Term::RecordProj(
+                        Box::new(coq::term::Term::Ident(coq::Ident::new("s"))),
+                        record_item_name.clone(),
+                    ),
+                    field_param_uses,
+                );
+                let term =
+                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("scope_add_elctx")), vec![
+                        coq::term::Term::Ident(coq::Ident::new("E")),
+                        coq::term::Term::App(Box::new(projected_spec)),
+                    ]);
+
+                items.push(coq::term::RecordBodyItem {
+                    name: record_item_name,
+                    params: field_params,
+                    term: coq::term::Term::App(Box::new(term)),
+                });
+            }
+
+            coq::term::Term::RecordBody(coq::term::RecordBody { items })
+        };
+
+        let body = coq::term::Term::RecordBody(coq::term::RecordBody {
+            items: vec![
+                coq::term::RecordBodyItem {
+                    name: "scope_add_typarams".to_owned(),
+                    params: scope_add_typarams_params,
+                    term: scope_add_typarams_body,
+                },
+                coq::term::RecordBodyItem {
+                    name: "scope_add_elctx".to_owned(),
+                    params: scope_add_elctx_params,
+                    term: scope_add_elctx_body,
+                },
+            ],
+        });
+
+        let instance_name = format!("scope_bindable_{}", self.lit.spec_record());
+
+        doc.push(coq::command::Definition {
+            program_mode: false,
+            name: instance_name.clone(),
+            params,
+            ty: Some(ty),
+            body: coq::command::DefinitionBody::Term(body),
+        });
+        doc.push(
+            coq::command::CommandAttrs::new(coq::command::Command::ExistingInstance(
+                coq::command::ExistingInstance {
+                    name: instance_name,
+                },
+            ))
+            .attributes("global"),
+        );
+
+        doc
+    }
+
+    #[must_use]
     pub fn make_trait_req_incls(&self) -> coq::Document {
         let mut decls: Vec<coq::Sentence> = Vec::new();
 
@@ -1250,6 +1698,9 @@ impl fmt::Display for SpecDecl<'_> {
         let spec_incl_preorder = self.make_spec_incl_preorder();
         write!(f, "{spec_incl_preorder}\n")?;
 
+        // write ScopeBindable instance
+        write!(f, "{}\n", self.make_scope_bindable_instance())?;
+
         // write the individual function specs
         for item_spec in self.default_spec.methods.values() {
             if let InstanceMethodSpec::Defined(spec) = item_spec {
@@ -1273,6 +1724,7 @@ impl fmt::Display for SpecDecl<'_> {
             true,
             &self.lit.base_spec(),
             coq::binder::BinderList::empty(),
+            vec![],
         )?;
         write!(f, "{base_decls}\n")?;
 
@@ -1288,6 +1740,9 @@ pub struct LiteralImpl {
 
     /// Whether is there a Rocq definition name for the trait's semantic interpretation.
     has_semantic_interp: bool,
+
+    /// The optional Rocq definition name of the bundled trait realization.
+    realization: String,
 }
 
 pub type LiteralImplRef<'def> = &'def LiteralImpl;
@@ -1309,6 +1764,12 @@ impl LiteralImpl {
     #[must_use]
     pub fn spec_semantic(&self) -> Option<String> {
         self.has_semantic_interp.then(|| format!("{}_semantic_interp", self.name))
+    }
+
+    /// The optional Rocq definition name of the bundled trait realization.
+    #[must_use]
+    pub fn spec_realization(&self) -> &str {
+        &self.realization
     }
 
     /// The Rocq lemma name of the proof that the base spec is implied by the more specific spec
@@ -1349,6 +1810,24 @@ pub struct RefInst<'def> {
 }
 
 impl<'def> RefInst<'def> {
+    #[must_use]
+    fn get_attr_ordered_params_inst(&self) -> Vec<Type<'def>> {
+        let mut params: Vec<_> = self
+            .trait_inst
+            .get_direct_ty_params()
+            .iter()
+            .chain(&self.assoc_types_inst)
+            .cloned()
+            .collect();
+
+        for req_inst in self.trait_inst.get_direct_trait_requirements() {
+            if req_inst.attr_dependency.in_attr_type() {
+                params.extend(req_inst.get_assoc_ty_inst().iter().cloned());
+            }
+        }
+        params
+    }
+
     /// Get the instantiation of the trait's parameters in the same order as the trait's declaration
     /// (`get_ordered_params`).
     #[must_use]
@@ -1372,10 +1851,8 @@ impl<'def> RefInst<'def> {
     fn get_attr_record_term(&self) -> coq::term::App<coq::term::Term, coq::term::Term> {
         let attr_record = &self.impl_ref.spec_attrs_record();
 
-        // get all type parameters
-        let mut binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
-        // add all dependent attrs
-        binders.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
+        let mut binders = self.generics.get_attr_value_ty_params_with_assocs().get_coq_ty_rt_params();
+        binders.append(self.generics.get_attr_value_trait_parameters(IncludeSelfReq::Dont).0);
         let args = binders.make_using_terms();
 
         coq::term::App::new(coq::term::Term::Literal(attr_record.to_owned()), args)
@@ -1422,16 +1899,19 @@ impl<'def> RefInst<'def> {
         // first the dependent attrs
         for req in self.trait_inst.get_direct_trait_requirements() {
             // get attrs
-            specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
+            if let Some(attr_term) = req.get_attr_term() {
+                specialized_spec.push_str(&format!(" {attr_term}"));
+            }
         }
         // then the attrs of this impl
-        specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
+        if self.of_trait.has_spec_attrs {
+            specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
+        }
 
-        // specialize to semtys
-        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("<TY> {}", x) });
-        // specialize to lfts
-        push_str_list!(specialized_spec, self.trait_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        specialized_spec.push_str(" <INST!>)");
+        // specialize to semtys + lfts
+        specialized_spec
+            .push_str(&GenericScopeInst::format_full_instantiation(&all_args, self.trait_inst.get_lfts()));
+        specialized_spec.push(')');
 
         coq::term::Term::Literal(specialized_spec)
     }
@@ -1459,9 +1939,56 @@ pub struct ImplSpec<'def> {
 }
 
 impl ImplSpec<'_> {
+    #[must_use]
+    fn generate_realization_decl(&self) -> coq::Document {
+        let realization_name = self.trait_ref.impl_ref.spec_realization();
+
+        let generics = &self.trait_ref.generics;
+        let all_tys = generics.get_all_ty_params_with_assocs();
+
+        let mut params = all_tys.get_coq_ty_params();
+        params.append(generics.get_all_trait_parameters(IncludeSelfReq::Dont).0);
+        let mut extra_context_items = self.extra_context_items.clone();
+        extra_context_items.make_implicit(coq::binder::Kind::MaxImplicit);
+        params.append(extra_context_items.0);
+
+        let result_args = self.trait_ref.get_ordered_params_inst();
+        let mut result_spec = format!(
+            "trait_spec_realization (spec_with 0 [] ({} (RRGS:=RRGS)",
+            self.trait_ref.of_trait.spec_record()
+        );
+        for ty in &result_args {
+            write!(result_spec, " {}", ty.get_rfn_type()).unwrap();
+        }
+        result_spec.push_str("))");
+
+        let lfts = fmt_list!(generics.get_lfts(), "; ");
+        let ty_names = fmt_list!(&all_tys.params, "; ", LiteralTyParam::type_term);
+        let ty_rts = fmt_list!(&all_tys.params, "; ", LiteralTyParam::refinement_type);
+
+        let mut wf_parts = vec![generics.generate_validity_term_for_generics()];
+        for req in generics.get_direct_trait_requirements() {
+            let req = req.borrow();
+            wf_parts.push(req.as_ref().unwrap().make_spec_param_precond());
+        }
+        let wf = coq::iris::IProp::Sep(wf_parts);
+        let spec_term = self.trait_ref.get_spec_record_term();
+
+        let definition = format!(
+            "Program Definition {realization_name} {params} : {result_spec} :=\n{{|\n  trait_ctx_lfts := {};\n  trait_ctx_tys := [{ty_rts}];\n  trait_ctx_wf := λ '( *[{lfts}]) '( *[{ty_names}]) π, ({wf})%I;\n  trait_ctx_spec := λ '( *[{lfts}]) '( *[{ty_names}]) _ _, {spec_term};\n|}}.\nNext Obligation.\n  solve_trait_realization_pers.\nQed.",
+            generics.get_num_lifetimes(),
+        );
+
+        coq::Document::new(vec![coq::command::Command::Literal(definition)])
+    }
+
     /// Generate the definition of the attribute record of this trait impl.
     #[must_use]
     pub fn generate_attr_decl(&self) -> coq::Document {
+        if !self.trait_ref.of_trait.has_spec_attrs {
+            return coq::Document::default();
+        }
+
         let attrs = &self.trait_ref.attrs;
         let attrs_name = &self.trait_ref.impl_ref.spec_attrs_record();
         let of_trait = &self.trait_ref.of_trait;
@@ -1471,24 +1998,29 @@ impl ImplSpec<'_> {
 
         // get all type parameters + assoc types
         def_rts_params
-            .append(self.trait_ref.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params().0);
+            .append(self.trait_ref.generics.get_attr_value_ty_params_with_assocs().get_coq_ty_rt_params().0);
 
-        // add other attrs
-        def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
+        // Value dependencies remain in scope even for `#[rr::nondependent]` traits.
+        def_rts_params
+            .append(self.trait_ref.generics.get_attr_value_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiate the type of the attr record
         let attrs_type_rts: Vec<coq::term::Type> =
-            self.trait_ref.get_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
+            self.trait_ref.get_attr_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
         let mut attrs_type_terms: Vec<_> =
             attrs_type_rts.iter().map(|x| coq::term::Term::Type(Box::new(x.to_owned()))).collect();
 
         // also add dependent attrs
         if self.trait_ref.of_trait.attrs_dependent {
             for x in self.trait_ref.trait_inst.get_direct_trait_requirements() {
-                attrs_type_terms.push(coq::term::Term::Literal(x.get_attr_term()));
+                if x.attr_dependency.in_attr_type()
+                    && let Some(attr_term) = x.get_attr_term()
+                {
+                    attrs_type_terms.push(coq::term::Term::Literal(attr_term));
+                }
             }
         }
-        let mut obligation_terms = Vec::new();
+        let mut obligation_proofs = Vec::new();
 
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_type_terms.clone());
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
@@ -1498,7 +2030,10 @@ impl ImplSpec<'_> {
             coq::term::Term::Literal(of_trait.spec_record_attrs_constructor_name())
         } else {
             let mut components = Vec::new();
-            for (attr_name, inst) in &attrs.attrs {
+            // Important: do this in the same order as at declaration site.
+
+            for attr_name in &self.trait_ref.of_trait.declared_attrs {
+                let inst = &attrs.attrs[attr_name];
                 // create an item for every attr
                 let record_item_name = of_trait.make_spec_attr_name(attr_name);
 
@@ -1515,12 +2050,10 @@ impl ImplSpec<'_> {
                     SpecAttrInst::Proof(proof) => {
                         let lit = coq::ltac::RocqLTac::Literal(proof.to_owned());
                         let proof = coq::ProofDocument::new(vec![lit]);
-                        obligation_terms.push(coq::command::Command::NextObligation(
-                            coq::command::ObligationProof {
-                                content: proof,
-                                terminator: coq::proof::Terminator::Qed,
-                            },
-                        ));
+                        obligation_proofs.push(coq::command::ObligationProof {
+                            content: proof,
+                            terminator: coq::proof::Terminator::Qed,
+                        });
                         coq::term::Term::Infer
                     },
                 };
@@ -1548,7 +2081,15 @@ impl ImplSpec<'_> {
             ty: Some(attrs_type),
             body: coq::command::DefinitionBody::Term(attr_record_term),
         };
-        obligation_terms.insert(0, coq::command::Command::Definition(def));
+        let obligation_count = obligation_proofs.len();
+        let mut obligation_terms = vec![coq::command::Command::Definition(def)];
+        obligation_terms.extend(obligation_proofs.into_iter().enumerate().map(|(index, proof)| {
+            if index + 1 == obligation_count {
+                coq::command::Command::FinalObligation(proof)
+            } else {
+                coq::command::Command::NextObligation(proof)
+            }
+        }));
         coq::Document::new(obligation_terms)
     }
 
@@ -1563,6 +2104,10 @@ impl ImplSpec<'_> {
             let all_tys = generics.get_all_ty_params_with_assocs();
             let mut params = all_tys.get_coq_ty_rt_params();
             params.append(all_tys.get_semantic_ty_params().0);
+
+            for lft in generics.get_lfts() {
+                params.0.push(coq::binder::Binder::new(Some(lft.lft.to_string()), model::Type::Lft));
+            }
 
             params.append(self.extra_context_items.0.clone());
 
@@ -1619,8 +2164,8 @@ impl ImplSpec<'_> {
         // get parameters
         // this is parametric in the rts, sts, semtys, attrs of all trait deps.
         let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
-        let mut params = self.extra_context_items.clone();
-        params.append(ty_params.get_coq_ty_params().0);
+        let mut params = ty_params.get_coq_ty_params();
+        params.append(self.extra_context_items.0.clone());
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiation of the trait
@@ -1633,7 +2178,10 @@ impl ImplSpec<'_> {
         scope.format(&mut ty_term, false, &[]).unwrap();
         ty_term.push_str(&format!(" {own_spec}) ("));
         scope.format(&mut ty_term, false, &[]).unwrap();
-        ty_term.push_str(&format!(" {base_spec}))"));
+        let surrounding_tys = fmt_list!(&scope.get_all_ty_params_with_assocs().params, "; ", |x| {
+            Type::LiteralParam(x.to_owned()).to_string()
+        });
+        ty_term.push_str(&format!(" scope_add_typarams _ -[{surrounding_tys}] ({base_spec})))"));
 
         let body = coq::term::Term::Literal(ty_term);
 
@@ -1688,6 +2236,20 @@ impl fmt::Display for ImplSpec<'_> {
             // Instantiate with the parameter and associated types
             let params_inst = self.trait_ref.get_ordered_params_inst();
 
+            // NOTE: HACK because we don't compute the correct direct scope for default fns for now:
+            // dependencies on other surrounding params/assocs are not instantiated correctly.
+            // Hence we manually introduce the binders necessary here as let binders.
+            let mut extra_let_binders = Vec::new();
+            for (name, inst) in
+                self.trait_ref.of_trait.assoc_tys.iter().zip(self.trait_ref.assoc_types_inst.iter())
+            {
+                let assoc_param = LiteralTyParam::new(name);
+                extra_let_binders.push((
+                    assoc_param.refinement_type(),
+                    coq::term::Term::Type(Box::new(inst.get_rfn_type())),
+                ));
+            }
+
             // This relies on all the impl's functions already having been printed
             let mut instance = make_trait_instance(
                 &self.trait_ref.generics,
@@ -1698,10 +2260,13 @@ impl fmt::Display for ImplSpec<'_> {
                 false,
                 &self.trait_ref.impl_ref.spec_record(),
                 self.extra_context_items.clone(),
+                extra_let_binders,
             )
             .unwrap();
 
             section.append(&mut instance.0);
+
+            section.append(&mut self.generate_realization_decl().0);
 
             section.append(&mut self.generate_lemma_statement().0);
 
@@ -1758,27 +2323,26 @@ impl<'def> InstantiatedFunctionSpec<'def> {
 
         // instantiate with the attrs of trait requirements
         for trait_req in self.trait_ref.trait_inst.get_direct_trait_requirements() {
-            params.push(trait_req.get_attr_term());
+            if let Some(attr_term) = trait_req.get_attr_term() {
+                params.push(attr_term);
+            }
             //params.push(trait_req.get_spec_term());
         }
 
         // also instantiate with the attrs that are quantified on the outside
-        let attr_term = self.trait_ref.get_attr_record_term();
-        params.push(attr_term.to_string());
+        if self.trait_ref.of_trait.has_spec_attrs {
+            let attr_term = self.trait_ref.get_attr_record_term();
+            params.push(attr_term.to_string());
+        }
 
         let mut applied_base_spec = String::with_capacity(100);
         write!(applied_base_spec, "{}\n", coq::term::App::new(&self.trait_ref.of_trait.base_spec(), params))?;
 
         // now add the semantic components
-        // instantiate semantic types
-        for ty in &all_ty_params {
-            write!(applied_base_spec, " <TY> {ty}")?;
-        }
-        // instantiate lifetimes
-        for lft in self.trait_ref.trait_inst.get_lfts() {
-            write!(applied_base_spec, " <LFT> {lft}")?;
-        }
-        write!(applied_base_spec, " <INST!>")?;
+        applied_base_spec.push_str(&GenericScopeInst::format_full_instantiation(
+            &all_ty_params,
+            self.trait_ref.trait_inst.get_lfts(),
+        ));
 
         // now we need to project out the concrete function specification
         // we pass as parameters the direct rts and sts of the function
@@ -1791,14 +2355,399 @@ impl<'def> InstantiatedFunctionSpec<'def> {
         let trait_params_inst =
             scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
 
+        // Bind the impl's elctx using the same scope as the outer spec! binders.
+        // The method scope can give impl lifetimes different names (e.g. for elided lifetimes).
+        let surrounding_tys = scope.get_surrounding_ty_params_with_assocs();
+        let surrounding_tys =
+            fmt_list!(&surrounding_tys.params, "; ", |x| { Type::LiteralParam(x.to_owned()).to_string() });
+        let scope_elctx = self.trait_ref.generics.format_elctx();
         write!(
             f,
-            "({applied_base_spec}).({}) {} {} <MERGE!>",
+            "(λ a b, scope_add_typarams _ -[{surrounding_tys}] (scope_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b))) <MERGE!>",
+            //"({applied_base_spec}).({}) {} {} <MERGE!>",
             self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name),
             fmt_list!(spec_params, " "),
             fmt_list!(trait_params_inst, " ")
         )?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attribute_dependencies_distinguish_types_values_and_semantics() {
+        let lit = LiteralSpec {
+            name: "Dependency".to_owned(),
+            assoc_tys: vec!["Output".to_owned()],
+            has_semantic_interp: false,
+            attrs_dependent: false,
+            has_spec_attrs: true,
+            declared_attrs: Vec::new(),
+            method_trait_incl_decls: BTreeMap::new(),
+        };
+        let uses = [
+            ("TypeDep", AttrDependency::TypeAndValue),
+            ("ValueDep", AttrDependency::ValueOnly),
+            ("SemanticDep", AttrDependency::SemanticOnly),
+        ]
+        .map(|(name, dependency)| {
+            RefCell::new(Some(LiteralSpecUse::new(
+                &lit,
+                ReqScope::empty(),
+                GenericScopeInst::empty(),
+                name.to_owned(),
+                false,
+                dependency,
+                vec![None],
+                TyParamOrigin::Direct,
+            )))
+        });
+        let mut scope = GenericScope::empty();
+        for requirement in &uses {
+            scope.add_trait_requirement(requirement);
+        }
+
+        let type_params = scope.get_attr_type_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
+        let value_params = scope.get_attr_value_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
+        let semantic_params = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
+        assert_eq!(type_params.len(), 1);
+        assert_eq!(value_params.len(), 2);
+        assert_eq!(semantic_params.len(), 3);
+        assert_eq!(type_params[0].to_string(), "TypeDep_spec_attrs");
+        assert_eq!(value_params[1].to_string(), "ValueDep_spec_attrs");
+        assert_eq!(semantic_params[2].to_string(), "SemanticDep_spec_attrs");
+
+        assert_eq!(scope.get_attr_type_direct_assoc_ty_params().params.len(), 1);
+        assert_eq!(scope.get_attr_value_ty_params_with_assocs().params.len(), 2);
+        assert_eq!(scope.get_all_ty_params_with_assocs().params.len(), 3);
+
+        // Identity instantiation must preserve classification: applying an attribute value
+        // uses the same associated-type parameters as its definition.
+        let mut inst = GenericScopeInst::empty();
+        for requirement in &uses {
+            inst.add_trait_requirement(ReqInst::new_as_identity(requirement));
+        }
+        assert_eq!(inst.get_attr_value_direct_ty_params_with_assocs().len(), 2);
+        assert_eq!(inst.get_direct_trait_requirements()[1].attr_dependency, AttrDependency::ValueOnly);
+    }
+
+    fn literal_drop_glue_spec() -> LiteralSpec {
+        LiteralSpec {
+            name: "DropGlue".to_owned(),
+            assoc_tys: vec![],
+            has_semantic_interp: false,
+            attrs_dependent: false,
+            has_spec_attrs: false,
+            declared_attrs: vec![],
+            method_trait_incl_decls: BTreeMap::new(),
+        }
+    }
+
+    fn quantified_drop_glue_use(trait_spec: &LiteralSpec) -> LiteralSpecUseCell<'_> {
+        RefCell::new(Some(LiteralSpecUse::new(
+            trait_spec,
+            ReqScope::empty(),
+            GenericScopeInst::empty(),
+            "DropGlue_T".to_owned(),
+            false,
+            AttrDependency::ValueOnly,
+            vec![],
+            TyParamOrigin::Direct,
+        )))
+    }
+
+    #[test]
+    fn literal_impl_realization_is_shared_by_clones() {
+        let impl_ =
+            LiteralImpl::new("ordinary_impl".to_owned(), false, "ordinary_impl_realization".to_owned());
+        let alias = impl_.clone();
+
+        assert_eq!(impl_.spec_realization(), "ordinary_impl_realization");
+        assert_eq!(alias.spec_realization(), "ordinary_impl_realization");
+    }
+
+    #[test]
+    fn impl_spec_emits_published_realization_with_implicit_context() {
+        let trait_spec = literal_drop_glue_spec();
+        let impl_literal =
+            LiteralImpl::new("ordinary_impl".to_owned(), false, "ordinary_impl_realization".to_owned());
+        let mut trait_inst = GenericScopeInst::empty();
+        trait_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let trait_ref = RefInst::new(
+            &trait_spec,
+            &impl_literal,
+            GenericScope::empty(),
+            trait_inst,
+            vec![],
+            SpecAttrsInst::new(BTreeMap::new()),
+        );
+        let extra_context = coq::binder::Binder::new(
+            Some("context".to_owned()),
+            coq::term::Type::Literal("ContextType".to_owned()),
+        );
+        let impl_spec = ImplSpec::new(
+            trait_ref,
+            InstanceSpec::new(BTreeMap::new()),
+            coq::binder::BinderList::new(vec![extra_context]),
+        );
+
+        let rendered = impl_spec.to_string();
+        assert!(rendered.contains("Program Definition ordinary_impl_realization"));
+        assert!(rendered.contains("`{context : !(ContextType)}"));
+        assert!(rendered.contains("trait_ctx_lfts := 0"));
+        assert!(rendered.contains("trait_ctx_tys := []"));
+        assert!(rendered.contains("trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I"));
+        assert!(rendered.contains("trait_ctx_spec := λ '( *[]) '( *[]) _ _, ordinary_impl_spec-[] -[]"));
+        assert!(rendered.contains("solve_trait_realization_pers"));
+    }
+
+    #[test]
+    fn specialized_realization_passes_requirement_attrs_before_realization() {
+        let dependency_trait = LiteralSpec {
+            name: "Dependency".to_owned(),
+            has_spec_attrs: true,
+            ..literal_drop_glue_spec()
+        };
+        let mut dependency_inst = GenericScopeInst::empty();
+        dependency_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let dependency_use = RefCell::new(Some(LiteralSpecUse::new(
+            &dependency_trait,
+            ReqScope::empty(),
+            dependency_inst,
+            "Dependency_i32".to_owned(),
+            false,
+            AttrDependency::ValueOnly,
+            vec![],
+            TyParamOrigin::Direct,
+        )));
+        let dependency_req = ReqInst::new_as_identity(&dependency_use);
+
+        let impl_literal =
+            LiteralImpl::new("ordinary_impl".to_owned(), false, "ordinary_impl_realization".to_owned());
+        let mut impl_inst = GenericScopeInst::empty();
+        impl_inst.add_trait_requirement(dependency_req);
+        let impl_ = SpecializedImpl::new(&impl_literal, impl_inst);
+
+        assert_eq!(
+            impl_.get_realization_use().get_realization_term().to_string(),
+            "(ordinary_impl_realization Dependency_i32_spec_attrs Dependency_i32_realization)"
+        );
+    }
+
+    #[test]
+    fn realization_use_formats_concrete_context() {
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let realization = SpecRealizationUse::new(coq::term::Term::Literal("R".to_owned()), context_inst);
+
+        assert_eq!(
+            realization.get_trait_spec_term(&ReqScopeInst::new(vec![])),
+            "R.(trait_ctx_spec) -[] -[(int I32)] -[] -[]"
+        );
+    }
+
+    #[test]
+    fn realized_method_use_formats_method_projection() {
+        let trait_spec = literal_drop_glue_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        context_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let realization = SpecRealizationUse::new(coq::term::Term::Literal("R".to_owned()), context_inst);
+        let method = RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![]),
+        );
+
+        assert_eq!(
+            method.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) (R.(trait_ctx_spec) -[] -[T_ty; (int I32)] -[] -[]))"
+        );
+        assert_eq!(method.get_wf_term("π"), "R.(trait_ctx_wf) -[] -[T_ty; (int I32)] π");
+    }
+
+    #[test]
+    fn realized_method_use_can_rebind_its_realization() {
+        let trait_spec = literal_drop_glue_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_lft_param(coq::Ident::new("κ"));
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        let realization =
+            SpecRealizationUse::new(coq::term::Term::Literal("constructor".to_owned()), context_inst);
+        let method = RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![coq::Ident::new("method_κ")]),
+        );
+
+        let rebound = method.with_realization_term(coq::term::Term::Literal("realization".to_owned()));
+        assert_eq!(
+            rebound.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[κ] -[T_ty] -[method_κ] -[]))"
+        );
+        assert_eq!(rebound.get_wf_term("π"), "realization.(trait_ctx_wf) -[κ] -[T_ty] π");
+        assert_eq!(method.realization().get_realization_term().to_string(), "constructor");
+    }
+
+    #[test]
+    fn realized_method_replaces_complete_context_instantiation() {
+        let trait_spec = literal_drop_glue_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_lft_param(coq::Ident::new("vlft5"));
+        context_inst.add_lft_param(coq::Ident::new("vlft5"));
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        let realization =
+            SpecRealizationUse::new(coq::term::Term::Literal("constructor".to_owned()), context_inst);
+        let method = RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![coq::Ident::new("method_lft")]),
+        );
+
+        let mut rebound_context = GenericScopeInst::empty();
+        rebound_context.add_lft_param(coq::Ident::new("ulft_0"));
+        rebound_context.add_lft_param(coq::Ident::new("ulft_1"));
+        rebound_context.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("U")));
+        let rebound = method.with_realization_context_inst(rebound_context);
+
+        assert_eq!(
+            rebound.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) (constructor.(trait_ctx_spec) -[ulft_0; ulft_1] -[U_ty] -[method_lft] -[]))"
+        );
+        assert_eq!(rebound.get_wf_term("π"), "constructor.(trait_ctx_wf) -[ulft_0; ulft_1] -[U_ty] π");
+    }
+
+    #[test]
+    fn quantified_requirement_forwards_realization_unchanged() {
+        let trait_spec = literal_drop_glue_spec();
+        let trait_use = quantified_drop_glue_use(&trait_spec);
+        let quantified =
+            QuantifiedImpl::new(&trait_use, ReqScopeInst::new(vec![coq::Ident::new("ignored_hrtb_inst")]));
+        let req = ReqInst::new(
+            ReqInstSpec::Quantified(quantified),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        assert_eq!(req.get_realization_term().to_string(), "DropGlue_T_realization");
+    }
+
+    #[test]
+    fn specialized_requirement_closes_realization_context() {
+        let trait_spec = literal_drop_glue_spec();
+        let impl_spec = LiteralImpl::new(
+            "drop_glue_trivial".to_owned(),
+            false,
+            "drop_glue_trivial_realization".to_owned(),
+        );
+        let mut impl_inst = GenericScopeInst::empty();
+        impl_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let req = ReqInst::new(
+            ReqInstSpec::Specialized(SpecializedImpl::new(&impl_spec, impl_inst)),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        assert_eq!(
+            req.get_realization_term().to_string(),
+            "(trait_spec_realization_instantiate (drop_glue_trivial_realization Z (IntSynType I32)) -[] -[(int I32)])"
+        );
+    }
+
+    #[test]
+    fn specialized_impl_exposes_open_realization_use() {
+        let trait_spec = literal_drop_glue_spec();
+        let impl_spec = LiteralImpl::new(
+            "drop_glue_trivial".to_owned(),
+            false,
+            "drop_glue_trivial_realization".to_owned(),
+        );
+        let mut impl_inst = GenericScopeInst::empty();
+        impl_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let impl_ = SpecializedImpl::new(&impl_spec, impl_inst);
+
+        let realization = impl_.get_realization_use();
+        assert_eq!(
+            realization.get_realization_term().to_string(),
+            "(drop_glue_trivial_realization Z (IntSynType I32))"
+        );
+        assert_eq!(
+            realization.get_trait_spec_term(&ReqScopeInst::new(vec![])),
+            "(drop_glue_trivial_realization Z (IntSynType I32)).(trait_ctx_spec) -[] -[(int I32)] -[] -[]"
+        );
+        assert_eq!(
+            realization.get_wf_term("π"),
+            "(drop_glue_trivial_realization Z (IntSynType I32)).(trait_ctx_wf) -[] -[(int I32)] π"
+        );
+
+        let method = RealizedMethodSpecUse::from_specialized_impl(
+            &impl_,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![]),
+        );
+        assert_eq!(
+            method.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) ((drop_glue_trivial_realization Z (IntSynType I32)).(trait_ctx_spec) -[] -[(int I32)] -[] -[]))"
+        );
+    }
+
+    #[test]
+    fn specialized_requirement_includes_dependency_realizations() {
+        let trait_spec = literal_drop_glue_spec();
+        let component_impl = LiteralImpl::new(
+            "drop_glue_trivial".to_owned(),
+            false,
+            "drop_glue_trivial_realization".to_owned(),
+        );
+        let mut component_inst = GenericScopeInst::empty();
+        component_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let component_req = ReqInst::new(
+            ReqInstSpec::Specialized(SpecializedImpl::new(&component_impl, component_inst)),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        let tuple_impl =
+            LiteralImpl::new("drop_glue_tuple1".to_owned(), false, "drop_glue_tuple1_realization".to_owned());
+        let mut tuple_inst = GenericScopeInst::empty();
+        tuple_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        tuple_inst.add_trait_requirement(component_req);
+        let tuple_req = ReqInst::new(
+            ReqInstSpec::Specialized(SpecializedImpl::new(&tuple_impl, tuple_inst)),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        let ReqInstSpec::Specialized(tuple_impl) = &tuple_req.spec else {
+            unreachable!();
+        };
+        assert_eq!(
+            tuple_impl.get_realization_use().get_realization_term().to_string(),
+            "(drop_glue_tuple1_realization Z (IntSynType I32) (trait_spec_realization_instantiate (drop_glue_trivial_realization Z (IntSynType I32)) -[] -[(int I32)]))"
+        );
+        assert_eq!(
+            tuple_req.get_realization_term().to_string(),
+            "(trait_spec_realization_instantiate (drop_glue_tuple1_realization Z (IntSynType I32) (trait_spec_realization_instantiate (drop_glue_trivial_realization Z (IntSynType I32)) -[] -[(int I32)])) -[] -[(int I32)])"
+        );
     }
 }

@@ -1,0 +1,44 @@
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self is only allowed on inherent methods
+ --> fail/raw-mut-self-invalid-targets.rs:7:1
+  |
+7 | #[rr::raw_mut_self]
+  | ^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self requires an unsafe method
+  --> fail/raw-mut-self-invalid-targets.rs:13:5
+   |
+13 |     #[rr::raw_mut_self]
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self requires a &mut self receiver
+  --> fail/raw-mut-self-invalid-targets.rs:16:5
+   |
+16 |     #[rr::raw_mut_self]
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self does not accept arguments
+  --> fail/raw-mut-self-invalid-targets.rs:19:5
+   |
+19 |     #[rr::raw_mut_self("argument")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self cannot be combined with rr::inline
+  --> fail/raw-mut-self-invalid-targets.rs:22:5
+   |
+22 |     #[rr::raw_mut_self]
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self is only allowed on inherent methods
+  --> fail/raw-mut-self-invalid-targets.rs:33:5
+   |
+33 |     #[rr::raw_mut_self]
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Attribute is ill-formed: rr::raw_mut_self is only allowed on inherent methods
+  --> fail/raw-mut-self-invalid-targets.rs:28:5
+   |
+28 |     #[rr::raw_mut_self]
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

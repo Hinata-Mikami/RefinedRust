@@ -1,51 +1,58 @@
 
 #![rr::import("rrstd.iterator.theories", "iterator")]
-
 use crate::adapters::map::Map;
+use crate::adapters::skip::Skip;
+use crate::adapters::step_by::StepBy;
+use crate::adapters::take::Take;
+use std::ops::{ControlFlow, Try};
+use std::cmp::{self, Ordering};
 
 // example for state changes on None:
 // - fusing iterator (make any iterator Fused)
 
 /// Spec: A relation
 #[rr::export_as(core::iter::Iterator)]
-#[rr::external_attrs("Next", "Inv")]
+#[rr::external_attrs("Params", "Inv", "Next")]
 //#[rr::exists("Next" : "thread_id → {xt_of Self} → option {xt_of Item} → {xt_of Self} → iProp Σ")]
 //#[rr::exists("Inv" : "thread_id → {xt_of Self} → iProp Σ")]
 pub trait Iterator {
     type Item;
 
-    #[rr::requires(#iris "{Inv} π self.cur")]
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self.cur")]
     /// Postcondition: There exists an optional next item and the successor state of the iterator.
     #[rr::exists("new_it_state" : "{xt_of Self}")]
     /// Postcondition: The state of the iterator has been updated.
     #[rr::observe("self.ghost": "($# new_it_state)")]
     /// Postcondition: If there is a next item, it obeys the iterator's relation, and similarly the
     /// successor state is determined.
-    #[rr::ensures(#iris "{Next} π self.cur ret new_it_state")]
-    #[rr::ensures(#iris "{Inv} π new_it_state")]
+    #[rr::ensures(#iris "{Next} π p self.cur ret new_it_state")]
+    #[rr::ensures(#iris "{Inv} π p new_it_state")]
     fn next(&mut self) -> Option<Self::Item>;
 
     /// We pick an invariant Inv
     /// TODO: maybe release Inv when we drop the Map iterator
-    #[rr::params("Inv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
-    #[rr::requires(#iris "{Inv} π self")]
+    #[rr::params("p_inner", "Inv" : "map_inv_ty _ _ _ _ FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs")]
+    #[rr::params("ParamPred" : "clos_param_pred_ty _ _ _ FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs")]
+    #[rr::requires(#iris "{Inv} π p_inner self")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     /// Precondition: The picked invariant should hold initially.
     #[rr::requires(#iris "Inv π self f")]
     /// Precondition: persistently, each iteration preserves the invariant.
     /// If the inner iterator has been advanced, we can call the closure.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        (☒ {Self::Next} π it_state (Some e) it_state') -∗
+        (☒ {Self::Next} π p_inner it_state (Some e) it_state') -∗
         Inv π it_state clos_state -∗
-        {F::Pre} π clos_state *[e] ∗
-        (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state' ∗ True))")]
+        ∃ pclos, ⌜ParamPred *[e] pclos⌝ ∗ {F::Pre} π pclos clos_state *[e] ∗
+        (∀ e' clos_state', ☒ {F::PostMut} π pclos clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state' ∗ True))")]
     /// Precondition: If no element is emitted, the invariant is also upheld.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state,
-        (☒ {Self::Next} π it_state None it_state') -∗
+        (☒ {Self::Next} π p_inner it_state None it_state') -∗
         Inv π it_state clos_state -∗
         Inv π it_state' clos_state ∗ True)")]
     #[rr::ensures("ret = mk_map_x self f")]
     // TODO: spec shortcut to refer to attrs of Self
-    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs) π ret")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs DropGlue_B_spec_attrs DropGlue_Self_spec_attrs DropGlue_F_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π (p_inner, ParamPred) ret")]
     fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
@@ -73,12 +80,14 @@ pub trait Iterator {
     }
     */
 
-    #[rr::trust_me]
-    #[rr::requires(#iris "{Inv} π self")]
-    #[rr::exists("seq", "s2", "s2'")]
-    #[rr::ensures(#iris "{Next} π s2 None s2'")]
-    // TODO: have an escape to refer to the attrs record instead
-    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::exists("seq", "s2", "s2'", "status" : "IteratorCollectStatus")]
+    #[rr::ensures("{B::FromSequenceStatus} seq status")]
+    #[rr::ensures(#iris "IteratorCollectEnd traits_iterator_Iterator_Self_spec_attrs π p status s2 s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
+    // Extract observations from dropping self.
+    #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
     #[rr::returns("{B::FromSequence} seq")]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where
@@ -97,105 +106,427 @@ pub trait Iterator {
     }
 
 
-    #[rr::only_spec]
-    #[rr::params("P" : "{xt_of Self::Item} → Prop", "ClosInv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
-    #[rr::requires(#iris "{Inv} π self.cur")]
+    #[rr::params("p", "P" : "{xt_of Self::Item} → Prop", "ClosInv" : "map_inv_ty  _ _ _ _ FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs")]
+    #[rr::requires(#iris "{Inv} π p self.cur")]
     #[rr::requires(#iris "ClosInv π self.cur f")]
     /// Precondition: If the inner iterator has been advanced, we can call the closure.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        {Self::Next} π it_state (Some e) it_state' -∗
+        {Self::Next} π p it_state (Some e) it_state' -∗
         ClosInv π it_state clos_state -∗
-        {F::Pre} π clos_state *[e] ∗
-        {Self::Next} π it_state (Some e) it_state' ∗ 
-        (∀ b clos_state', {F::PostMut} π clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
+        ∃ pclos, {F::Pre} π pclos clos_state *[e] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        (∀ b clos_state', {F::PostMut} π pclos clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'")]
     // Postcondition: We consume a sequence of elements from the iterator
-    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self.cur seq s2")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq s2")]
     // If true is returned, the whole iterator was consumed; otherwise, the last element didn't pass the check
-    #[rr::ensures(#iris "if ret then {Next} π s2 None s2' else ⌜s2 = s2'⌝ ∗ ⌜∃ e, last seq = Some e ∧ ¬ P e⌝")]
-    // For all emitted elements, the predicate is satisfied
-    #[rr::ensures("Forall P seq")]
+    #[rr::ensures(#iris "if_iTrue ret ({Next} π p s2 None s2' ∗ ⌜Forall P seq⌝)")]
+    #[rr::ensures(#iris "if_iFalse ret (⌜s2 = s2'⌝ ∗ ∃ seq' e, ⌜seq = seq' ++ [e]⌝ ∗ ⌜Forall P seq'⌝ ∗ ⌜¬ P e⌝)")]
     // Postcondition: the invariant is upheld
-    #[rr::ensures(#iris "{Inv} π s2'")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
     // Postcondition: the iterator is updated to the new state
     #[rr::observe("self.ghost": "$# s2'")]
-    fn all<F>(&mut self, f: F) -> bool
+    #[rr::may_unwind_if("{F::DropGlueUnwind}")]
+    fn all<F>(&mut self, mut f: F) -> bool
     where
         Self: Sized,
         F: FnMut(Self::Item) -> bool,
     {
-        unimplemented!();
+        matches!(self.try_fold((), 
+            #[rr::params("pclos")]
+            #[rr::requires(#iris "{F::Pre} π pclos {f} *[b]")] 
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+            #[rr::exists("res" : "bool")]
+            #[rr::ensures(#iris "{F::PostMut} π pclos {f} *[b] {f.*new} res")]
+            #[rr::returns("if res then Ok tt else Err tt")]
+            |_, b| { if f(b) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) } }), ControlFlow::Continue(_))
     }
 
-    #[rr::only_spec]
-    #[rr::params("P" : "{xt_of Self::Item} → Prop", "ClosInv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
-    #[rr::requires(#iris "{Inv} π self.cur")]
+    #[rr::params("p", "P" : "{xt_of Self::Item} → Prop", "ClosInv" : "map_inv_ty  _ _ _ _ FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs")]
+    #[rr::requires(#iris "{Inv} π p self.cur")]
     #[rr::requires(#iris "ClosInv π self.cur f")]
     /// Precondition: If the inner iterator has been advanced, we can call the closure.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        {Self::Next} π it_state (Some e) it_state' -∗
+        {Self::Next} π p it_state (Some e) it_state' -∗
         ClosInv π it_state clos_state -∗
-        {F::Pre} π clos_state *[e] ∗
-        {Self::Next} π it_state (Some e) it_state' ∗ 
-        (∀ b clos_state', {F::PostMut} π clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
-    #[rr::exists("seq", "s2", "s2'")]
+        ∃ pclos, {F::Pre} π pclos clos_state *[e] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        (∀ b clos_state', {F::PostMut} π pclos clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     // Postcondition: We consume a sequence of elements from the iterator
-    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self.cur seq s2")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq s2")]
     // For all emitted elements, the predicate is not satisfied
     #[rr::ensures("Forall (λ x, ¬ P x) seq")]
     // Postcondition: if None is returned, the whole iterator was consumed
-    #[rr::ensures(#iris "if_iNone ret ({Next} π s2 None s2')")]
+    #[rr::ensures(#iris "if_iNone ret ({Next} π p s2 None s2' ∗ ClosInv π s2 clos_state')")]
     // Postcondition: if we find an index, then the element satisfies the predicate
-    #[rr::ensures(#iris "if_iSome ret (λ idx, ⌜length seq = Z.to_nat idx⌝ ∗ ∃ e, {Next} π s2 (Some e) s2' ∗ ⌜P e⌝)")]
+    #[rr::ensures(#iris "if_iSome ret (λ idx, ⌜length seq = Z.to_nat idx⌝ ∗ ∃ e, {Next} π p s2 (Some e) s2' ∗ ClosInv π s2' clos_state' ∗ ⌜P e⌝ ∗ True)")]
     // Postcondition: the invariant is upheld
-    #[rr::ensures(#iris "{Inv} π s2'")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
     // Postcondition: the iterator is updated to the new state
     #[rr::observe("self.ghost": "$# s2'")]
-    fn position<F>(&mut self, f: F) -> Option<usize>
+    #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{F::DropGlueUnwind}")]
+    fn position<F>(&mut self, mut f: F) -> Option<usize>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> bool,
     {
-        unimplemented!();
+        let mut acc = 0;
+        let clos = 
+            #[rr::only_spec]
+            #[rr::params("pclos")]
+            #[rr::requires(#iris "{F::Pre} π pclos {f} *[x]")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+            #[rr::exists("res")]
+            #[rr::ensures(#iris "{F::PostMut} π pclos {f} *[x] {f.*new} res")]
+            #[rr::ensures("if_Ok ret (λ ret, res = false ∧ {acc.*new} = 1+{acc})")]
+            #[rr::ensures("if_Err ret (λ ret, res = true ∧ ret = {acc} ∧ {acc.*new} = {acc})")]
+            |_, x| {
+                if f(x) {
+                    ControlFlow::Break(acc)
+                } else {
+                    acc += 1;
+                    ControlFlow::Continue(())
+                }
+            };
+
+        self.try_fold((), clos).break_value()
     }
 
-    #[rr::only_spec]
-    #[rr::requires(#iris "{Inv} π self")]
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     #[rr::exists("seq", "s2", "s2'")]
     // first: gain knowledge that iterator has ended (better for simplification)
-    #[rr::ensures(#iris "{Next} π s2 None s2'")]
+    #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     // TODO: have an escape to refer to the attrs record instead
-    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
     // TODO: fix: reference {Self::Item::Ord}
     #[rr::returns("max_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
     fn max(self) -> Option<Self::Item>
     where
         Self: Sized,
         Self::Item: Ord,
     {
-        unimplemented!();
-        //self.max_by(Ord::cmp)
+        self.max_by(
+            #[rr::returns("Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) a b")]
+            |a, b| Ord::cmp(a, b))
     }
 
-    #[rr::only_spec]
-    #[rr::requires(#iris "{Inv} π self")]
+    #[rr::params("p", "ClosInv" : "thread_id → (option {xt_of Self::Item}) → list {xt_of Self::Item} → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires(#iris "ClosInv π None [] self compare")]
+    #[rr::requires(#iris "∀ e it_state', 
+        ClosInv π None [] self compare -∗ {Self::Next} π p self (Some e) it_state' -∗ 
+        ClosInv π (Some e) [e] it_state' compare ∗ {Self::Next} π p self (Some e) it_state'")]
+    #[rr::requires(#iris "□ (∀ seq it_state it_state' clos_state e acc,
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq it_state -∗ 
+        □ ({Self::Next} π p it_state (Some e) it_state' -∗
+        ClosInv π (Some acc) seq it_state clos_state -∗
+        ∃ pclos, {F::Pre} π pclos clos_state *[e; acc] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        (∀ ord clos_state', 
+            {F::PostMut} π pclos clos_state *[e; acc] clos_state' ord -∗ 
+            ClosInv π (Some (if bool_decide (ord = Less) then acc else e)) (seq ++ [e]) it_state' clos_state' ∗ 
+            True)
+        ))")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+    #[rr::exists("seq", "s2", "s2'", "clos_state'")]
+    #[rr::ensures(#iris "{Next} π p s2 None s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
+    #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
+    #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
+    #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) ∨ {F::DropGlueUnwind}")]
+    fn max_by<F>(self, mut compare: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> Ordering,
+    {
+        self.reduce(
+            #[rr::params("pclos")]
+            #[rr::requires(#iris "{F::Pre} π pclos {compare} *[b; a]")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+            #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+            #[rr::exists("ord")]
+            #[rr::ensures(#iris "{F::PostMut} π pclos {compare} *[b; a] {compare.*new} ord")]
+            #[rr::returns("if bool_decide(ord = Less) then a else b")]
+            #[rr::may_unwind_if("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
+            |a, b| cmp::max_by(a, b, &mut compare))
+    }
+
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     #[rr::exists("seq", "s2", "s2'")]
-    #[rr::ensures(#iris "{Next} π s2 None s2'")]
+    #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     // TODO: have an escape to refer to the attrs record instead
-    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
     // TODO: fix: reference {Self::Item::Ord}
     #[rr::returns("min_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
     fn min(self) -> Option<Self::Item>
     where
         Self: Sized,
         Self::Item: Ord,
     {
-        unimplemented!();
-        //self.max_by(Ord::cmp)
+        self.min_by(
+            #[rr::returns("Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) a b")]
+            |a, b| Ord::cmp(a, b))
     }
 
+    #[rr::params("p", "ClosInv" : "thread_id → (option {xt_of Self::Item}) → list {xt_of Self::Item} → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires(#iris "ClosInv π None [] self compare")]
+    #[rr::requires(#iris "∀ e it_state', 
+        ClosInv π None [] self compare -∗ {Self::Next} π p self (Some e) it_state' -∗ 
+        ClosInv π (Some e) [e] it_state' compare ∗ {Self::Next} π p self (Some e) it_state'")]
+    #[rr::requires(#iris "□ (∀ seq it_state it_state' clos_state e acc,
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq it_state -∗ 
+        □ ({Self::Next} π p it_state (Some e) it_state' -∗
+        ClosInv π (Some acc) seq it_state clos_state -∗
+        ∃ pclos, {F::Pre} π pclos clos_state *[e; acc] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        (∀ ord clos_state', 
+            {F::PostMut} π pclos clos_state *[e; acc] clos_state' ord -∗ 
+            ClosInv π (Some (if bool_decide (ord = Less) then e else acc)) (seq ++ [e]) it_state' clos_state' ∗ 
+            True)
+        ))")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+    #[rr::exists("seq", "s2", "s2'", "clos_state'")]
+    #[rr::ensures(#iris "{Next} π p s2 None s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
+    #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
+    #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
+    #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) ∨ {F::DropGlueUnwind}")]
+    fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> Ordering,
+    {
+        self.reduce(
+            #[rr::params("pclos")]
+            #[rr::requires(#iris "{F::Pre} π pclos {compare} *[b; a]")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+            #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+            #[rr::exists("ord")]
+            #[rr::ensures(#iris "{F::PostMut} π pclos {compare} *[b; a] {compare.*new} ord")]
+            #[rr::returns("if bool_decide(ord = Less) then b else a")]
+            #[rr::may_unwind_if("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
+            |a, b| cmp::min_by(a, b, &mut compare))
+    }
 
+    // Closure inv gets accumulator, iterator state and closure state 
+    #[rr::params("p", "ClosInv" : "thread_id → result {xt_of B} _ → list {xt_of Self::Item} → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π p self.cur")]
+    #[rr::requires(#iris "ClosInv π (Ok init) [] self.cur f")]
+    #[rr::requires(#iris "□ (∀ seq acc it_state it_state' clos_state e,
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq it_state -∗ 
+        {Self::Next} π p it_state (Some e) it_state' -∗
+        ClosInv π (Ok acc) seq it_state clos_state -∗
+        ∃ pclos, {F::Pre} π pclos clos_state *[acc; e] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq it_state ∗  
+        (∀ b clos_state', {F::PostMut} π pclos clos_state *[acc; e] clos_state' b -∗ 
+            ClosInv π ({R::BranchFn} b) (seq ++ [e]) it_state' clos_state' ∗ True)
+            )")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::exists("seq", "s2", "s2'", "clos_state'")]
+    // We observe a sequence of elements emitted from the iterator.
+    #[rr::observe("self.ghost": "$# s2'")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq s2")]
+    #[rr::ensures(#iris "ClosInv π ({R::BranchFn} ret) seq s2 clos_state'")]
+    #[rr::ensures(#iris "if_iOk ({R::BranchFn} ret) (λ ret, {Next} π p s2 None s2' ∗ True)")]
+    #[rr::ensures(#iris "if_iErr ({R::BranchFn} ret) (λ err, ⌜s2 = s2'⌝ ∗ True)")]
+    #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{F::DropGlueUnwind}")]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            #[rr::params("γ", "init_state")]
+            #[rr::inv_vars("self", "accum", "f")]
+            #[rr::invariant("self.ghost = γ")]
+            #[rr::exists("seq")]
+            #[rr::invariant(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p init_state seq self.cur")]
+            #[rr::invariant(#iris "{Inv} π p self.cur")]
+            #[rr::invariant(#iris "ClosInv π (Ok accum) seq self.cur f")]  
+            #[rr::ignore] || {};
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
 
+    #[rr::params("p", "ClosInv" : "thread_id → {xt_of B} → list {xt_of Self::Item} → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires(#iris "ClosInv π init [] self f")]
+    #[rr::requires(#iris "□ (∀ seq acc it_state it_state' clos_state e,
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq it_state -∗ 
+        {Self::Next} π p it_state (Some e) it_state' -∗
+        ClosInv π acc seq it_state clos_state -∗
+        ∃ pclos, {F::Pre} π pclos clos_state *[acc; e] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq it_state∗ 
+        (∀ acc' clos_state', 
+            {F::PostMut} π pclos clos_state *[acc; e] clos_state' acc' -∗ 
+            ClosInv π acc' (seq ++ [e]) it_state' clos_state' ∗ True)
+        )")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::exists("seq", "s2", "s2'", "clos_state'")]
+    // We observe a sequence of elements emitted from the iterator.
+    #[rr::ensures(#iris "{Next} π p s2 None s2'")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
+    #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
+    #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
+    #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ {F::DropGlueUnwind}")]
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            #[rr::params("init_state")]
+            #[rr::inv_vars("self", "accum", "f")]
+            #[rr::exists("seq")]
+            #[rr::invariant(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p init_state seq self")]
+            #[rr::invariant(#iris "{Inv} π p self")]
+            #[rr::invariant(#iris "ClosInv π accum seq self f")]  
+            #[rr::ignore] || {};
+            accum = f(accum, x);
+        }
+        accum
+    }
+
+    // Can we instead just give [ClosInv] access to the history?
+    #[rr::params("p", "ClosInv" : "thread_id → option {xt_of Self::Item} → list {xt_of Self::Item} → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    // Precondition: initial closure invariant
+    #[rr::requires(#iris "ClosInv π None [] self f")]
+    // Precondition: initialize the closure invariant after receiving the first element
+    #[rr::requires(#iris "∀ e it_state', 
+        ClosInv π None [] self f -∗ {Self::Next} π p self (Some e) it_state' -∗ 
+        ClosInv π (Some e) [e] it_state' f ∗ {Self::Next} π p self (Some e) it_state'")]
+    /// Precondition: preservation
+    #[rr::requires(#iris "□ (∀ seq acc it_state it_state' clos_state e,
+        IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq it_state -∗ 
+        □ ({Self::Next} π p it_state (Some e) it_state' -∗
+        ClosInv π (Some acc) seq it_state clos_state -∗
+        ∃ pclos, {F::Pre} π pclos clos_state *[acc; e] ∗
+        {Self::Next} π p it_state (Some e) it_state' ∗ 
+        (∀ acc' clos_state', 
+            {F::PostMut} π pclos clos_state *[acc; e] clos_state' acc' -∗ 
+            ClosInv π (Some acc') (seq ++ [e]) it_state' clos_state' ∗ True)
+        ))")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::exists("seq", "s2", "s2'", "clos_state'")]
+    // We observe a sequence of elements emitted from the iterator.
+    #[rr::ensures(#iris "{Next} π p s2 None s2'")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
+    #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
+    #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
+    #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ {F::DropGlueUnwind}")]
+    fn reduce<F>(mut self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        let first = self.next()?;
+        Some(self.fold(first, f))
+    }
+
+    
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self.cur")]
+    #[rr::exists("s2", "s2'", "seq")]
+    // Postcondition: we observe a list of elements of up to size n
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq s2")]
+    #[rr::ensures(#iris "{Inv} π p s2'")]
+    #[rr::observe("self.ghost" : "$# s2'")]
+    #[rr::ensures("length seq ≤ Z.to_nat n")]
+    // Postcondition: if we return None, then we observed None from the iterator after at most n
+    // elements
+    #[rr::ensures(#iris "if_iNone ret ({Next} π p s2 None s2')")]
+    // Postcondition if we return `Some e`, then we observed `Some e` from the iterator after n
+    // elements
+    #[rr::ensures(#iris "if_iSome ret (λ ret, {Next} π p s2 (Some ret) s2' ∗ ⌜length seq = Z.to_nat n⌝)")]
+    #[rr::may_unwind_if("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let mut i = 0;
+        while i < n {
+            #[rr::params("init", "γ")]
+            #[rr::inv_vars("self", "i")]
+            #[rr::invariant("self.ghost = γ")]
+            #[rr::exists("seq")]
+            #[rr::invariant("i ≤ n")]
+            #[rr::invariant("length seq = Z.to_nat i")]
+            #[rr::invariant(#iris "{Inv} π p self.cur")]
+            #[rr::invariant(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p init seq self.cur")]
+            #[rr::ignore] || {};
+            if self.next().is_none() {
+                return None;
+            }
+            i += 1;
+        }
+        self.next()
+    }
+
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::ensures("ret = mk_skip_x self (Z.to_nat n)")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+    fn skip(self, n: usize) -> Skip<Self>
+        where Self: Sized,
+    {
+        Skip::new(self, n)
+    }
+
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::may_unwind_if("step = 0%Z")]
+    #[rr::ensures("ret = mk_step_by_x self (Z.to_nat (step - 1)) true")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+    fn step_by(self, step: usize) -> StepBy<Self>
+    where
+        Self: Sized,
+    {
+        StepBy::new(self, step)
+    }
+
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::ensures("ret = mk_take_x self (Z.to_nat n)")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
+    fn take(self, n: usize) -> Take<Self>
+    where
+        Self: Sized,
+    {
+        Take::new(self, n)
+    }
 
     // TODO: more methods
 }
@@ -229,13 +560,29 @@ impl<I> IntoIterator for I where I: Iterator {
 
 #[rr::export_as(core::iter::FromIterator)]
 #[rr::exists("FromSequence" : "list ({xt_of A}) → {xt_of Self}")]
+#[rr::exists("FromSequenceStatus" : "list ({xt_of A}) → IteratorCollectStatus → Prop")]
+//#[rr::exists("FromIteratorPre" : "list ({xt_of A}) → Prop")]
 pub trait FromIterator<A> {
+    // The trace records consumed `Some` items. The status and endpoint account for either an
+    // early return or the terminal `None` transition.
     #[rr::verify]
-    //#[rr::exists("seq", "s2", "s2'")]
-    // Problem: RefinedRust currently does not translate the Iterator requirement on T::IntoIter. 
-    // Maybe let's do a hacky wrapper solution for that for now. 
-    //#[rr::ensures(#iris "IteratorNextFusedTrans {attrs_of T::IntoIter} ({T::IntoIter} iter) seq s2")]
-    //#[rr::ensures(#iris "{T::Next} s2 None s2'")]
-    //#[rr::returns("{FromSequence} seq")]
+    #[rr::params("p")]
+    #[rr::requires(#iris "traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs.(traits_iterator_Iterator_Inv) π p ({T::IntoIter} iter)")]
+    #[rr::exists("seq", "s2", "s2'", "status" : "IteratorCollectStatus")]
+    #[rr::ensures("{FromSequenceStatus} seq status")]
+    #[rr::ensures(#iris "IteratorCollectEnd traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs π p status s2 s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs π p ({T::IntoIter} iter) seq s2")]
+    #[rr::ensures(#iris "ty_ghost_drop {ty_of T::IntoIter} π ($# s2')")]
+    #[rr::returns("{FromSequence} seq")]
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
+}
+
+#[rr::instantiate("FromSequence" := "result_from_sequence {V::FromSequence}")]
+#[rr::instantiate("FromSequenceStatus" := "result_from_sequence_status {V::FromSequenceStatus}")]
+impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
+    #[rr::only_spec]
+    #[rr::default_spec]
+    fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Self {
+        unimplemented!()
+    }
 }

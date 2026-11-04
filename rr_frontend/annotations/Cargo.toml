@@ -1,8 +1,0 @@
-[package]
-name = "annotations"
-authors = ["The RefinedRust Developers and Contributors"]
-license = "BSD-3-Clause"
-
-edition.workspace = true
-repository.workspace = true
-version.workspace = true

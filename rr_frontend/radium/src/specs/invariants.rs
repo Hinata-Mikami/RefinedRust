@@ -8,8 +8,8 @@ use std::fmt::Write as _;
 
 use derive_more::Constructor;
 
-use crate::specs::{GenericScope, IncludeSelfReq, TyOwnSpec, format_extra_context_items};
-use crate::{coq, fmt_list};
+use crate::specs::{GenericScope, IncludeSelfReq, TyOwnSpec, TyParamList};
+use crate::{coq, fmt_list, model};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum SpecFlags {
@@ -56,15 +56,36 @@ pub struct Spec {
     // additional ty_wf_elctx
     ty_wf_elctx: Vec<String>,
 
+    // optional override for ty_ghost_drop
+    ty_ghost_drop: Option<coq::iris::IProp>,
+
+    // whether this type has trivial drop
+    ty_trivial_drop: bool,
+
     /// the specification of the abstracted refinement under a context where `rfn_pat` is bound
     pub(crate) abstracted_refinement: Option<coq::binder::Pattern>,
 
     // TODO add stuff for non-atomic/atomic invariants
-    /// name, type, implicit or not
     pub(crate) coq_params: Vec<coq::binder::Binder>,
 }
 
 impl Spec {
+    fn push_obligation<I>(out: &mut coq::Document, ltac: I, terminator: coq::proof::Terminator)
+    where
+        I: Into<coq::ltac::LTac>,
+    {
+        out.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(ltac, terminator)));
+    }
+
+    fn push_final_obligation<I>(out: &mut coq::Document, ltac: I, terminator: coq::proof::Terminator)
+    where
+        I: Into<coq::ltac::LTac>,
+    {
+        out.push(coq::command::Command::FinalObligation(coq::command::ObligationProof::new(
+            ltac, terminator,
+        )));
+    }
+
     #[must_use]
     pub(crate) fn type_name(&self) -> String {
         format!("{}_inv_t", self.name)
@@ -97,13 +118,13 @@ impl Spec {
     }
 
     /// Assemble the owned invariant predicate for the plain mode.
-    fn assemble_plain_owned_invariant(&self) -> String {
+    fn assemble_plain_owned_invariant(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
 
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π inner_rfn (_ty_rfn : RT_rt ({}%type : RT)),
+            "λ π (inner_rfn : {base_rfn_type}) (_ty_rfn : RT_rt ({}%type : RT)),
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -130,13 +151,13 @@ impl Spec {
     }
 
     /// Assemble the sharing invariant predicate for the plain mode.
-    fn assemble_plain_shared_invariant(&self) -> String {
+    fn assemble_plain_shared_invariant(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
 
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π κ inner_rfn (_ty_rfn : RT_rt ({}%type : RT)),
+            "λ π κ (inner_rfn : {base_rfn_type}) (_ty_rfn : RT_rt ({}%type : RT)),
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -201,7 +222,7 @@ impl Spec {
     }
 
     /// Assemble the invariant for the persistent mode.
-    fn assemble_pers_invariant(&self) -> String {
+    fn assemble_pers_invariant(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
 
         let ex = self.make_existential_binders();
@@ -209,7 +230,7 @@ impl Spec {
         // persistence/timeless inference go nuts.
         write!(
             out,
-            "λ inner_rfn (_rfn_binder : RT_rt ({}%type : RT)),
+            "λ (inner_rfn : {base_rfn_type}) (_rfn_binder : RT_rt ({}%type : RT)),
             let '{} := _rfn_binder in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -225,12 +246,32 @@ impl Spec {
         out
     }
 
-    pub(crate) fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
+    fn assemble_ghost_drop(&self) -> Option<String> {
+        let gd = self.ty_ghost_drop.as_ref()?;
+
+        let mut out = String::with_capacity(200);
+
+        write!(
+            out,
+            "λ π _ (_rfn_binder : RT_rt ({}%type : RT)),
+            let '{} := _rfn_binder in {gd} ∗ True",
+            self.rfn_type, self.rfn_pat,
+        )
+        .unwrap();
+
+        Some(out)
+    }
+
+    pub(crate) fn generate_coq_invariant_def(
+        &self,
+        scope: &GenericScope<'_>,
+        base_rfn_type: &str,
+    ) -> coq::Document {
         if self.flags == SpecFlags::Persistent {
             assert!(self.invariants.iter().all(|it| it.1 == Mode::All) && self.ty_own_invariants.is_empty());
         }
 
-        let mut out = String::with_capacity(200);
+        let mut out = coq::Document::default();
         let indent = "  ";
 
         // generate the spec definition
@@ -238,107 +279,106 @@ impl Spec {
 
         let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
 
-        match self.flags {
-            SpecFlags::NonAtomic => {
-                #[expect(deprecated)]
-                write!(
-                    out,
-                    "{indent}Program Definition {} {} : {} (na_ex_inv_def ({})%type ({})%type) := ",
-                    spec_name,
-                    attr_binders,
-                    scope.get_all_type_term(),
-                    base_rfn_type,
-                    self.rfn_type,
-                )
-                .unwrap();
-            },
-            _ => {
-                #[expect(deprecated)]
-                write!(
-                    out,
-                    "{indent}Program Definition {} {} : {} (ex_inv_def ({})%type ({})%type) := ",
-                    spec_name,
-                    attr_binders,
-                    scope.get_all_type_term(),
-                    base_rfn_type,
-                    self.rfn_type,
-                )
-                .unwrap();
-            },
-        }
+        let inv_def_kind = if self.flags == SpecFlags::NonAtomic { "na_ex_inv_def" } else { "ex_inv_def" };
+        let ty = scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
+            "{inv_def_kind} ({base_rfn_type})%type ({})%type",
+            self.rfn_type,
+        ))));
 
+        let trivial_drop = self.ty_trivial_drop;
+        let mut body = String::with_capacity(200);
         match self.flags {
             SpecFlags::Persistent => {
-                let inv = self.assemble_pers_invariant();
+                let inv = self.assemble_pers_invariant(base_rfn_type);
                 write!(
-                    out,
+                    body,
                     "{scope} mk_pers_ex_inv_def\n\
-                       {indent}{indent}({inv})%I _ _\n\
-                       {indent}.\n",
+                       {indent}{indent}({inv})%I _ _ _\n\
+                       {indent}",
                 )
                 .unwrap();
-                write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                write!(out, "{indent}Next Obligation. ex_t_solve_timeless. Qed.\n").unwrap();
             },
             SpecFlags::Plain => {
-                let own_inv = self.assemble_plain_owned_invariant();
-                let shr_inv = self.assemble_plain_shared_invariant();
+                let own_inv = self.assemble_plain_owned_invariant(base_rfn_type);
+                let shr_inv = self.assemble_plain_shared_invariant(base_rfn_type);
                 let lft_outlives = self.assemble_ty_lfts();
                 let lft_wf_elctx = self.assemble_ty_wf_elctx();
-
-                let attr_intro = if attr_binders.0.is_empty() {
-                    String::new()
-                } else {
-                    format!("intros{}; ", " ?".repeat(attr_binders.0.len()))
-                };
 
                 // If there are no specific invariants given just for owned/shared ownership, use
                 // automatic inference of the sharing predicate
                 if self.invariants.iter().all(|(_, mode)| *mode == Mode::All) {
-                    write!(
-                        out,
-                        "{scope} mk_auto_ex_inv_def\n\
-                        {indent}{indent}({own_inv})%I\n\
-                        {indent}{indent}({lft_outlives})\n\
-                        {indent}{indent}({lft_wf_elctx})\n\
-                        {indent}{indent}_ _ _\n\
-                        {indent}.\n",
-                    )
-                    .unwrap();
-                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_auto. Defined.\n").unwrap();
-                    write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                    if let Some(gd) = self.assemble_ghost_drop() {
+                        write!(
+                            body,
+                            "{scope} mk_ex_inv_def_auto_shr\n\
+                            {indent}{indent}({own_inv})%I\n\
+                            {indent}{indent}({gd})%I\n\
+                            {indent}{indent}({trivial_drop})\n\
+                            {indent}{indent}_\n\
+                            {indent}{indent}({lft_outlives})\n\
+                            {indent}{indent}({lft_wf_elctx})\n\
+                            {indent}{indent}_ _ _ _\n\
+                            {indent}",
+                        )
                         .unwrap();
-                } else {
+                    } else {
+                        write!(
+                            body,
+                            "{scope} mk_auto_ex_inv_def\n\
+                            {indent}{indent}({own_inv})%I\n\
+                            {indent}{indent}({trivial_drop})\n\
+                            {indent}{indent}_\n\
+                            {indent}{indent}({lft_outlives})\n\
+                            {indent}{indent}({lft_wf_elctx})\n\
+                            {indent}{indent}_ _ _ _\n\
+                            {indent}",
+                        )
+                        .unwrap();
+                    }
+                } else if let Some(gd) = self.assemble_ghost_drop() {
                     write!(
-                        out,
+                        body,
                         "{scope} mk_ex_inv_def\n\
                         {indent}{indent}({own_inv})%I\n\
                         {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}({gd})%I\n\
+                        {indent}{indent}({trivial_drop})\n\
+                        {indent}{indent}_\n\
                         {indent}{indent}({lft_outlives})\n\
                         {indent}{indent}({lft_wf_elctx})\n\
                         {indent}{indent}_ _ _\n\
-                        {indent}.\n",
+                        {indent}",
                     )
                     .unwrap();
-                    write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
-                        .unwrap();
-                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n").unwrap();
+                } else {
+                    write!(
+                        body,
+                        "{scope} mk_ex_inv_def_auto_ghost_drop\n\
+                        {indent}{indent}({own_inv})%I\n\
+                        {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}({trivial_drop})\n\
+                        {indent}{indent}_\n\
+                        {indent}{indent}({lft_outlives})\n\
+                        {indent}{indent}({lft_wf_elctx})\n\
+                        {indent}{indent}_ _ _\n\
+                        {indent}",
+                    )
+                    .unwrap();
                 }
             },
             SpecFlags::NonAtomic => {
-                let own_inv = self.assemble_plain_owned_invariant();
+                let own_inv = self.assemble_plain_owned_invariant(base_rfn_type);
                 let lft_outlives = self.assemble_ty_lfts();
                 let lft_wf_elctx = self.assemble_ty_wf_elctx();
 
                 write!(
-                    out,
+                    body,
                     "{scope} na_mk_ex_inv_def\n\
                     {indent}{indent}({own_inv})%I\n\
+                    {indent}{indent}({trivial_drop})\n\
                     {indent}{indent}({lft_outlives})\n\
                     {indent}{indent}({lft_wf_elctx})\n\
-                    {indent}.\n",
+                    {indent}",
                 )
                 .unwrap();
             },
@@ -346,7 +386,136 @@ impl Spec {
                 panic!("unimplemented invariant spec flag: {:?}", self.flags);
             },
         }
-        write!(out, "\n").unwrap();
+
+        out.push(coq::command::Definition::program(
+            spec_name,
+            attr_binders,
+            Some(ty),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(body)),
+        ));
+
+        match self.flags {
+            SpecFlags::Persistent => {
+                Self::push_obligation(
+                    &mut out,
+                    coq::ltac::LTac::Literal("ex_t_solve_persistent".to_owned()),
+                    coq::proof::Terminator::Qed,
+                );
+                Self::push_final_obligation(
+                    &mut out,
+                    coq::ltac::LTac::Literal("ex_t_solve_timeless".to_owned()),
+                    coq::proof::Terminator::Qed,
+                );
+            },
+            SpecFlags::Plain => {
+                let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+                let attr_intro = if attr_binders.0.is_empty() {
+                    String::new()
+                } else {
+                    format!("intros{}; ", " ?".repeat(attr_binders.0.len()))
+                };
+
+                if self.invariants.iter().all(|(_, mode)| *mode == Mode::All) {
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_is_xrfn")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_auto")),
+                        coq::proof::Terminator::Defined,
+                    );
+                    if self.ty_ghost_drop.is_some() {
+                        Self::push_obligation(
+                            &mut out,
+                            coq::ltac::LTac::Literal(format!("{attr_intro}ex_t_solve_persistent")),
+                            coq::proof::Terminator::Qed,
+                        );
+                        Self::push_obligation(
+                            &mut out,
+                            coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
+                            coq::proof::Terminator::Qed,
+                        );
+                        Self::push_final_obligation(
+                            &mut out,
+                            coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_ghost_drop")),
+                            coq::proof::Terminator::Qed,
+                        );
+                    } else {
+                        Self::push_obligation(
+                            &mut out,
+                            coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_ghost_drop_auto")),
+                            coq::proof::Terminator::Defined,
+                        );
+                        Self::push_obligation(
+                            &mut out,
+                            coq::ltac::LTac::Literal(format!("{attr_intro}ex_t_solve_persistent")),
+                            coq::proof::Terminator::Qed,
+                        );
+                        Self::push_final_obligation(
+                            &mut out,
+                            coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
+                            coq::proof::Terminator::Qed,
+                        );
+                    }
+                } else if self.ty_ghost_drop.is_some() {
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_is_xrfn")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal("ex_t_solve_persistent".to_owned()),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_final_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_ghost_drop")),
+                        coq::proof::Terminator::Qed,
+                    );
+                } else {
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_ghost_drop_auto")),
+                        coq::proof::Terminator::Defined,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_is_xrfn")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_t_solve_persistent")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
+                        coq::proof::Terminator::Qed,
+                    );
+                    Self::push_final_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr")),
+                        coq::proof::Terminator::Qed,
+                    );
+                }
+            },
+            SpecFlags::NonAtomic => {},
+            _ => unreachable!(),
+        }
 
         out
     }
@@ -356,64 +525,126 @@ impl Spec {
         &self,
         base_type: &str,
         base_rfn_type: &str,
-        generics_rts: &Vec<coq::term::Term>,
+        inv_type_name: &str,
+        inv_rfn_type_name: &str,
+        generics_rts: &[coq::term::Term],
         scope: &GenericScope<'_>,
         context_names: &[String],
-    ) -> String {
-        let mut out = String::with_capacity(200);
-        let indent = "  ";
+    ) -> coq::Document {
+        let mut out = coq::Document::default();
 
-        // generate the spec definition
-        let spec_name = self.spec_name();
-
-        write!(out, "{}", self.generate_coq_invariant_def(scope, base_rfn_type)).unwrap();
+        out.append_document(self.generate_coq_invariant_def(scope, base_rfn_type));
 
         let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
         let attr_binders_uses = attr_binders.make_using_terms();
 
-        // generate the definition itself.
-        if SpecFlags::NonAtomic == self.flags {
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
-                {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {} {}) {}.\n",
-                self.type_name(),
-                scope.get_all_type_term(),
-                self.rfn_type,
+        let spec_name = self.spec_name();
+
+        let body = if SpecFlags::NonAtomic == self.flags {
+            format!(
+                "{scope} na_ex_plain_t _ _ ({spec_name} {} {}) {base_type}",
                 fmt_list!(attr_binders_uses, " "),
                 scope.identity_instantiation_term(),
-                base_type
             )
-            .unwrap();
         } else {
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
-                {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {} {}) {}.\n",
-                self.type_name(),
-                scope.get_all_type_term(),
-                self.rfn_type,
+            format!(
+                "{scope} ex_plain_t _ _ ({spec_name} {} {}) {base_type}",
                 fmt_list!(attr_binders_uses, " "),
                 scope.identity_instantiation_term(),
-                base_type
             )
-            .unwrap();
-        }
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.type_name()).unwrap();
-        write!(out, "{indent}Definition {}_rt : RT.\n", self.type_name()).unwrap();
-        write!(
-            out,
-            "{indent}Proof using {} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
-            fmt_list!(generics_rts, " "),
-            context_names.join(" "),
-            self.type_name()
-        )
-        .unwrap();
-        write!(out, "{indent}Global Typeclasses Transparent {}_rt.\n", self.type_name()).unwrap();
+        };
+
+        out.push(coq::command::Definition::new(
+            inv_type_name.to_owned(),
+            attr_binders,
+            Some(
+                scope.get_spec_all_type_term(Box::new(
+                    model::Type::Ttype(Box::new(coq::term::Type::Literal(format!(
+                        "({})%type",
+                        self.rfn_type
+                    ))))
+                    .into(),
+                )),
+            ),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(body)),
+        ));
+
+        out.append_document(self.set_invariant_type_flags(inv_type_name));
+        out.append_document(generate_normalized_rt_def(
+            inv_rfn_type_name,
+            inv_type_name,
+            generics_rts,
+            context_names,
+        ));
 
         out
+    }
+
+    /// Set the right flags for the invariant type.
+    pub(crate) fn set_invariant_type_flags(&self, type_name: &str) -> coq::Document {
+        let mut out = coq::Document::default();
+
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.spec_name(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: type_name.to_owned(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                type_name.to_owned(),
+            ))
+            .attributes("global"),
+        );
+
+        out
+    }
+
+    pub(crate) fn generate_coq_type_def_in_context(
+        &self,
+        section_context: &mut coq::Document,
+        base_type_name: &str,
+        base_rfn_type: &str,
+        inv_type_name: &str,
+        inv_rfn_type_name: &str,
+        scope: &GenericScope<'_>,
+        context_names_without_sigma: &[String],
+    ) {
+        // get the applied base_rfn_type
+        let all_ty_params = scope.get_all_ty_params_with_assocs();
+        let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+        let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.clone());
+
+        let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_binders_uses = attr_binders.make_using_terms();
+
+        // get the applied base type
+        let applied_base_type = coq::term::App::new(
+            coq::term::Term::App(Box::new(coq::term::App::new(
+                coq::term::Term::Literal(base_type_name.to_owned()),
+                rt_instantiations.clone(),
+            ))),
+            attr_binders_uses,
+        );
+        let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation_term());
+
+        section_context.append_document(self.generate_coq_type_def_core(
+            &applied_base_type,
+            applied_base_rt.to_string().as_str(),
+            inv_type_name,
+            inv_rfn_type_name,
+            &rt_instantiations,
+            scope,
+            context_names_without_sigma,
+        ));
     }
 
     /// Generate the definition of the Coq type, including introduction of type parameters to the
@@ -423,70 +654,186 @@ impl Spec {
         base_type_name: &str,
         base_rfn_type: &str,
         scope: &GenericScope<'_>,
-    ) -> String {
-        let mut out = String::with_capacity(200);
+    ) -> coq::Document {
+        let mut out = coq::Document::default();
 
         assert!(self.abstracted_refinement.is_some());
 
-        let indent = "  ";
-        // the write_str impl will always return Ok.
-        write!(out, "Section {}.\n", self.type_name()).unwrap();
-        write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
-
         let all_ty_params = scope.get_all_ty_params_with_assocs();
-
-        // add type parameters
-        if !all_ty_params.params.is_empty() {
-            // first push the (implicit) refinement type parameters
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
-            }
-            out.push_str(".\n");
-        }
+        let mut section_context = setup_type_section_context(&all_ty_params);
 
         let (_context_names, context_names_without_sigma) =
-            format_extra_context_items(&self.coq_params, &mut out).unwrap();
+            format_extra_context_items(&self.coq_params, &mut section_context);
 
-        // get the applied base_rfn_type
-        let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
-        let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.clone());
+        self.generate_coq_type_def_in_context(
+            &mut section_context,
+            base_type_name,
+            base_rfn_type,
+            &self.type_name(),
+            &self.rt_def_name(),
+            scope,
+            &context_names_without_sigma,
+        );
 
-        // get the applied base type
-        let applied_base_type = coq::term::App::new(base_type_name, rt_instantiations.clone());
-        let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation_term());
+        out.push(coq::section::Section::new(self.type_name(), |doc| doc.append_document(section_context)));
 
-        write!(
-            out,
-            "{}",
-            self.generate_coq_type_def_core(
-                &applied_base_type,
-                applied_base_rt.to_string().as_str(),
-                &rt_instantiations,
-                scope,
-                &context_names_without_sigma,
-            )
-        )
-        .unwrap();
-
-        // finish
-        write!(out, "End {}.\n", self.type_name()).unwrap();
-        write!(out, "Global Arguments {} : clear implicits.\n", self.rt_def_name()).unwrap();
-        if !context_names_without_sigma.is_empty() {
-            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
-            let dep_sigma_str = "";
-
-            write!(
-                out,
-                "Global Arguments {} {}{} {{{}}}.\n",
-                self.rt_def_name(),
-                dep_sigma_str,
-                "_ ".repeat(all_ty_params.params.len()),
-                "_ ".repeat(context_names_without_sigma.len())
-            )
-            .unwrap();
-        }
+        generate_type_implicit_arg_flags(
+            &mut out,
+            &self.rt_def_name(),
+            &all_ty_params,
+            &context_names_without_sigma,
+        );
+        generate_semtype_implicit_arg_flags(&mut out, &self.type_name(), &all_ty_params, &self.coq_params);
+        generate_semtype_implicit_arg_flags(&mut out, &self.spec_name(), &all_ty_params, &self.coq_params);
 
         out
     }
+}
+
+/// Generate a definition for the normalized refinement type of the invariant type.
+pub(crate) fn generate_normalized_rt_def(
+    name: &str,
+    type_name: &str,
+    generics_rts: &[coq::term::Term],
+    context_names: &[String],
+) -> coq::Document {
+    let mut out = coq::Document::default();
+
+    out.push(coq::command::Definition::new(
+        name.to_owned(),
+        coq::binder::BinderList::empty(),
+        Some(coq::term::Type::RT),
+        coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
+            format!("{} {}", fmt_list!(generics_rts, " "), context_names.join(" ")),
+            coq::proof::Terminator::Defined,
+            |proof| {
+                proof.push(coq::ltac::LetIn::new(
+                    "__a",
+                    coq::term::App::new(
+                        coq::term::Term::Literal("normalized_rt_of_spec_ty".to_owned()),
+                        vec![coq::term::Term::Literal(type_name.to_owned())],
+                    ),
+                    coq::ltac::LTac::Exact(coq::term::Term::Literal("__a".to_owned())),
+                ));
+            },
+        )),
+    ));
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(name.to_owned()))
+            .attributes("global"),
+    );
+
+    out
+}
+
+pub(crate) fn setup_type_section_context(all_ty_params: &TyParamList) -> coq::Document {
+    let mut section_context = coq::Document::default();
+    section_context.push(coq::command::Context::refinedrust());
+    if !all_ty_params.params.is_empty() {
+        let rt_param_binders = all_ty_params
+            .params
+            .iter()
+            .map(|names| {
+                coq::binder::Binder::new_implicit(
+                    coq::binder::Kind::MaxImplicit,
+                    Some(names.refinement_type()),
+                    Some(coq::term::Type::RT),
+                )
+            })
+            .collect();
+        section_context.push(coq::command::Context::new(coq::binder::BinderList::new(rt_param_binders)));
+    }
+
+    section_context
+}
+
+pub(crate) fn format_extra_context_items(
+    items: &[coq::binder::Binder],
+    out: &mut coq::Document,
+) -> (Vec<String>, Vec<String>) {
+    let mut context_names = Vec::new();
+    let mut context_names_without_sigma = Vec::new();
+
+    if items.is_empty() {
+        return (context_names, context_names_without_sigma);
+    }
+
+    let mut binders = Vec::with_capacity(items.len());
+    for (counter, it) in items.iter().enumerate() {
+        let name = format!("_CTX{counter}");
+        if !it.is_dependent_on_sigma() {
+            context_names_without_sigma.push(name.clone());
+        }
+        context_names.push(name.clone());
+        binders.push(it.clone().set_name(name));
+    }
+
+    out.push(coq::Sentence::Comment("Additional parameters".to_owned()));
+    out.push(coq::command::Context::new(coq::binder::BinderList::new(binders)));
+
+    (context_names, context_names_without_sigma)
+}
+
+// Set flags for refinement types
+pub(crate) fn generate_type_implicit_arg_flags(
+    out: &mut coq::Document,
+    name: &str,
+    all_ty_params: &TyParamList,
+    context_names_without_sigma: &[String],
+) {
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: name.to_owned(),
+            arguments_string: ": clear implicits".to_owned(),
+        })
+        .attributes("global"),
+    );
+    if !context_names_without_sigma.is_empty() {
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: name.to_owned(),
+                arguments_string: format!(
+                    "{} {{{}}}",
+                    "_ ".repeat(all_ty_params.params.len()),
+                    "_ ".repeat(context_names_without_sigma.len())
+                ),
+            })
+            .attributes("global"),
+        );
+    }
+}
+
+// Set flags for semtypes
+pub(crate) fn generate_semtype_implicit_arg_flags(
+    out: &mut coq::Document,
+    name: &str,
+    all_ty_params: &TyParamList,
+    context_items: &[coq::binder::Binder],
+) {
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: name.to_owned(),
+            arguments_string: ": clear implicits".to_owned(),
+        })
+        .attributes("global"),
+    );
+
+    let mut context_item_string = String::new();
+    for item in context_items {
+        if item.is_implicit() {
+            context_item_string.push_str(" {_}");
+        } else {
+            context_item_string.push_str(" _");
+        }
+    }
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: name.to_owned(),
+            arguments_string: format!(
+                "{{_ _}} {} {context_item_string}",
+                "_ ".repeat(all_ty_params.params.len()),
+            ),
+        })
+        .attributes("global"),
+    );
 }

@@ -1,0 +1,1510 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "iterator",
+        "adapters",
+        "zip",
+        "Zip"
+      ],
+      "raw_type": {
+        "rtype": "(adapters_zip_Zip_rt)",
+        "semtype": "adapters_zip_Zip_ty"
+      },
+      "rtype": "(adapters_zip_Zip_rt)",
+      "semtype": "adapters_zip_Zip_ty",
+      "syntype": "adapters_zip_Zip_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Map"
+      ],
+      "raw_type": {
+        "rtype": "(adapters_map_Map_rt)",
+        "semtype": "adapters_map_Map_ty"
+      },
+      "rtype": "(adapters_map_Map_inv_t_rt)",
+      "semtype": "adapters_map_Map_inv_t",
+      "syntype": "adapters_map_Map_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Skip"
+      ],
+      "raw_type": {
+        "rtype": "(adapters_skip_Skip_rt)",
+        "semtype": "adapters_skip_Skip_ty"
+      },
+      "rtype": "(adapters_skip_Skip_inv_t_rt)",
+      "semtype": "adapters_skip_Skip_inv_t",
+      "syntype": "adapters_skip_Skip_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "StepBy"
+      ],
+      "raw_type": {
+        "rtype": "(adapters_step_by_StepBy_rt)",
+        "semtype": "adapters_step_by_StepBy_ty"
+      },
+      "rtype": "(adapters_step_by_StepBy_inv_t_rt)",
+      "semtype": "adapters_step_by_StepBy_inv_t",
+      "syntype": "adapters_step_by_StepBy_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Take"
+      ],
+      "raw_type": {
+        "rtype": "(adapters_take_Take_rt)",
+        "semtype": "adapters_take_Take_ty"
+      },
+      "rtype": "(adapters_take_Take_inv_t_rt)",
+      "semtype": "adapters_take_Take_inv_t",
+      "syntype": "adapters_take_Take_sls"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_all",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "all"
+      ],
+      "spec": "traits_iterator_Iterator_all_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_all"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_collect",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "collect"
+      ],
+      "spec": "traits_iterator_Iterator_collect_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_collect"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_fold",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "fold"
+      ],
+      "spec": "traits_iterator_Iterator_fold_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_fold"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_map",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "map"
+      ],
+      "spec": "traits_iterator_Iterator_map_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_map"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_max",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "max"
+      ],
+      "spec": "traits_iterator_Iterator_max_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_max"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_max_by",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "max_by"
+      ],
+      "spec": "traits_iterator_Iterator_max_by_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_max_by"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_min",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "min"
+      ],
+      "spec": "traits_iterator_Iterator_min_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_min"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_min_by",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "min_by"
+      ],
+      "spec": "traits_iterator_Iterator_min_by_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_min_by"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_nth",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "nth"
+      ],
+      "spec": "traits_iterator_Iterator_nth_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_nth"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_position",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "position"
+      ],
+      "spec": "traits_iterator_Iterator_position_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_position"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_reduce",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "reduce"
+      ],
+      "spec": "traits_iterator_Iterator_reduce_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_reduce"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_skip",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "skip"
+      ],
+      "spec": "traits_iterator_Iterator_skip_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_skip"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_step_by",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "step_by"
+      ],
+      "spec": "traits_iterator_Iterator_step_by_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_step_by"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_take",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "take"
+      ],
+      "spec": "traits_iterator_Iterator_take_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_take"
+    },
+    {
+      "kind": "function",
+      "name": "traits_iterator_Iterator_try_fold",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "try_fold"
+      ],
+      "spec": "traits_iterator_Iterator_try_fold_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_try_fold"
+    },
+    {
+      "kind": "function",
+      "name": "step_Step_backward",
+      "path": [
+        "core",
+        "iter",
+        "Step",
+        "backward"
+      ],
+      "spec": "step_Step_backward_base_spec",
+      "trait_req_incl": "trait_incl_of_step_Step_backward"
+    },
+    {
+      "kind": "function",
+      "name": "step_Step_backward_unchecked",
+      "path": [
+        "core",
+        "iter",
+        "Step",
+        "backward_unchecked"
+      ],
+      "spec": "step_Step_backward_unchecked_base_spec",
+      "trait_req_incl": "trait_incl_of_step_Step_backward_unchecked"
+    },
+    {
+      "kind": "function",
+      "name": "step_Step_forward",
+      "path": [
+        "core",
+        "iter",
+        "Step",
+        "forward"
+      ],
+      "spec": "step_Step_forward_base_spec",
+      "trait_req_incl": "trait_incl_of_step_Step_forward"
+    },
+    {
+      "kind": "function",
+      "name": "step_Step_forward_unchecked",
+      "path": [
+        "core",
+        "iter",
+        "Step",
+        "forward_unchecked"
+      ],
+      "spec": "step_Step_forward_unchecked_base_spec",
+      "trait_req_incl": "trait_incl_of_step_Step_forward_unchecked"
+    },
+    {
+      "kind": "method",
+      "name": "adapters_skip_Skip_I_new",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Skip",
+        "new"
+      ],
+      "spec": "type_of_adapters_skip_Skip_I_new",
+      "trait_req_incl": "trait_incl_of_adapters_skip_Skip_I_new"
+    },
+    {
+      "kind": "method",
+      "name": "adapters_take_Take_I_new",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Take",
+        "new"
+      ],
+      "spec": "type_of_adapters_take_Take_I_new",
+      "trait_req_incl": "trait_incl_of_adapters_take_Take_I_new"
+    },
+    {
+      "allowed_attrs": [
+        "FromSequence",
+        "FromSequenceStatus"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "from_iter": "trait_incl_of_traits_iterator_FromIterator_from_iter"
+      },
+      "name": "traits_iterator_FromIterator",
+      "path": [
+        "core",
+        "iter",
+        "FromIterator"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "IntoIter"
+      ],
+      "assoc_tys": [
+        "IntoIter",
+        "Item"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "into_iter": "trait_incl_of_traits_iterator_IntoIterator_into_iter"
+      },
+      "name": "traits_iterator_IntoIterator",
+      "path": [
+        "core",
+        "iter",
+        "IntoIterator"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "Params",
+        "Inv",
+        "Next"
+      ],
+      "assoc_tys": [
+        "Item"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "all": "trait_incl_of_traits_iterator_Iterator_all",
+        "collect": "trait_incl_of_traits_iterator_Iterator_collect",
+        "fold": "trait_incl_of_traits_iterator_Iterator_fold",
+        "map": "trait_incl_of_traits_iterator_Iterator_map",
+        "max": "trait_incl_of_traits_iterator_Iterator_max",
+        "max_by": "trait_incl_of_traits_iterator_Iterator_max_by",
+        "min": "trait_incl_of_traits_iterator_Iterator_min",
+        "min_by": "trait_incl_of_traits_iterator_Iterator_min_by",
+        "next": "trait_incl_of_traits_iterator_Iterator_next",
+        "nth": "trait_incl_of_traits_iterator_Iterator_nth",
+        "position": "trait_incl_of_traits_iterator_Iterator_position",
+        "reduce": "trait_incl_of_traits_iterator_Iterator_reduce",
+        "skip": "trait_incl_of_traits_iterator_Iterator_skip",
+        "step_by": "trait_incl_of_traits_iterator_Iterator_step_by",
+        "take": "trait_incl_of_traits_iterator_Iterator_take",
+        "try_fold": "trait_incl_of_traits_iterator_Iterator_try_fold"
+      },
+      "name": "traits_iterator_Iterator",
+      "path": [
+        "core",
+        "iter",
+        "Iterator"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "Forward",
+        "Backward",
+        "StepsBetween"
+      ],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "backward": "trait_incl_of_step_Step_backward",
+        "backward_checked": "trait_incl_of_step_Step_backward_checked",
+        "backward_unchecked": "trait_incl_of_step_Step_backward_unchecked",
+        "forward": "trait_incl_of_step_Step_forward",
+        "forward_checked": "trait_incl_of_step_Step_forward_checked",
+        "forward_unchecked": "trait_incl_of_step_Step_forward_unchecked",
+        "steps_between": "trait_incl_of_step_Step_steps_between"
+      },
+      "name": "step_Step",
+      "path": [
+        "core",
+        "iter",
+        "Step"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "step_TrustedStep",
+      "path": [
+        "core",
+        "iter",
+        "TrustedStep"
+      ]
+    },
+    {
+      "for_type": {
+        "Param": 0
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "into_iter": {
+          "name": "Iastraits_iterator_IntoIterator_into_iter",
+          "spec": "type_of_Iastraits_iterator_IntoIterator_into_iter",
+          "trait_req_incl": "trait_incl_of_Iastraits_iterator_IntoIterator_into_iter"
+        }
+      },
+      "name": "Iastraits_iterator_IntoIterator",
+      "realization": "Iastraits_iterator_IntoIterator_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "IntoIterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 1
+            },
+            {
+              "Param": 2
+            }
+          ],
+          "path": [
+            "core",
+            "iter",
+            "adapters",
+            "Map"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": {
+          "name": "adapters_map_MapMIMFastraits_iterator_Iterator_next",
+          "spec": "type_of_adapters_map_MapMIMFastraits_iterator_Iterator_next",
+          "trait_req_incl": "trait_incl_of_adapters_map_MapMIMFastraits_iterator_Iterator_next"
+        }
+      },
+      "name": "adapters_map_MapMIMFastraits_iterator_Iterator",
+      "realization": "adapters_map_MapMIMFastraits_iterator_Iterator_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "iter",
+            "adapters",
+            "Skip"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": {
+          "name": "adapters_skip_SkipMIastraits_iterator_Iterator_next",
+          "spec": "type_of_adapters_skip_SkipMIastraits_iterator_Iterator_next",
+          "trait_req_incl": "trait_incl_of_adapters_skip_SkipMIastraits_iterator_Iterator_next"
+        }
+      },
+      "name": "adapters_skip_SkipMIastraits_iterator_Iterator",
+      "realization": "adapters_skip_SkipMIastraits_iterator_Iterator_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "iter",
+            "adapters",
+            "StepBy"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": {
+          "name": "adapters_step_by_StepByMIastraits_iterator_Iterator_next",
+          "spec": "type_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next",
+          "trait_req_incl": "trait_incl_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next"
+        }
+      },
+      "name": "adapters_step_by_StepByMIastraits_iterator_Iterator",
+      "realization": "adapters_step_by_StepByMIastraits_iterator_Iterator_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "iter",
+            "adapters",
+            "Take"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": {
+          "name": "adapters_take_TakeMIastraits_iterator_Iterator_next",
+          "spec": "type_of_adapters_take_TakeMIastraits_iterator_Iterator_next",
+          "trait_req_incl": "trait_incl_of_adapters_take_TakeMIastraits_iterator_Iterator_next"
+        }
+      },
+      "name": "adapters_take_TakeMIastraits_iterator_Iterator",
+      "realization": "adapters_take_TakeMIastraits_iterator_Iterator_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "i128asstep_Step_backward_checked",
+          "spec": "type_of_i128asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_i128asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "i128asstep_Step_forward_checked",
+          "spec": "type_of_i128asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_i128asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "i128asstep_Step_steps_between",
+          "spec": "type_of_i128asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_i128asstep_Step_steps_between"
+        }
+      },
+      "name": "i128asstep_Step",
+      "realization": "i128asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i128asstep_TrustedStep",
+      "realization": "i128asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "i16asstep_Step_backward_checked",
+          "spec": "type_of_i16asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_i16asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "i16asstep_Step_forward_checked",
+          "spec": "type_of_i16asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_i16asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "i16asstep_Step_steps_between",
+          "spec": "type_of_i16asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_i16asstep_Step_steps_between"
+        }
+      },
+      "name": "i16asstep_Step",
+      "realization": "i16asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i16asstep_TrustedStep",
+      "realization": "i16asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "i32asstep_Step_backward_checked",
+          "spec": "type_of_i32asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_i32asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "i32asstep_Step_forward_checked",
+          "spec": "type_of_i32asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_i32asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "i32asstep_Step_steps_between",
+          "spec": "type_of_i32asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_i32asstep_Step_steps_between"
+        }
+      },
+      "name": "i32asstep_Step",
+      "realization": "i32asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i32asstep_TrustedStep",
+      "realization": "i32asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "i64asstep_Step_backward_checked",
+          "spec": "type_of_i64asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_i64asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "i64asstep_Step_forward_checked",
+          "spec": "type_of_i64asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_i64asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "i64asstep_Step_steps_between",
+          "spec": "type_of_i64asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_i64asstep_Step_steps_between"
+        }
+      },
+      "name": "i64asstep_Step",
+      "realization": "i64asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i64asstep_TrustedStep",
+      "realization": "i64asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "i8asstep_Step_backward_checked",
+          "spec": "type_of_i8asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_i8asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "i8asstep_Step_forward_checked",
+          "spec": "type_of_i8asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_i8asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "i8asstep_Step_steps_between",
+          "spec": "type_of_i8asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_i8asstep_Step_steps_between"
+        }
+      },
+      "name": "i8asstep_Step",
+      "realization": "i8asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i8asstep_TrustedStep",
+      "realization": "i8asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "isizeasstep_Step_backward_checked",
+          "spec": "type_of_isizeasstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_isizeasstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "isizeasstep_Step_forward_checked",
+          "spec": "type_of_isizeasstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_isizeasstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "isizeasstep_Step_steps_between",
+          "spec": "type_of_isizeasstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_isizeasstep_Step_steps_between"
+        }
+      },
+      "name": "isizeasstep_Step",
+      "realization": "isizeasstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "isizeasstep_TrustedStep",
+      "realization": "isizeasstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 2
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "std",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "from_iter": {
+          "name": "std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_from_iter",
+          "spec": "type_of_std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_from_iter",
+          "trait_req_incl": "trait_incl_of_std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_from_iter"
+        }
+      },
+      "name": "std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE",
+      "realization": "std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_realization",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                {
+                  "Param": 0
+                },
+                {
+                  "Param": 1
+                }
+              ],
+              "path": [
+                "std",
+                "result",
+                "Result"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "iter",
+          "FromIterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "u128asstep_Step_backward_checked",
+          "spec": "type_of_u128asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_u128asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "u128asstep_Step_forward_checked",
+          "spec": "type_of_u128asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_u128asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "u128asstep_Step_steps_between",
+          "spec": "type_of_u128asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_u128asstep_Step_steps_between"
+        }
+      },
+      "name": "u128asstep_Step",
+      "realization": "u128asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u128asstep_TrustedStep",
+      "realization": "u128asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "u16asstep_Step_backward_checked",
+          "spec": "type_of_u16asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_u16asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "u16asstep_Step_forward_checked",
+          "spec": "type_of_u16asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_u16asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "u16asstep_Step_steps_between",
+          "spec": "type_of_u16asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_u16asstep_Step_steps_between"
+        }
+      },
+      "name": "u16asstep_Step",
+      "realization": "u16asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u16asstep_TrustedStep",
+      "realization": "u16asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "u32asstep_Step_backward_checked",
+          "spec": "type_of_u32asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_u32asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "u32asstep_Step_forward_checked",
+          "spec": "type_of_u32asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_u32asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "u32asstep_Step_steps_between",
+          "spec": "type_of_u32asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_u32asstep_Step_steps_between"
+        }
+      },
+      "name": "u32asstep_Step",
+      "realization": "u32asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u32asstep_TrustedStep",
+      "realization": "u32asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "u64asstep_Step_backward_checked",
+          "spec": "type_of_u64asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_u64asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "u64asstep_Step_forward_checked",
+          "spec": "type_of_u64asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_u64asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "u64asstep_Step_steps_between",
+          "spec": "type_of_u64asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_u64asstep_Step_steps_between"
+        }
+      },
+      "name": "u64asstep_Step",
+      "realization": "u64asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u64asstep_TrustedStep",
+      "realization": "u64asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "u8asstep_Step_backward_checked",
+          "spec": "type_of_u8asstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_u8asstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "u8asstep_Step_forward_checked",
+          "spec": "type_of_u8asstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_u8asstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "u8asstep_Step_steps_between",
+          "spec": "type_of_u8asstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_u8asstep_Step_steps_between"
+        }
+      },
+      "name": "u8asstep_Step",
+      "realization": "u8asstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u8asstep_TrustedStep",
+      "realization": "u8asstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "backward_checked": {
+          "name": "usizeasstep_Step_backward_checked",
+          "spec": "type_of_usizeasstep_Step_backward_checked",
+          "trait_req_incl": "trait_incl_of_usizeasstep_Step_backward_checked"
+        },
+        "forward_checked": {
+          "name": "usizeasstep_Step_forward_checked",
+          "spec": "type_of_usizeasstep_Step_forward_checked",
+          "trait_req_incl": "trait_incl_of_usizeasstep_Step_forward_checked"
+        },
+        "steps_between": {
+          "name": "usizeasstep_Step_steps_between",
+          "spec": "type_of_usizeasstep_Step_steps_between",
+          "trait_req_incl": "trait_incl_of_usizeasstep_Step_steps_between"
+        }
+      },
+      "name": "usizeasstep_Step",
+      "realization": "usizeasstep_Step_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Step"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "usizeasstep_TrustedStep",
+      "realization": "usizeasstep_TrustedStep_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "TrustedStep"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "ops",
+            "Range"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": {
+          "name": "step_impltraits_iterator_Iteratorforstd_ops_RangeA_next",
+          "spec": "type_of_step_impltraits_iterator_Iteratorforstd_ops_RangeA_next",
+          "trait_req_incl": "trait_incl_of_step_impltraits_iterator_Iteratorforstd_ops_RangeA_next"
+        }
+      },
+      "name": "step_impltraits_iterator_Iteratorforstd_ops_RangeA",
+      "realization": "step_impltraits_iterator_Iteratorforstd_ops_RangeA_realization",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_adapters_zip_Zip",
+          "spec": "type_of_drop_glue_adapters_zip_Zip",
+          "trait_req_incl": "trait_incl_of_drop_glue_adapters_zip_Zip"
+        }
+      },
+      "name": "drop_glue_adapters_zip_Zip",
+      "path": [
+        "iterator",
+        "adapters",
+        "zip",
+        "Zip"
+      ],
+      "realization": "drop_glue_adapters_zip_Zip_realization"
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_adapters_map_Map",
+          "spec": "type_of_drop_glue_adapters_map_Map",
+          "trait_req_incl": "trait_incl_of_drop_glue_adapters_map_Map"
+        }
+      },
+      "name": "drop_glue_adapters_map_Map",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Map"
+      ],
+      "realization": "drop_glue_adapters_map_Map_realization"
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_adapters_skip_Skip",
+          "spec": "type_of_drop_glue_adapters_skip_Skip",
+          "trait_req_incl": "trait_incl_of_drop_glue_adapters_skip_Skip"
+        }
+      },
+      "name": "drop_glue_adapters_skip_Skip",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Skip"
+      ],
+      "realization": "drop_glue_adapters_skip_Skip_realization"
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_adapters_step_by_StepBy",
+          "spec": "type_of_drop_glue_adapters_step_by_StepBy",
+          "trait_req_incl": "trait_incl_of_drop_glue_adapters_step_by_StepBy"
+        }
+      },
+      "name": "drop_glue_adapters_step_by_StepBy",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "StepBy"
+      ],
+      "realization": "drop_glue_adapters_step_by_StepBy_realization"
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_adapters_take_Take",
+          "spec": "type_of_drop_glue_adapters_take_Take",
+          "trait_req_incl": "trait_incl_of_drop_glue_adapters_take_Take"
+        }
+      },
+      "name": "drop_glue_adapters_take_Take",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "Take"
+      ],
+      "realization": "drop_glue_adapters_take_Take_realization"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.cmp.cmp.generated",
+    "rrstd.cmp.theories",
+    "rrstd.controlflow.controlflow.generated",
+    "rrstd.iterator.theories",
+    "rrstd.option.option.generated",
+    "rrstd.range.range.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_iterator",
+  "refinedrust_name": "iterator",
+  "refinedrust_path": "rrstd.iterator.iterator.generated"
+}

@@ -1,0 +1,6 @@
+error: [RefinedRust] Attribute is ill-formed: unexpected rr attribute: mystery
+ --> fail/unknown-enum-variant-attr.rs:8:5
+  |
+8 |     #[rr::mystery]
+  |     ^^^^^^^^^^^^^^
+

@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.hillel.generated Require Import generated_code_hillel generated_specs_hillel generated_template_unique.
 
@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  (* !start proof(unique) *)
+  (* !start proof(hillel.unique) *)
   all: try set_solver.
   - by apply NoDup_nil.
   - opose proof (NoDup_list_subseteq_length_le unique _iter_hist_7  _ _); try done; lia.

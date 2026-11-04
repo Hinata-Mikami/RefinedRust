@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_const_ptr_sub.
 
@@ -19,22 +19,22 @@ Proof.
   repeat liRStep; liShow.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
+  rewrite {1}/ty_own_val /= int_own_val_unfold. iDestruct "Hv1" as "(_ & %Hv1)".
+  rewrite {1}/ty_own_val /= alias_ptr_own_val_unfold. iDestruct "Hv2" as "(_ & %)".
   iDestruct (loc_in_bounds_ptr_in_range with "Hbounds") as %[Hran1 Hran2].
   rewrite /size_of_st. simplify_layout_goal.
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply wp_ptr_neg_offset.
-  { apply val_to_of_loc. }
+  { done. }
   { done. }
   { (* count is positive, so this should work *)
     rename select (MinInt _ ≤ count * _) into Hmin.
     rename select (count * _ ≤ MaxInt _) into Hmax.
     revert Hmin Hmax.
-    split; rewrite -?MinInt_eq -?MaxInt_eq. 
-    { move: Hmax. unsafe_unfold_common_caesium_defs; simpl. lia. }
+    split; rewrite -?MinInt_eq -?MaxInt_eq.
+    { move: Hmax. unsafe_unfold_common_radium_defs; simpl. lia. }
     { lia. }
   }
   { rewrite /offset_loc.
@@ -56,9 +56,12 @@ Proof.
   iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNone}ₗ -count) 0 0) as "#Hlb'".
   { iApply loc_in_bounds_offset; last done. all: sidecond_hammer. }
   iPoseProof (loc_in_bounds_ptr_in_range with "Hlb'") as "%".
+  iIntros (?) "%Hv".
   iApply ("Hcont" $! _ _ _ (alias_ptr_t) with "HL Hf").
-  { rewrite /ty_own_val /=.
-    iPureIntro. split; first done. sidecond_hammer. }
+  { rewrite /ty_own_val /= alias_ptr_own_val_unfold.
+    iPureIntro. split; first done.
+    apply val_to_loc_decodes_to_loc.
+    by apply val_to_of_loc. }
 
   repeat liRStep; liShow.
 

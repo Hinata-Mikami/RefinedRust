@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_alloc.
 From hinata_mikami.extra_proofs.gc Require Import heap_lemmas.
@@ -12,6 +12,23 @@ Context `{RRGS : !refinedrustGS Σ}.
 (* hinata_mikami.extra_proofs.gc で定義したものが認識されているか確認 *)
 (* Check simplify_goal_big_sepL_app.
 Check simplify_goal_big_sepL_app_inst. *)
+
+(* Avoid the admitted Vec ghost resolvers in the upstream specifications.
+   These functions carry concrete element refinements and need no resolution. *)
+#[local] Remove Hints
+  generated_specs_vec.resolve_ghost_Vec_T_owned_inst
+  generated_specs_vec.resolve_ghost_Vec_T_uniq_inst : typeclass_instances.
+
+Local Lemma resolve_ghost_Vec_concrete
+    {T_rt : RT} (T_ty : type T_rt) {A_rt : RT} (A_ty : type A_rt)
+    A_attrs π E L rm lb l bk rs T :
+  T L (#rs) True false ⊢
+  resolve_ghost π E L rm lb l
+    (◁ (Vec_inv_t T_rt A_rt A_attrs <TY> T_ty <TY> A_ty <INST!>)) bk (#rs) T.
+Proof. apply resolve_ghost_ofty_default. Qed.
+Local Definition resolve_ghost_Vec_concrete_inst :=
+  [instance @resolve_ghost_Vec_concrete].
+Local Existing Instance resolve_ghost_Vec_concrete_inst | 1.
 
 Lemma Heap_alloc_proof (π : thread_id) :
   Heap_alloc_lemma π.
@@ -222,11 +239,14 @@ Proof.
       set_solver.
     }
 
+    have HNode_layout : struct_layout_spec_has_layout Node_sls Node_sl.
+    { unfold CACHED in *. assumption. }
+
     destruct
       (struct_layout_spec_has_layout_members
         Node_sls Node_sl
         "value" (IntSynType I32)
-        H9 Hvalue_field)
+        HNode_layout Hvalue_field)
       as (value_ly & Hvalue_mem & Hvalue_layout).
 
     apply syn_type_has_layout_int_inv in Hvalue_layout.
@@ -280,7 +300,7 @@ Proof.
         Some (layout_of Node_sl)).
     {
       apply use_struct_layout_alg_Some_inv.
-      exact H9.
+      exact HNode_layout.
     }
 
     assert (Hnode_size_pos :
@@ -462,7 +482,7 @@ Proof.
       - exact Htail_not_null.
 
       - constructor.
-        + exact H11.
+        + assumption.
         + constructor.
     }
 
@@ -588,14 +608,13 @@ Proof.
     - constructor.
   }
 
-  {
-    exact
+  (* The newer side-condition solver may already prove this Forall fact. *)
+  all: try (exact
       (proj1
         (Forall_Forall_cb
           (λ l : loc, loc_a l ≠ 0)
           (locs_tail ++ [x']))
-        Htail_not_null_new).
-  }
+        Htail_not_null_new)).
   
 
   Unshelve.

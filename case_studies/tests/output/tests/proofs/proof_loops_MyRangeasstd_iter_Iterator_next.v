@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.tests.generated Require Import generated_code_tests generated_specs_tests generated_template_loops_MyRangeasstd_iter_Iterator_next.
 
@@ -13,8 +13,6 @@ Proof.
   loops_MyRangeasstd_iter_Iterator_next_prelude.
 
   repeat liRStep; liShow.
-  rewrite /traits_iterator_Iterator_Inv/=.
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

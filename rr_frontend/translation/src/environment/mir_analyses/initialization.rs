@@ -57,11 +57,14 @@ impl<T> AnalysisResult<T> {
 /// The result of the definitely initialized analysis.
 pub(crate) type DefinitelyInitializedAnalysisResult<'tcx> = AnalysisResult<PlaceSet<'tcx>>;
 
-pub(crate) fn compute_definitely_initialized<'a, 'tcx: 'a>(
+pub(crate) fn compute_definitely_initialized<'a, 'tcx>(
     def_id: DefId,
     body: &'a mir::Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-) -> DefinitelyInitializedAnalysisResult<'tcx> {
+) -> DefinitelyInitializedAnalysisResult<'tcx>
+where
+    'tcx: 'a,
+{
     let analysis = DefinitelyInitializedAnalysis::new(tcx, def_id, body);
     let pointwise_state = analysis
         .run_fwd_analysis()

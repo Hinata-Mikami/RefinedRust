@@ -6,6 +6,7 @@
 
 use derive_more::Constructor;
 
+use crate::specs::structs::TypeIsRaw;
 use crate::specs::{GenericScopeInst, traits};
 use crate::{coq, lang};
 
@@ -37,6 +38,15 @@ impl AdtShimInfo {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
+pub struct RawLiteralType {
+    /// Rocq name of the raw type, without safety invariant.
+    pub type_term: String,
+
+    /// The raw refinement type, without safety invariant.
+    pub refinement_type: coq::term::Type,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Literal {
     /// Rust name
     pub rust_name: Option<String>,
@@ -49,6 +59,9 @@ pub struct Literal {
 
     /// the syntactic type
     pub syn_type: lang::SynType,
+
+    /// The raw type, without safety invariant, if this literal represents an ADT.
+    pub raw_type: Option<RawLiteralType>,
 
     /// extra info needed for using this literal
     pub info: AdtShimInfo,
@@ -63,6 +76,9 @@ pub struct LiteralUse<'def> {
 
     /// parameters
     pub(crate) scope_inst: Option<GenericScopeInst<'def>>,
+
+    /// does this refer to the raw type without invariants?
+    raw: TypeIsRaw,
 }
 
 impl<'def> LiteralUse<'def> {
@@ -71,6 +87,7 @@ impl<'def> LiteralUse<'def> {
         LiteralUse {
             def: s,
             scope_inst: Some(scope_inst),
+            raw: TypeIsRaw::No,
         }
     }
 
@@ -79,6 +96,35 @@ impl<'def> LiteralUse<'def> {
         LiteralUse {
             def: s,
             scope_inst: None,
+            raw: TypeIsRaw::No,
+        }
+    }
+
+    pub(crate) const fn make_raw(&mut self) {
+        self.raw = TypeIsRaw::Yes;
+    }
+
+    fn uses_raw_type(&self) -> bool {
+        self.raw == TypeIsRaw::Yes && self.def.raw_type.is_some()
+    }
+
+    pub(crate) fn type_term(&self) -> &str {
+        if self.uses_raw_type()
+            && let Some(raw_type) = &self.def.raw_type
+        {
+            raw_type.type_term.as_str()
+        } else {
+            self.def.type_term.as_str()
+        }
+    }
+
+    fn refinement_type(&self) -> &coq::term::Type {
+        if self.uses_raw_type()
+            && let Some(raw_type) = &self.def.raw_type
+        {
+            &raw_type.refinement_type
+        } else {
+            &self.def.refinement_type
         }
     }
 
@@ -95,7 +141,7 @@ impl<'def> LiteralUse<'def> {
             .map(|ty| ty.get_rfn_type())
             .collect();
 
-        let rfn_type = self.def.refinement_type.to_string();
+        let rfn_type = self.refinement_type().to_string();
         let applied = coq::term::App::new(rfn_type, ty_inst);
         applied.to_string()
     }
@@ -138,19 +184,19 @@ impl<'def> LiteralUse<'def> {
                 .iter()
                 .map(|ty| format!("({})", ty.get_rfn_type()))
                 .chain(
-                    (if self.def.info.needs_trait_attrs {
+                    (if self.def.info.needs_trait_attrs && !self.uses_raw_type() {
                         scope_inst.get_direct_trait_requirements()
                     } else {
                         &[]
                     })
                     .iter()
-                    .map(traits::ReqInst::get_attr_term),
+                    .filter_map(traits::ReqInst::get_attr_term),
                 )
                 .collect::<Vec<_>>()
                 .join(" ");
-            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation(true, true))
+            format!("({} {rt_inst} {})", self.type_term(), scope_inst.instantiation(true, true))
         } else {
-            self.def.type_term.clone()
+            self.type_term().to_owned()
         }
     }
 }

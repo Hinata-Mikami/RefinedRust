@@ -1,2 +1,4 @@
 generate_dune_project = false
-lib_load_paths = ["../alloc", "../option"]
+lib_load_paths = ["../alloc", "../option", "../cmp", "../clone"]
+output_dir = "output"
+generate_linking_requirements = true

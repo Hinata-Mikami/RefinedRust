@@ -1,77 +1,56 @@
-
-// WIP: handle obligations on associated types
-/*
-mod bla {
-    trait Bupsed {
-
+/// Ambient DropGlue attributes may instantiate an attribute value without
+/// becoming indices of the trait's attribute record type.
+mod drop_glue_attributes {
+    #[rr::exists("MayUnwind" : "Prop")]
+    trait Consume<T> {
+        #[rr::params("x")]
+        #[rr::args("x")]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+        fn consume(value: T);
     }
 
-    #[rr::exists("bb" : "{xt_of BB}")]
+    #[rr::instantiate("MayUnwind" := "{T::DropGlueUnwind}")]
+    impl<T> Consume<T> for () {
+        #[rr::params("x")]
+        #[rr::args("x")]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+        fn consume(value: T) {
+            drop(value);
+        }
+    }
+
+    #[rr::params("x")]
+    #[rr::args("x")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+    fn call_generic<T, C: Consume<T>>(value: T) {
+        C::consume(value);
+    }
+
+    fn call_concrete() {
+        <() as Consume<i32>>::consume(42);
+    }
+}
+
+/// Trait requirements on associated types are unfolded transitively.
+mod bla {
+    trait Bupsed {}
+
     trait Bar {
         type BB: Bupsed;
     }
-    
+
     trait Foo {
         type FB: Bar;
-
-        // this specification should maybe depend on Bar
-        // i.e. I need the trait attributes of Bar
-        //
-        // For now, this is also problematic because we do not add FB's env here.
-        #[rr::verify]
-        #[rr::returns("{Self::FB::bb}")]
-        fn bla() -> <<Self as Foo>::FB as Bar>::BB;
-    }
-    // Should the attrs record be allowed to depend on the attrs record of Bar?
-    // I don't think so. This is different from a normal trait context assumption, so it shouldn't
-    // depend on that. This is an obligation at the impl site, not a requirement.
-    //
-    // Can the attrs record depend on the associated type? I hope not.
-    //
-    // Can the spec record depend? Yeah, it should be allowed to depend on the obligation assoc types, because the type signature of the functions may depend on that.
-    // not attrs.
-
-
-    // Issue here: I see the obligation as a Self requirement and thus do not add it to the env.
-    // Probably this shouldn't be just skipped. 
-    // how do I handle the trait's own associated types? I guess they cannot be normalized.
-
-    impl Bupsed for bool {
-
-    }
-
-    #[rr::instantiate("bb" := "true")]
-    impl Bar for u32 {
-        type BB = bool;
-    }
-
-    impl Foo for i32 {
-        type FB = u32;
-    
-        #[rr::default_spec]
-        fn bla() -> bool {
-            true
-        }
-    }
-
-    impl<T: Bar> Foo for (u32, T) {
-        type FB = T;
-
-        #[rr::default_spec]
-        fn bla() -> <T as Bar>::BB {
-            unimplemented!();
-        }
     }
 
     #[rr::verify]
-    fn foo<T>() 
-        where T: Foo<FB = u32>,
-              T::FB: Bar<BB = bool>
-    {
-
+    #[rr::params("x")]
+    #[rr::args("x")]
+    #[rr::returns("x")]
+    fn roundtrip<T: Foo>(x: <<T as Foo>::FB as Bar>::BB) -> <<T as Foo>::FB as Bar>::BB {
+        x
     }
 }
-*/
 
 // I want an example where I need to distinguish different sources of trait requirements.
 mod dep {
@@ -88,16 +67,19 @@ mod dep {
         // We should also be able to use their attributes, I think.
         #[rr::params("x")]
         #[rr::args("x")]
+        #[rr::may_unwind_if("{U::DropGlueUnwind}")]
         fn foofoo<U: Bar>(x: U);
     }
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{U::DropGlueUnwind}")]
     fn foo<T, U>(x: U) where U : Foo<T>, T: Bar {
 
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn bar<T, U>(x: T) where T: Bar {
 
     }
@@ -110,6 +92,7 @@ mod dep {
         type FT = usize;
 
         #[rr::verify]
+        #[rr::may_unwind_if("{U::DropGlueUnwind}")]
         fn foofoo<U: Bar>(x: U) {
 
         }
@@ -144,10 +127,12 @@ mod dep6 {
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{U::DropGlueUnwind}")]
     fn foo<U: Foo>(x: U) {
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn call_foo<T>(x: T) {
         foo(&x);
     }
@@ -170,6 +155,7 @@ mod dep5 {
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn bla<T>(x : T) where for<'a> T: Foo<&'a i32> {
 
     }
@@ -188,17 +174,20 @@ mod dep5 {
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn blub<T>(x : T) where for<'a> T: Foo<&'a &'a i32> {
 
     }
 
     #[rr::verify]
     // need to pass down the quantified trait requirement and specialize it
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn call_blub<T>(x: T) where for<'a, 'b> T: Foo<&'a &'b i32> {
         blub(x)
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn call_inst<T>(x: T) where for<'a, 'b> T: Foo<&'a &'b i32> {
         let y = 42;
         let y_ref = &y;
@@ -214,6 +203,7 @@ mod dep7 {
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn bla<T : Foo>(x: T) {
 
     }
@@ -250,6 +240,7 @@ mod dep3 {
 
     trait Foo<T: Bar> {
         #[rr::verify]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         fn foofoo(x: T);
     }
 
@@ -273,6 +264,7 @@ mod dep3 {
     #[rr::verify]
     impl<T: Bar> Foo<T> for u32 {
 
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         fn foofoo(x: T) {
 
         }

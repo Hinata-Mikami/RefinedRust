@@ -1,0 +1,23 @@
+cwd: /home/mikam/RefinedRust/hinata_mikami/gc 
+command: dune build -j 1 --display=short
+Entering directory '/home/mikam/RefinedRust'
+File "hinata_mikami/gc/audit/dune", line 22, characters 2-35:
+22 |   refinedrust.examples.gc.generated))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Theory "refinedrust.examples.gc.generated" has not been found.
+-> required by theory hinata_mikami.gc.audit in hinata_mikami/gc/audit/dune:2
+-> required by
+   _build/default/hinata_mikami/gc/audit/.hinata_mikami.gc.theory.d
+-> required by alias hinata_mikami/gc/audit/all
+-> required by alias hinata_mikami/gc/default
+        rocq hinata_mikami/gc/output/gc/proofs/.refinedrust.examples.gc.theory.d
+        rocq hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.{glob,vo}
+Did 159 steps.
+Did 1481 steps.
+Did 1106 steps.
+Did 93 steps.
+Did 1834 steps.
+Did 95 steps.
+Did 712 steps.
+Finished transaction in 322.363 secs (320.74u,1.609s) (successful)
+Leaving directory '/home/mikam/RefinedRust'

@@ -1,0 +1,15 @@
+[package]
+name = "mir_mapper_driver"
+edition.workspace = true
+repository.workspace = true
+version.workspace = true
+workspace = "../../.."
+
+authors = ["The RefinedRust Developers and Contributors"]
+license = "BSD-3-Clause"
+
+[dependencies]
+translation.workspace = true
+rr_rustc_interface.workspace = true
+
+env_logger.workspace = true

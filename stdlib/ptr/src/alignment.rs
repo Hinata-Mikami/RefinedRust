@@ -1,12 +1,18 @@
+#![rr::import("rrstd.ptr.theories", "alignment")]
+#![rr::include("num")]
+#![rr::include("clone")]
 
-#[rr::export_as(core::ptr::Alignment)]
+use core::mem;
+
+#[rr::export_as(core::mem::Alignment)]
 #[rr::refined_by("x" : "alignment_enum")]
 #[derive(Copy, Clone)]
-pub struct Alignment(#[rr::field("x")] AlignmentEnum);
+pub struct Alignment(#[rr::field("#(x)")] AlignmentEnum);
 
 /// Radium works with a 64-bit pointer representation.
 #[repr(u64)]
 #[rr::refined_by("alignment_enum")]
+#[rr::export_as(core::mem::AlignmentEnum)]
 #[derive(Copy, Clone)]
 enum AlignmentEnum {
     #[rr::pattern("_Align1Shl0")]
@@ -139,7 +145,7 @@ enum AlignmentEnum {
     _Align1Shl63 = 1 << 63,
 }
 
-#[rr::export_as(core::ptr::Alignment)]
+#[rr::export_as(core::mem::Alignment)]
 impl Alignment {
 
     #[rr::only_spec]

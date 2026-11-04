@@ -175,11 +175,7 @@ impl AsMut<str> for str {
 }
 */
 
-#[rr::export_as(core::convert::Infallible)]
-#[rr::refined_by("unit")]
-#[rr::partial]
-pub enum Infallible {
-}
+pub type Infallible = !;
 
 /*
 #[stable(feature = "convert_infallible", since = "1.34.0")]

@@ -9,6 +9,7 @@ version.workspace = true
 
 [dependencies]
 rr_rustc_interface.workspace = true
+rr_rustc_utils.workspace = true
 
 serde.workspace = true
 
