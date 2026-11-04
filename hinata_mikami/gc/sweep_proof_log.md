@@ -1796,3 +1796,42 @@ dune build
 - コマンド: `python3 audit/check_assumptions.py --report verification_assumptions_20261023.txt --raw-output audit/artifacts/20261023/assumptions.raw.txt`
 - 終了コード: 0、所要時間: 303.5秒
 - 詳細ログ: `/tmp/refinedrust-upgrade-sweep-contract-assumptions-final-02.log`
+
+## 2026-10-26 sweep の事後条件を優先順に整理
+
+- ユーザーの既存 main.rs のコメント変更を含む開始時の状態を audit/artifacts/20261026-order/before/ に保存し、作業開始前の差分も保存した。
+- observe は実際の終了後の Vec と keep_marked の結果を結び付けるため保持した。3つの純粋な ensures はこれを代替しない。
+- 並び順を (1) observe、(2) sweep_post、(3) 生存ノードのメモリ所有権・value/next の保存・mark のリセット、(4) ヒープの整合性に変更した。
+- sweep_fields_preserved / all_unmarked(replicate ... false) の2つの ensures を外した。前者は既存の NoDup 前提から sweep_fields_preserved_filter で導け、後者は sweep_reset_all_unmarked により無条件に成立する。補助定義と補題は保持し、元の実メモリ事後条件も保持するため、保証の論理的な弱化はない。
+- 長さ2条件・NoDup・非NULL・next の妥当性の5条件は削らず、同じ命題の連言として1つの ensures にまとめた。
+- 手動証明は対応しなくなった2つの try 行だけを除き保持する。Rust の処理本体・事前条件・ループ不変条件は変更しない。
+- refinedrust-specifications / refinedrust-proofs / refinedrust-verification skills に従い、生成ファイルを直接編集せず cargo refinedrust で再生成し、通常 .vo の Dune ビルドを確認する。
+
+### 事後条件整理 cargo-regenerate (2026-10-26)
+
+- コマンド: `cargo refinedrust -- --locked --offline`
+- 結果: 終了0、0.7秒
+- ログ: `hinata_mikami/gc/audit/artifacts/20261026-order/cargo-regenerate.log.txt`
+
+### 事後条件整理 dune-build (2026-10-26)
+
+- コマンド: `dune build -j 1 --display=short --no-buffer`
+- 結果: 終了0、474.8秒
+- ログ: `hinata_mikami/gc/audit/artifacts/20261026-order/dune-build.log.txt`
+
+### 事後条件整理 assumptions-audit (2026-10-26)
+
+- コマンド: `python3 audit/check_assumptions.py --date 2026-10-26 --report verification_assumptions_20261026.txt --raw-output audit/artifacts/20261026-order/assumptions.raw.txt`
+- 結果: 終了0、147.4秒
+- ログ: `hinata_mikami/gc/audit/artifacts/20261026-order/assumptions-audit.log.txt`
+
+### 2026-10-26 事後条件整理の確認結果
+
+- 事後条件のアノテーションは10個から4個になった（observe / sweep_post / 所有権 / 整合性の連言）。戻り値の returns は従来どおり。
+- observe の式と #iris のノード所有権の式は、作業開始時の控えとの比較でバイト単位で同一。Rust の sweep 本体以降・事前条件を含む前半・ループ不変条件も同一。再生成された generated_code_gc.v の SHA256 は10/23の検証時と同一。
+- cargo refinedrust -- --locked --offline は終了0（0.7秒）。通常の dune build -j 1 --display=short --no-buffer は終了0（474.8秒）。sweep の Qed カーネル検査は59.479秒で成功した。
+- 補助・生成・GC証明・Drop検査の29モジュールについて、現在のソースと _build 内コピーの一致と、通常 .vo の存在を確認した。
+- 新しい監査報告に日付を指定できるよう、check_assumptions.py に --date を追加した。全79件の監査は終了0（147.4秒）。補助・検査67件は Closed under the global context、GC型付け12件は既存の関数外延性と証明無関係性だけに依存する。新しい公理・Admitted・admit・ignore は追加していない。
+- 監査結果: verification_assumptions_20261026.txt。開始前の控え・実行ログ・生の監査結果・今回の差分は audit/artifacts/20261026-order/。Cargo が更新した追跡対象の .rustc_info.json は開始時と同じ HEAD の内容に戻した。
+- fields_preserved と all_unmarked の補助定義・補題は残している。取り除いた2条件は既存の前提と保持した補題から導けるため、以前の保証を失わない。長さ・NoDup・非NULL・next の妥当性はすべて新しい整合性ブロックに保持した。
+- Drop / Free の信頼境界には今回の変更はない。

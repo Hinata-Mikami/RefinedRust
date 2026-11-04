@@ -291,7 +291,7 @@ impl Heap {
         "γ"
     )]
     // &mut xのrefinementは (-[x], γ)
-    #[rr::args(#raw "((-[locs]), γ)")] // ここを変えるとなぜHeap_invが適用されなくなるか？という確認も欲しい
+    #[rr::args(#raw "((-[locs]), γ)")] 
 
     /* 開始時：Heap invariant 成立 */
     #[rr::requires("length locs = length vals")]
@@ -318,47 +318,29 @@ impl Heap {
     // A[true] → B[false] でBを解放するとdangling pointerになる
     #[rr::requires("marks_closed locs nexts marks")]
 
-    /* 事後条件
-     * sweep_post の読み方（locs/nexts/marks は開始時のスナップショット）:
-     *   - 残る iff 開始時に marked。
-     *   - mark が正確（marked iff reachable）なら、残る iff 開始時に reachable。
-     *   - root が marked なら、生存ノードのアドレスで表す reachable は前後で同じ。
-     * marked ビット自体は false に戻すので、不変とはしない。
-     */
-    #[rr::ensures("sweep_post locs nexts marks
-        (keep_marked locs marks) (keep_marked nexts marks)")]
-    #[rr::ensures("sweep_fields_preserved vals locs nexts marks")]
-    #[rr::ensures("all_unmarked (replicate (length (keep_marked locs marks)) false)")]
-    /* keep_marked xs marks ... xs のうち marks が true のものだけを残す */
-    // 終了後の locs' は locs[i] のうち marks[i] が true のもの
+    // 1. 実際の終了後の Vec を、開始時 marked のノードだけに更新する。
     #[rr::observe("γ": "
     let locs' := keep_marked locs marks in
     (-[# (<#> locs')] : plistRT [_])
     ")]
 
-    /* invariant としていたものの構築 */
-    // vals', nexts' も同様
-    // locs'/nexts' と vals' の長さは同じ
-    #[rr::ensures("
-    let vals' := keep_marked vals marks in
-    let locs' := keep_marked locs marks in
-    length locs' = length vals'
-    ")]
-    #[rr::ensures("
-    let vals' := keep_marked vals marks in
-    let nexts' := keep_marked nexts marks in
-    length nexts' = length vals'
-    ")]
-    #[rr::ensures("
-    let locs' := keep_marked locs marks in
-    NoDup locs'
-    ")]
-    #[rr::ensures("
-    let locs' := keep_marked locs marks in
-    Forall (λ l, l.(loc_a) ≠ 0) locs'
-    ")]
-    // 更新後の所有権
-    // marks' は false を locs' 分複製
+    // 2. 結論
+    /*  sweep_post :=
+        1.  sweep_kept_exact
+            終了後に残る iff 開始時にtrueにマーク
+            ∧
+        2.  (marking_exact -> sweep_reachable_exact)
+            開始時 "markedなノード iff reachable"
+            -> 終了後 残ったノード iff reachable
+            ∧
+        3.  marks[0] == Some true -> sweep_reachability_preserved
+            rootがmarked -> reachabilityがsweep前後で不変
+     */
+    #[rr::ensures("sweep_post locs nexts marks
+        (keep_marked locs marks) (keep_marked nexts marks)")]
+
+    // 3. 生存ノードの実メモリ: value/next を保持し、marked は false にする。
+    //    ノードの所有権と、今後解放するための権限を返す。
     #[rr::ensures(#iris "
     let vals' := keep_marked vals marks in
     let locs' := keep_marked locs marks in
@@ -378,27 +360,25 @@ impl Heap {
             (ly_size (use_layout_alg' Node_sls))
             1 HeapAlloc)
     ")]
-    /*
-    * sweep 中は壊してよいが、終了時には
-    * live node だけに絞った locs'/nexts' について
-    * Hnext_valid が再成立する。
-    */
+    // 4. ヒープの整合性: 長さ、重複なし、非 NULL、next の参照先の妥当性。
     #[rr::ensures("
+    let vals' := keep_marked vals marks in
     let locs' := keep_marked locs marks in
     let nexts' := keep_marked nexts marks in
-    Forall
-        (λ n, n = NULL_loc ∨ n ∈ locs')
-        nexts'
+    length locs' = length vals' ∧
+    length nexts' = length vals' ∧
+    NoDup locs' ∧
+    Forall (λ l, l.(loc_a) ≠ 0) locs' ∧
+    Forall (λ n, n = NULL_loc ∨ n ∈ locs') nexts'
     ")]
 
+    #[rr::returns("()")]
     /* 
         ループ内で毎回 &mut self.all_nodes を借用すると、
         そのたびに新しい一時 lifetime (κ, κ0, …) ができて 
         self の型の中に ShrBlockedLtype が積み重なり，検証が困難に。
         ループの外で一度だけ借用しておく形に変更
     */
-
-    #[rr::returns("()")]
     unsafe fn sweep(&mut self) {
         let nodes = &mut self.all_nodes;
         let mut i = nodes.len();

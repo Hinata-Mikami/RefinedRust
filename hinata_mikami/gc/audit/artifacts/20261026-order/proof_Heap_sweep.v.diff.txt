@@ -1,0 +1,11 @@
+--- before/hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v
++++ after/hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v
+@@ -287,8 +287,6 @@
+   all: try (apply sweep_reachable_exact_filter; assumption).
+   all: try (eapply sweep_preserves_reachability;
+     [assumption|lia|lia|assumption|assumption]).
+-  all: try (apply sweep_fields_preserved_filter; assumption).
+-  all: try (apply sweep_reset_all_unmarked).
+   all: try rewrite -list_fmap_delete.
+   all: try (
+     match goal with
