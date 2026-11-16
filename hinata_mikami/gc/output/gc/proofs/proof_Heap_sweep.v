@@ -269,11 +269,37 @@ Proof.
     iRename select (sweep_nodes_inv _ _ _ _ _ _) into "Hinv".
     iPoseProof (sweep_nodes_inv_done vals locs nexts marks _
       Hvals_marks Hlocs_marks Hnexts_marks with "Hinv") as "Hdone".
-    rep liRStep; liShow.
+    (* Finish the local cleanup, then resolve the expired Vec borrow before
+       proving the raw Heap ownership postcondition. *)
+    repeat lazymatch goal with
+    | |- environments.envs_entails _
+        (prove_with_subtype _ _ true _ ?Q _ _) =>
+        lazymatch Q with
+        | context[heap] => fail
+        | _ => liRStep
+        end
+    | _ => liRStep
+    end.
+    liShow.
+    iApply (prove_with_subtype_stratify heap).
+    1: rep <-! <3000 liRStep.
+    liShow.
+    iRename select (v3 ◁ᵥ{_, _} _ @ _)%I into "Hret".
+    iApply prove_with_subtype_default.
+    iSplitL "Hdone Hret".
+    {
+      iIntros "Hheap _".
+      iEval (rewrite keep_marked_suffix_0) in "Hheap".
+      iExists tt.
+      iFrame "Hret Hheap Hdone".
+      iSplit; iPureIntro; shelve_sidecond.
+    }
+    1: rep <-! <3000 liRStep.
 
   (* Discharge the pure arithmetic, filtering, and pointer-validity obligations. *)
   Unshelve. all: sidecond_solver.
   all: sidecond_hammer_normalize.
+  all: repeat split.
   all: try lia.
   all: try (rewrite keep_marked_suffix_length; done).
   all: try (rewrite /keep_marked_suffix length_app length_take_le; lia).

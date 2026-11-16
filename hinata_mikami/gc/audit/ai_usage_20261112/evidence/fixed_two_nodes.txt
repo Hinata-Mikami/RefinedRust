@@ -1,0 +1,273 @@
+チャット: RefinedRust 検証エラー
+URL: https://chatgpt.com/c/69f6ee25-21f4-8333-8759-a7bbd274a9c5
+取得範囲: ツールが返した直近の会話。全対話のエクスポートではない。
+
+TURN: ec4d5f59-1b66-404b-9b18-d696c2dcd83d
+日時 JST: 2026-06-02T09:20:25.089000+09:00
+USER:
+#[rr::trust_me]
+    #[rr::params("a" : "loc", "b" : "loc", "v1" : "Z", "v2" : "Z", "γ")]
+    #[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)", "a")]
+    #[rr::observe("γ": "([v1; v2], (<$#> [a; b]), [b; a])")]
+    #[rr::returns("v2")]
+    unsafe fn read_next_value(&mut self, cell: *mut Cell) -> i32 {
+        let next = (*cell).next;
+        (*next).value
+    }
+
+ここではあたかもリストの要素が２つであることを前提に書いていますが，この関数から見ればリストの要素数は２つとは限らないですよね？そこを修正する必要はないのでしょうか？
+ASSISTANT:
+はい、その指摘は正しいです。
+
+その annotation は **2 要素専用の仕様**になっています。
+
+```rust
+#[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)", "a")]
+#[rr::observe("γ": "([v1; v2], (<$#> [a; b]), [b; a])")]
+#[rr::returns("v2")]
+```
+
+これは `self` の refinement が正確に
+
+```coq
+xs    = [v1; v2]
+locs  = [#a; #b]
+nexts = [b; a]
+```
+
+である場合だけを対象にしています。
+
+つまり、この関数は一般の `All_Cells` に対するメソッドというより、
+
+```text
+2 ノード cycle 専用の read_next_value
+```
+
+です。
+
+## 一般化するならどう書くべきか
+
+一般のリスト長に対応するなら、`read_next_value` は次の情報を parameter / requires として受け取る必要があります。
+
+```text
+cell は locs の i 番目にある
+cell の next は nexts の i 番目にある
+その next は locs の j 番目にある
+j 番目の値は v_next
+```
+
+つまり、仕様は概念的にはこうです。
+
+```rust
+#[rr::params(
+    "xs" : "list Z",
+    "locs" : "list (place_rfn loc)",
+    "nexts" : "list loc",
+    "cell" : "loc",
+    "next" : "loc",
+    "v_next" : "Z",
+    "i" : "nat",
+    "j" : "nat",
+    "γ"
+)]
+#[rr::args("((xs, locs, nexts), γ)", "cell")]
+#[rr::requires("locs !! i = Some (#cell)")]
+#[rr::requires("nexts !! i = Some next")]
+#[rr::requires("locs !! j = Some (#next)")]
+#[rr::requires("xs !! j = Some v_next")]
+#[rr::observe("γ": "(xs, locs, nexts)")]
+#[rr::returns("v_next")]
+unsafe fn read_next_value(&mut self, cell: *mut Cell) -> i32 {
+    let next = (*cell).next;
+    (*next).value
+}
+```
+
+これなら、リスト長は 2 とは限りません。
+
+この仕様が言っていることは：
+
+```text
+self は任意の xs, locs, nexts を持つ。
+cell は locs の i 番目のセルである。
+cell.next は nexts の i 番目の next である。
+next は locs の j 番目のセルである。
+その j 番目の value は v_next である。
+したがって返り値は v_next。
+```
+
+です。
+
+## `Hnext_valid` だけでは足りない
+
+今の invariant には：
+
+```coq
+Forall (λ n, n = NULL_loc ∨ #n ∈ locs) nexts
+```
+
+があります。
+
+これは、
+
+```text
+各 next は NULL または管理対象内にある
+```
+
+という意味です。
+
+しかし `read_next_value` が `(*next).value` を読むには、さらに
+
+```text
+next が NULL ではない
+next が locs のどの index にあるか
+その index の value が何か
+```
+
+が必要です。
+
+`Hnext_valid` だけだと、
+
+```text
+next は NULL かもしれない
+next が locs 内にあるとしても、対応する value が分からない
+```
+
+ので、`returns("v2")` のような具体的な返り値は出せません。
+
+したがって、一般仕様では
+
+```rust
+#[rr::requires("locs !! j = Some (#next)")]
+#[rr::requires("xs !! j = Some v_next")]
+```
+
+が必要になります。
+
+## 2 要素版は何のためにあるか
+
+2 要素版は、あくまで最初の sanity check です。
+
+```rust
+#[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)", "a")]
+#[rr::returns("v2")]
+```
+
+この仕様では、`a.next = b` と `b.value = v2` が完全に固定されています。
+
+だから「`a` から next を辿ると `v2` が読める」と言えます。
+
+しかしこれは一般の `All_Cells` API としては狭すぎます。
+
+## 今後の自然な方向
+
+最終的には、関数を 2 種類に分けるのが自然です。
+
+### 1. 固定2ノード実験用
+
+```rust
+#[rr::params("a" : "loc", "b" : "loc", "v1" : "Z", "v2" : "Z", "γ")]
+#[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)", "a")]
+#[rr::observe("γ": "([v1; v2], (<$#> [a; b]), [b; a])")]
+#[rr::returns("v2")]
+```
+
+これは今の実験用です。
+
+### 2. 任意長用
+
+```rust
+#[rr::params(
+    "xs" : "list Z",
+    "locs" : "list (place_rfn loc)",
+    "nexts" : "list loc",
+    "cell" : "loc",
+    "next" : "loc",
+    "v_next" : "Z",
+    "i" : "nat",
+    "j" : "nat",
+    "γ"
+)]
+#[rr::args("((xs, locs, nexts), γ)", "cell")]
+#[rr::requires("locs !! i = Some (#cell)")]
+#[rr::requires("nexts !! i = Some next")]
+#[rr::requires("locs !! j = Some (#next)")]
+#[rr::requires("xs !! j = Some v_next")]
+#[rr::observe("γ": "(xs, locs, nexts)")]
+#[rr::returns("v_next")]
+```
+
+これが本命です。
+
+## null の扱い
+
+一般版では、`cell.next` が NULL の可能性があります。
+
+なので、実装を安全にするなら本当は：
+
+```rust
+unsafe fn read_next_value(&mut self, cell: *mut Cell) -> Option<i32> {
+    let next = (*cell).next;
+    if next.is_null() {
+        None
+    } else {
+        Some((*next).value)
+    }
+}
+```
+
+のようにする方が自然です。
+
+今の実装：
+
+```rust
+let next = (*cell).next;
+(*next).value
+```
+
+は、`next != NULL` を precondition で要求する必要があります。
+
+そのため一般版には暗黙に：
+
+```rust
+#[rr::requires("next ≠ NULL_loc")]
+```
+
+または `locs !! j = Some (#next)` から非 NULL が導けるように、`locs` の全要素が非 NULL である invariant が必要です。
+
+例えば：
+
+```rust
+#[rr::inv("Hlocs_not_null" : "Forall (λ l, l ≠ #NULL_loc) locs")]
+```
+
+のようなものです。ただし `locs : list (place_rfn loc)` なので、正確には少し型に合わせる必要があります。
+
+## 結論
+
+はい、2 要素専用の annotation は一般メソッドとしては不適切です。
+
+現在の固定例なら問題ありませんが、今後 `alloc` で任意個の Cell を管理するなら、`read_next_value` は少なくとも次のように一般化すべきです。
+
+```rust
+#[rr::params(
+    "xs" : "list Z",
+    "locs" : "list (place_rfn loc)",
+    "nexts" : "list loc",
+    "cell" : "loc",
+    "next" : "loc",
+    "v_next" : "Z",
+    "i" : "nat",
+    "j" : "nat",
+    "γ"
+)]
+#[rr::args("((xs, locs, nexts), γ)", "cell")]
+#[rr::requires("locs !! i = Some (#cell)")]
+#[rr::requires("nexts !! i = Some next")]
+#[rr::requires("locs !! j = Some (#next)")]
+#[rr::requires("xs !! j = Some v_next")]
+#[rr::observe("γ": "(xs, locs, nexts)")]
+#[rr::returns("v_next")]
+```
+
+この仕様が、「リスト長に依存せず、管理対象内のポインタを辿って安全に読む」形です。

@@ -1,0 +1,46 @@
+{
+  "as_of_jst": "2026-11-12",
+  "head": "659b49eeca2322779e568fbaaaaceaf6adca96d4",
+  "baseline_before_codex": "644763f1",
+  "scope": "Current GC supporting theories, persistent proof files, and Drop audit. Excludes upstream RefinedRust, stdlib, generated output, backups, and other experiments.",
+  "source_file_count": 16,
+  "custom_definitions": {
+    "total": 36,
+    "ai_new_confirmed_minimum": 24,
+    "percentage": 66.66666666666667
+  },
+  "custom_theorems": {
+    "total": 78,
+    "ai_new_confirmed_minimum": 44,
+    "percentage": 56.41025641025641
+  },
+  "proof_scripts": {
+    "total": 92,
+    "pre_codex_origin_unresolved": 21,
+    "ai_completed": 15,
+    "ai_new": 45,
+    "ai_revised": 6,
+    "refinedrust_template": 5,
+    "ai_any_confirmed_minimum": 66,
+    "ai_any_percentage": 71.73913043478261
+  },
+  "core_support_only": {
+    "definitions": 21,
+    "ai_new_definitions_minimum": 9,
+    "theorems": 59,
+    "ai_new_theorems_minimum": 26,
+    "scripts": 61,
+    "ai_new_scripts": 27,
+    "ai_completed_scripts": 13,
+    "ai_revised_scripts": 1
+  },
+  "notes": [
+    "Definition count includes Definition/Fixpoint/Inductive/Record. The seven file-local resolver definitions count as seven separately qualified declarations.",
+    "Custom theorem count excludes 12 generated typing lemma statements. Example and Instance are one each, counted separately.",
+    "Script count is one named Proof...Qed block, including the Example and Instance. It is not a count of tactic lines or effort.",
+    "New/completed/revised attribution is a verified lower bound for October Codex work, not a complete AI-versus-human partition.",
+    "The Heap Drop script was completed from a RefinedRust-generated template; its generated statement is not credited to AI.",
+    "Baseline sweep contained Qed text but failed checking; completion is supported by recorded diagnostic and build results.",
+    "No proof regeneration or new Rocq build was performed for this historical/source audit."
+  ]
+}

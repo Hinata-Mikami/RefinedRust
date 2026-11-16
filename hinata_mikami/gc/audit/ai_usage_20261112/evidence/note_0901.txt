@@ -1,0 +1,37 @@
+Google Docs 原資料: https://docs.google.com/document/d/14IO7CPk7NzSqyWYeZW2Ngu7qhJJt3VEi8TjE_m5JQBE/edit
+2026-11-12 に接続ツールで本文を取得。埋込み画像は本文抽出対象外。
+
+https://github.com/Hinata-Mikami/RefinedRust/blob/main/hinata_mikami/gc/src/main.rs 
+・mark関数：
+・再帰部分 mark_from ：refinement はmarks のみ更新，marks_newはmark_from_relに従う
+いずれも Heap のメソッド
+＜all_nodes を明示的に使わないとHeap invariant は呼び出されない：_dummy＞
+・Node の所有権は Heap invariant の中にある↓
+[∗ list] i ↦ v ∈ vals,
+  ∃ l n m,
+    ⌜locs !! i = Some l⌝ ∗
+    ...
+    guarded true
+      (l ◁ₗ[π, Owned]
+         # -[#v; #n; #m]
+         @ ◁Node_ty) ∗
+    freeable_nz l ...
+・_dummy がないとき：
+証明資源 arg_start_node ◁ₗ[ π, Owned] # l @ (◁ alias_ptr_t) は
+あくまで start_node には l （ポインタ）が入っている程度，指す先の所有権でない
+・_dummy を入れると：&mut Heap をopenするので，l lの指す先のNodeの所有権が現れ，読み書きできるようになる
+※メソッドにする/しないの違いはここにあるかも？StratifyContextAnnot というらしい？
+defs.v
+https://github.com/Hinata-Mikami/RefinedRust/blob/main/hinata_mikami/extra_proofs/gc/gc_defs.v
+proof_Heap_mark_from.v
+https://github.com/Hinata-Mikami/RefinedRust/blob/main/hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_from.v 
+mark_from_rel : Rust が mark_from を実行したときの marks の遷移を Rocq 上で示し，関数の事後条件として与えることで正しさを証明（完了：かなり時間がかかった）
+他
+・修論題目＜なるべくすぐに！＞
+・claude?　→いったん保留
+・CEOプログラム表彰　https://ceoc.or.jp/leaders
+ChatGPT Exporter https://www.chatgptexporter.com/en 
+PDF, JSON など... バージョンだけはメモする必要がある 
+GoFullPage : 長いページを画像として保存
+副作用がない場合(unsafeでない場合，安全出ない場合)のように_dummy を呼び出すと？
+タイトル・要旨・メモ書き(内容)TeX 
