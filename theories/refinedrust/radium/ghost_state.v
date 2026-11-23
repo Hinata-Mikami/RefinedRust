@@ -182,6 +182,10 @@ Section definitions.
   Definition freeable_eq : @freeable = @freeable_def :=
     seal_eq freeable_aux.
 
+  (** The allocation identified by [l]'s provenance has been freed. *)
+  Definition alloc_dead (l : loc) : iProp Σ :=
+    ∃ id, ⌜l.(loc_p) = ProvAlloc id⌝ ∗ alloc_alive id (DfracOwn 1) false.
+
   Global Instance freeable_timeless l n q k : Timeless (freeable l n q k).
   Proof. rewrite freeable_eq. apply _. Qed.
 
@@ -1274,10 +1278,11 @@ End alloc_new_blocks.
 Section free_blocks.
   Context `{!heapG Σ}.
 
-  Lemma heap_free_block_upd σ1 l ly kind:
+  Lemma heap_free_block_upd_with_dead σ1 l ly kind:
     l ↦|ly| -∗
     freeable l (ly_size ly) 1 kind -∗
-    heap_state_ctx σ1 ==∗ ∃ σ2, ⌜free_block σ1 kind l ly σ2⌝ ∗ heap_state_ctx σ2.
+    heap_state_ctx σ1 ==∗ ∃ σ2,
+      ⌜free_block σ1 kind l ly σ2⌝ ∗ heap_state_ctx σ2 ∗ alloc_dead l.
   Proof.
     iIntros "Hl Hfree (Hinv&Hhctx&Hrctx&Hsctx)". iDestruct "Hinv" as %Hinv.
     rewrite freeable_eq. iDestruct "Hfree" as (aid Haid) "[#Hrange Hkill]".
@@ -1288,8 +1293,20 @@ Section free_blocks.
     iExists _. iSplitR. { iPureIntro. by econstructor. }
     iMod (heap_free_free with "Hhctx Hl") as "Hhctx". rewrite Hv. iFrame => /=.
     iMod (alloc_alive_kill _ _ ({| al_start := l.(loc_a); al_len := ly_size ly; al_alive := true; al_kind := k |}) with "Hsctx Hkill") as "[$ Hd]".
+    iAssert (alloc_dead l) with "[Hd]" as "$".
+    { iExists aid. by iFrame. }
     erewrite alloc_meta_ctx_same_range; [iFrame |done..].
     iPureIntro. eapply free_block_invariant => //. by eapply FreeBlock.
+  Qed.
+
+  Lemma heap_free_block_upd σ1 l ly kind:
+    l ↦|ly| -∗
+    freeable l (ly_size ly) 1 kind -∗
+    heap_state_ctx σ1 ==∗ ∃ σ2, ⌜free_block σ1 kind l ly σ2⌝ ∗ heap_state_ctx σ2.
+  Proof.
+    iIntros "Hl Hf Hσ".
+    iMod (heap_free_block_upd_with_dead with "Hl Hf Hσ") as (σ2 Hfree) "[Hσ _]".
+    iModIntro. iExists σ2. by iFrame.
   Qed.
 
   Lemma heap_free_blocks_upd ls σ1 kind:

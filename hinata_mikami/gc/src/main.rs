@@ -19,6 +19,7 @@
 #![rr::import("hinata_mikami.extra_proofs.gc", "gc_defs")]
 #![rr::import("hinata_mikami.extra_proofs.gc", "sweep_contract")]
 #![rr::import("hinata_mikami.extra_proofs.gc", "collect_contract")]
+#![rr::import("hinata_mikami.extra_proofs.gc", "deallocation")]
 
 
 use std::ptr;
@@ -43,6 +44,19 @@ struct Node {
     value: i32,
     next: *mut Node,
     marked: bool,
+}
+
+// The caller owns a nonempty block allocated by the Global allocator.
+#[rr::code_shim("dealloc_storage_def")]
+#[rr::params("b" : "{rt_of T}")]
+#[rr::requires("Hnonempty" : "0 < ly_size {ly_of T}")]
+#[rr::requires(#type "ptr" : "b" @ "{T}")]
+#[rr::requires(#iris "freeable_nz ptr (ly_size {ly_of T}) 1 HeapAlloc")]
+#[rr::ensures(#iris "alloc_dead ptr")]
+#[rr::returns("()")]
+unsafe fn dealloc_storage<T>(ptr: *mut T) {
+    const { assert!(!std::mem::needs_drop::<T>()) };
+    unsafe { std::alloc::dealloc(ptr.cast(), std::alloc::Layout::new::<T>()) };
 }
 
 
@@ -371,6 +385,8 @@ impl Heap {
     Forall (λ n, n = NULL_loc ∨ n ∈ locs') nexts'
     ")]
 
+    // 開始時に未マークだった各割り当ては解放済み。
+    #[rr::ensures(#iris "sweep_freed O locs marks")]
     #[rr::returns("()")]
     /* 
         ループ内で毎回 &mut self.all_nodes を借用すると、
@@ -413,7 +429,8 @@ impl Heap {
                             freeable_nz l
                                 (ly_size
                                     (use_layout_alg' Node_sls))
-                                1 HeapAlloc)
+                                1 HeapAlloc) ∗
+                    sweep_freed (Z.to_nat ic) locs marks
                 ")]
                 #[rr::ignore] || {};
 
@@ -431,7 +448,7 @@ impl Heap {
             } else {
                 // removeの戻り値の仕様に依存せず、直前に読んだ同じポインタを使う。
                 let _ = nodes.remove(i);
-                let _ = Box::from_raw(node_ptr);
+                dealloc_storage(node_ptr);
             }
         }
     }

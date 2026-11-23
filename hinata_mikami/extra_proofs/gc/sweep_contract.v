@@ -13,8 +13,25 @@ Definition marking_exact (locs nexts : list loc) (marks : list bool) : Prop :=
 Definition keep_unmarked {A} (xs : list A) (marks : list bool) : list A :=
   keep_marked xs (negb <$> marks).
 
-(** These are candidate Drop arguments, not certificates of physical deallocation.
-    The implementation scans the initial Vec from right to left. *)
+(** Deallocation evidence for the processed suffix of the original input. *)
+Definition sweep_freed `{!heapG Σ} (cut : nat) (locs : list loc) (marks : list bool) : iProp Σ :=
+  [∗ list] l ∈ keep_unmarked (drop cut locs) (drop cut marks), alloc_dead l.
+
+Lemma sweep_freed_step `{!heapG Σ} cut (locs : list loc) (marks : list bool) l (m : bool) :
+  (0 < cut)%nat →
+  locs !! (cut - 1)%nat = Some l →
+  marks !! (cut - 1)%nat = Some m →
+  sweep_freed (cut - 1) locs marks ⊣⊢
+    (if m then emp else alloc_dead l) ∗ sweep_freed cut locs marks.
+Proof.
+  destruct cut as [|cut]; intros Hpos Hl Hm; first lia.
+  replace (S cut - 1)%nat with cut in * by lia.
+  rewrite /sweep_freed /keep_unmarked.
+  rewrite (drop_S _ _ _ Hl) (drop_S _ _ _ Hm).
+  destruct m; simpl; [by rewrite left_id|done].
+Qed.
+
+(** Deallocation targets in the order that sweep scans the initial Vec. *)
 Definition sweep_drop_targets (locs : list loc) (marks : list bool) : list loc :=
   reverse (keep_unmarked locs marks).
 

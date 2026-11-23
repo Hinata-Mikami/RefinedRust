@@ -5,6 +5,8 @@ From hinata_mikami.extra_proofs.gc Require Import heap_lemmas sweep_contract.
 
 Set Default Proof Using "Type".
 
+Local Typeclasses Opaque alloc_dead sweep_freed.
+
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
@@ -114,6 +116,27 @@ Proof.
   by apply keep_marked_suffix_step_false.
 Qed.
 
+Local Lemma node_layout_size_positive sl :
+  struct_layout_spec_has_layout Node_sls sl →
+  0 < ly_size sl.
+Proof.
+  intros Hsl.
+  have Hmember : ("value", IntSynType I32) ∈ Node_sls.(sls_fields).
+  { rewrite /Node_sls /=. set_solver. }
+  destruct (struct_layout_spec_has_layout_members Node_sls sl _ _ Hsl Hmember)
+    as (field_layout & Hfield & Hfield_layout).
+  apply syn_type_has_layout_int_inv in Hfield_layout. subst field_layout.
+  have Hsize_member : ly_size (it_layout I32) ∈ ly_size <$> (sl_members sl).*2.
+  {
+    apply (list_elem_of_fmap_2 ly_size).
+    apply (list_elem_of_fmap_2 snd (sl_members sl) (Some "value", it_layout I32)).
+    exact Hfield.
+  }
+  pose proof (sum_list_with_in _ id _ Hsize_member) as Hsize.
+  change (4 ≤ sum_list (ly_size <$> (sl_members sl).*2))%nat in Hsize.
+  change (0 < Z.of_nat (sum_list (ly_size <$> (sl_members sl).*2)))%Z. lia.
+Qed.
+
 
 Lemma Heap_sweep_proof (π : thread_id) :
   Heap_sweep_lemma π.
@@ -186,6 +209,8 @@ Proof.
     exact Hlocs_marks.
   }
 
+  iAssert (sweep_freed (length marks) locs marks) with "[]" as "Hfreed_init".
+  { rewrite /sweep_freed /keep_unmarked (drop_ge locs); [done|lia]. }
   iApply prove_with_subtype_default.
   iSplitL "Hsweep".
   {
@@ -205,6 +230,7 @@ Proof.
   rewrite Hcut (drop_ge vals); last lia.
   rep <-! liRStep; liShow.
   - iRename select (sweep_nodes_inv _ _ _ _ _ _) into "Hinv".
+    iRename select (sweep_freed (Z.to_nat ic) locs marks) into "Hprocessed".
     have Hpos : (0 < Z.to_nat ic)%nat by lia.
     have Hbound : (Z.to_nat ic ≤ length marks)%nat by lia.
     iDestruct (sweep_nodes_inv_step (Z.to_nat ic) vals locs nexts marks
@@ -239,6 +265,8 @@ Proof.
       iAcquireCredits as "Hcred".
       iPoseProof ("Hclose" with "[Hnew Hfree Hcred]") as "Hnewinv".
       { iFrame "Hfree". iApply guarded_intro. iFrame. }
+      iAssert (sweep_freed (Z.to_nat ic - 1) locs marks) with "[Hprocessed]" as "Hfreed_step".
+      { rewrite (sweep_freed_step _ _ _ _ _ Hpos Hlc Hmc). by iFrame. }
       try rewrite -Hindex.
       iEval (rewrite /sweep_nodes_inv /aligned_nodes /keep_marked_suffix
         big_sepL_app) in "Hnewinv".
@@ -247,6 +275,10 @@ Proof.
       iSplitL "Hprefix"; first by iExact "Hprefix".
       rep liRStep; liShow.
     + rep liRStep; liShow.
+      iRename select (alloc_dead _) into "Hdead".
+      iAssert (sweep_freed (Z.to_nat ic - 1) locs marks)
+        with "[Hdead Hprocessed]" as "Hfreed_step".
+      { rewrite (sweep_freed_step _ _ _ _ _ Hpos Hlc Hmc). iFrame. }
       (* Normalize deletion through the Vec element refinement map. *)
       have Hkeep_false :
         delete (Z.to_nat ic - 1)%nat
@@ -265,7 +297,8 @@ Proof.
     match goal with Hoverflow : ic - 1 ∉ usize |- _ => apply Hoverflow end.
     change (MinInt usize ≤ ic - 1 ≤ MaxInt usize)%Z.
     rewrite MinInt_eq /min_int /=. lia.
-  - have Hzero : ic = 0 by lia. subst ic.
+  - iRename select (sweep_freed (Z.to_nat ic) locs marks) into "Hfreed".
+    have Hzero : ic = 0 by lia. subst ic.
     iRename select (sweep_nodes_inv _ _ _ _ _ _) into "Hinv".
     iPoseProof (sweep_nodes_inv_done vals locs nexts marks _
       Hvals_marks Hlocs_marks Hnexts_marks with "Hinv") as "Hdone".
@@ -286,12 +319,12 @@ Proof.
     liShow.
     iRename select (v3 ◁ᵥ{_, _} _ @ _)%I into "Hret".
     iApply prove_with_subtype_default.
-    iSplitL "Hdone Hret".
+    iSplitL "Hdone Hret Hfreed".
     {
       iIntros "Hheap _".
       iEval (rewrite keep_marked_suffix_0) in "Hheap".
       iExists tt.
-      iFrame "Hret Hheap Hdone".
+      iFrame "Hret Hheap Hdone Hfreed".
       iSplit; iPureIntro; shelve_sidecond.
     }
     1: rep <-! <3000 liRStep.
@@ -301,6 +334,7 @@ Proof.
   all: sidecond_hammer_normalize.
   all: repeat split.
   all: try lia.
+  all: try (apply node_layout_size_positive; unfold CACHED in *; assumption).
   all: try (rewrite keep_marked_suffix_length; done).
   all: try (rewrite /keep_marked_suffix length_app length_take_le; lia).
   all: try (apply keep_marked_length_same_mask; lia).
