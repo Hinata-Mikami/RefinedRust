@@ -1,0 +1,45 @@
+Google Docs 原資料: https://docs.google.com/document/d/17CU4lXuL0Uyw0ODS6-8STw4Vh_b7hQ5dBcZ5P3e4F9g/edit
+2026-11-12 に接続ツールで本文を取得。埋込み画像は本文抽出対象外。
+
+sweepについて
+https://github.com/Hinata-Mikami/RefinedRust/blob/main/hinata_mikami/gc/src/main.rs
+＜もともとの方針＞
+・all_nodes を順に走査
+mark : false のraw-pointerはBox管理に戻す→所有者がいなくなり解放
+… A[false] → B[false] のような構造の時にBを先に解放すると，
+     A.next = B だが B ∉ all_nodes になってしまう：
+　"Hnext_valid" : "Forall (λ n, n = NULL_loc ∨ n ∈ locs) nexts"　が崩れる
+＜新しい方針＞
+[完了]　sweep関数の修正
+①mark : false のノードの next をすべて null にする  //実行時オーバーヘッドないように？
+//sweepを考えるとnextが常に有効は実装上正しくない
+→常にではなく，成り立っているべきところに書くべき or 一時的にinvを壊すtactic
+②falseのものをBox管理に戻すことで解放
+③markをすべてfalseにする
+※#[rr::observe("γ": "delete i (<$#> xs)")]
+　pub fn remove(&mut self, index: usize) -> T
+　は使用可能：stdlib/vec
+	※添え字ずれを防ぐためにall_nodesは後ろから走査するのがいい？
+[完了]   Heap invariant に “Hnon_null” : すべての locs は Nullでない　を追加
+	Box:from_raw が下記を要求
+#[rr::requires(#type "raw" : ...)]
+#[rr::requires(#iris "freeable_nz raw ...")]
+#[rr::requires("raw.(loc_a) ≠ 0")]
+※著者のLinkedListでもこれを理由にHnon_nullinvariantを付与している:
+// Needed to ensure we can turn ownership into a Box again for deallocation.
+#[rr::inv("Hnot_null" : "Forall (λ l, l.(loc_a) ≠ 0) locs")]
+→Heap::alloc 等で追加の証明
+[手動検証中]　sweep の仕様
+	事前条件marks_colsed： 
+mark : true かつ next が存在するなら next も mark : true
+	※A[true] → B[false] だと，Bを解放するとA.next がdangling pointerになるから
+	※mark 関数の事後条件としても付与
+	事後条件：
+	keep_marked xs marks … 「xs について，markが trueのもののみ残す」として，
+	更新された Heap refinement は下記のようになる
+#[rr::observe("h.ghost" : 
+" let '(vals, locs, nexts, marks) := h.cur in 
+  let vals' := keep_marked vals marks in 
+  let locs' := keep_marked locs marks in 
+  let nexts' := keep_marked nexts marks in 
+   (vals', locs', nexts', replicate (length locs') false) ")] 

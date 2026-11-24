@@ -1,0 +1,17 @@
+﻿file,group,total_lines,nonblank_noncomment_lines,all_proof_bodies_nonblank_lines,main_proof_body_nonblank_lines,proof_blocks
+hinata_mikami/extra_proofs/gc/gc_defs.v,shared_support,913,624,324,,22
+hinata_mikami/extra_proofs/gc/heap_lemmas.v,shared_support,367,319,158,,16
+hinata_mikami/extra_proofs/gc/sweep_contract.v,shared_support,348,303,147,,23
+hinata_mikami/gc/output/gc/proofs/proof_Heap_alloc.v,other_gc_proof,624,479,455,,2
+hinata_mikami/gc/output/gc/proofs/proof_Heap_mark.v,target_proof,103,79,56,55,2
+hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_from.v,target_proof,403,316,292,291,2
+hinata_mikami/gc/output/gc/proofs/proof_Heap_mark_one.v,other_gc_proof,200,150,127,,2
+hinata_mikami/gc/output/gc/proofs/proof_Heap_new.v,other_gc_proof,42,31,8,,2
+hinata_mikami/gc/output/gc/proofs/proof_Heap_sweep.v,target_proof,312,275,210,175,5
+hinata_mikami/gc/output/gc/proofs/proof_Node_set_marked.v,other_gc_proof,22,17,6,,1
+hinata_mikami/gc/output/gc/proofs/proof_Node_set_next.v,other_gc_proof,22,17,6,,1
+hinata_mikami/gc/output/gc/proofs/proof_drop_glue_Heap.v,other_gc_proof,80,68,45,,2
+hinata_mikami/gc/output/gc/proofs/proof_make_node.v,other_gc_proof,22,17,6,,1
+hinata_mikami/gc/output/gc/proofs/proof_read_next_value.v,other_gc_proof,22,17,6,,1
+hinata_mikami/gc/output/gc/proofs/trait_incl_drop_glue_Heap_spec_subsumption_correct.v,other_gc_proof,21,17,7,,1
+hinata_mikami/gc/output/gc/audit/drop_calls.v,drop_audit,139,108,11,,9

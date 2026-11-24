@@ -1,0 +1,9 @@
+Production source SHA256: 62978e014583a8938f21ea16699db8f6405b41ebb0c24d37165fcfbb6217b63b
+rustc 1.100.0-nightly (e457a7b0d 2026-08-27)
+Node 0: System.alloc=1, System.dealloc=0, alive=true
+Node 1: System.alloc=1, System.dealloc=0, alive=true
+Node 2: System.alloc=1, System.dealloc=0, alive=true
+Node 3: System.alloc=1, System.dealloc=1, alive=false
+Node 4: System.alloc=1, System.dealloc=1, alive=false
+PASS: reachable cycle retained; unreachable cycle deallocated once per node
+PASS: values/next preserved; marks reset; second collect retains the same nodes

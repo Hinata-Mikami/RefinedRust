@@ -2293,6 +2293,31 @@ Proof.
   iSplit; first done. iFrame. by iApply ("HWP" with "[//] Hresult").
 Qed.
 
+Lemma wps_free_with_dead π Q Ψ Ψunwind s l v_size v_align vl (n_size n_align : nat) :
+  val_to_Z v_size USize = Some (Z.of_nat n_size) →
+  val_to_Z v_align USize = Some (Z.of_nat n_align) →
+  (∀ st, decode_op_val vl PtrOp st = Some (OVPtr l)) →
+  n_size > 0 →
+  l ↦|Layout n_size n_align| -∗
+  freeable l n_size 1 HeapAlloc -∗
+  (|={⊤}⧗=> alloc_dead l -∗ WPs{π} s {{ Q, Ψ | Ψunwind }}) -∗
+  WPs{π} (Free (Val v_size) (Val v_align) vl s) {{ Q, Ψ | Ψunwind }}.
+Proof.
+  iIntros (?? Hl ?) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (????) "Hresult". subst.
+  iPoseProof (heap_pointsto_layout_has_layout with "Hl") as "%".
+  iApply wp_lift_stmt_step. iIntros (σ) "(Hhctx&Hfctx)".
+  iMod (heap_free_block_upd_with_dead with "Hl Hf Hhctx") as (σ') "(%Hf & Hhctx & Hd)".
+  iModIntro. iSplit; first by eauto 10 using FreeS, val_to_of_loc.
+  iIntros (???? Hstep ?). inv_stmt_step.
+  iApply (physical_step_wand with "HWP"). iIntros "HWP".
+  iSplitR; first done.
+  rename select (decode_op_val _ _ _ = Some _) into Hdec.
+  rewrite Hl in Hdec.
+  simplify_eq/=.
+  erewrite (free_block_inj σ.(st_heap) _ (Layout n_size n_align) HeapAlloc hs' σ'); [ | done.. ].
+  iFrame. by iApply ("HWP" with "Hd [//] Hresult").
+Qed.
+
 Lemma wps_free π Q Ψ Ψunwind s l v_size v_align vl (n_size n_align : nat) :
   val_to_Z v_size USize = Some (Z.of_nat n_size) →
   val_to_Z v_align USize = Some (Z.of_nat n_align) →
@@ -2303,19 +2328,9 @@ Lemma wps_free π Q Ψ Ψunwind s l v_size v_align vl (n_size n_align : nat) :
   (|={⊤}⧗=> WPs{π} s {{ Q, Ψ | Ψunwind }}) -∗
   WPs{π} (Free (Val v_size) (Val v_align) vl s) {{ Q, Ψ | Ψunwind }}.
 Proof.
-  iIntros (?? Hl ?) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (????) "Hresult". subst.
-  iPoseProof (heap_pointsto_layout_has_layout with "Hl") as "%".
-  iApply wp_lift_stmt_step. iIntros (σ) "(Hhctx&Hfctx)".
-  iMod (heap_free_block_upd with "Hl Hf Hhctx") as (σ') "(%Hf & Hhctx)".
-  iModIntro. iSplit; first by eauto 10 using FreeS, val_to_of_loc.
-  iIntros (???? Hstep ?). inv_stmt_step.
-  iApply (physical_step_wand with "HWP"). iIntros "HWP".
-  iSplitR; first done.
-  rename select (decode_op_val _ _ _ = Some _) into Hdec.
-  rewrite Hl in Hdec.
-  simplify_eq/=.
-  erewrite (free_block_inj σ.(st_heap) _ (Layout n_size n_align) HeapAlloc hs' σ'); [ | done.. ].
-  iFrame. by iApply ("HWP" with "[//] Hresult").
+  iIntros (Hsize Halign Hptr Hnz) "Hl Hf HWP".
+  iApply (wps_free_with_dead with "Hl Hf [HWP]"); [done..|].
+  iApply (physical_step_wand with "HWP"). by iIntros "$ _".
 Qed.
 
 Lemma wps_skip π Q Ψ Ψunwind s:

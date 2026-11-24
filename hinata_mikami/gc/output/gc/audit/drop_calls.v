@@ -91,15 +91,15 @@ Fixpoint assignments_before_call (s : stmt) : option (list (op_type * expr * exp
 
 Section generated_sweep.
 Context `{!LayoutAlg}.
-Variables raw setmark len remove drop panic index : loc.
+Variables setmark len remove dealloc panic index : loc.
 
 Local Definition sweep_code :=
-  (Heap_sweep_def raw setmark len remove drop panic index).(f_code).
+  (Heap_sweep_def setmark len remove dealloc panic index).(f_code).
 
 Lemma sweep_dead_branch_calls :
   (site_callee <$> default []
     (normal_calls_until 128 sweep_code "_bb2" (Goto "_bb8"))) =
-  [Val (l2v remove); Val (l2v raw); Val (l2v drop)].
+  [Val (l2v remove); Val (l2v dealloc)].
 Proof. reflexivity. Qed.
 
 Lemma sweep_live_branch_calls :
@@ -108,32 +108,28 @@ Lemma sweep_live_branch_calls :
   [Val (l2v setmark)].
 Proof. reflexivity. Qed.
 
-Lemma sweep_from_raw_uses_selected_pointer :
+Lemma sweep_dealloc_uses_selected_pointer :
   assignments_before_call (default StuckS (sweep_code !! "_bb9")) =
     Some [(PtrOp, SkipE (SkipE (Var "__21")), copy{ PtrOp } ("node_ptr"))].
 Proof. reflexivity. Qed.
 
-(** The Box constructed from node_ptr is placed in __20, and precisely that
-    local Box slot is passed to drop glue. The slot is not the Node allocation. *)
-Lemma sweep_from_raw_and_drop_share_box_slot :
+Lemma sweep_dealloc_call :
   normal_calls_until 128 sweep_code "_bb2" (Goto "_bb9") = Some [
-    CallSite (Val (l2v raw)) [move{ PtrOp } ("__21")]
-      (Some (Na1Ord, use_op_alg' (Box_sls Node_st Global_sls), Var "__20"));
-    CallSite (Val (l2v drop)) [&raw{ PRef, Mut } ("__20")] None].
+    CallSite (Val (l2v dealloc)) [move{ PtrOp } ("__21")]
+      (Some (Na1Ord, StructOp unit_sl [], Var "__20"))].
 Proof. reflexivity. Qed.
 
-(** Regression check: replacing the generated Drop block by a jump removes
-    one call and is rejected by the three-call certificate above. *)
-Local Definition without_drop := <["_bb10" := Goto "_bb11"]> sweep_code.
+(** Bypassing the deallocation block removes the call. *)
+Local Definition without_dealloc := <["_bb9" := Goto "_bb10"]> sweep_code.
 
-Lemma sweep_without_drop_has_two_calls :
+Lemma sweep_without_dealloc_has_one_call :
   length (default []
-    (normal_calls_until 128 without_drop "_bb2" (Goto "_bb8"))) = 2%nat.
+    (normal_calls_until 128 without_dealloc "_bb2" (Goto "_bb8"))) = 1%nat.
 Proof. reflexivity. Qed.
 
-Lemma sweep_without_drop_rejected :
+Lemma sweep_without_dealloc_rejected :
   length (default []
-    (normal_calls_until 128 without_drop "_bb2" (Goto "_bb8"))) ≠ 3%nat.
-Proof. rewrite sweep_without_drop_has_two_calls. lia. Qed.
+    (normal_calls_until 128 without_dealloc "_bb2" (Goto "_bb8"))) ≠ 2%nat.
+Proof. rewrite sweep_without_dealloc_has_one_call. lia. Qed.
 
 End generated_sweep.

@@ -1,0 +1,35 @@
+Google Docs 原資料: https://docs.google.com/document/d/1Qakmx4i48GYRVjvJ7ce7UaQflOgP53L47Ie5Bq5ogjQ/edit
+2026-11-12 に接続ツールで本文を取得。埋込み画像は本文抽出対象外。
+
+https://github.com/Hinata-Mikami/RefinedRust/tree/main/hinata_mikami
+[main.rs] gc/src  [proof] gc/output/gc/proofs [defs, heap_lemmas] extra_proofs/gc
+やったこと
+＊reachablity と補題を定義
+＊NoDup locs をinvariantに追加
+	↑ next[i] == l ∧ l == locs[j] 
+	・heap_lemmas.v に補題を定義
+	・追加証明：Heap::alloc
+＊Lemma を本証明に適用→mark関数検証完了
+＜定義と検証すること＞
+・事前条件：[256] all_unmarked marks : mark はすべてfalse
+・事後条件：[261] marks は marks_new に
+　　　　　　[265] mark_from_rel … marks 0 marks_new
+ : 実行後はmark_from_relに従いmarks_newに。(mark_from_relは先週定義)
+　　　　　　[270] marks_new[i] == True ⇔ locs[i] は locs[0] から到達可能
+<=>について（gc_defs.v）
+・mark_from_rel_sound_root ：⇒の証明（マークされていたら到達可能）
+・mark_from_rel_complete_root ：⇐の証明（到達可能なものはすべてマーク）
+・以下の mark_from_rel_exact_root を本証明で呼ぶ→証明完了
+＊NoDup locs
+nexts !! i = Some l かつ locs !! x = Some l のとき、その x を一意に定めるため。
+なぜ？？？
+→ marks_from_rel (マーク操作)と，reachable_from(到達可能性の推論規則)を比較
+	
+	locs, nextsが重複（同じノードに複数のインデックスがつく）
+・mark操作は必ず1つのnextを選びマークする
+	・reachable_from(nat -> Prop) は規則を満たしている任意の値(nat)を選べる
+	→reachableなのにマークされていない，といったことが起こり得る
+・reachable set を返す→ reachable i の述語に変更した　等のGPT interaction
+・RRは半自動といいながら手動証明をかなり書かないといけない：定義の変更
+・中程度の提案はAI
+・(locs * nexts) list を開いているのはなぜだろうか？

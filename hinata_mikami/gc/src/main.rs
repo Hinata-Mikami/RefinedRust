@@ -18,6 +18,8 @@
 #![rr::import("hinata_mikami.extra_proofs.gc", "heap_lemmas")]
 #![rr::import("hinata_mikami.extra_proofs.gc", "gc_defs")]
 #![rr::import("hinata_mikami.extra_proofs.gc", "sweep_contract")]
+#![rr::import("hinata_mikami.extra_proofs.gc", "collect_contract")]
+#![rr::import("hinata_mikami.extra_proofs.gc", "deallocation")]
 
 
 use std::ptr;
@@ -42,6 +44,19 @@ struct Node {
     value: i32,
     next: *mut Node,
     marked: bool,
+}
+
+// The caller owns a nonempty block allocated by the Global allocator.
+#[rr::code_shim("dealloc_storage_def")]
+#[rr::params("b" : "{rt_of T}")]
+#[rr::requires("Hnonempty" : "0 < ly_size {ly_of T}")]
+#[rr::requires(#type "ptr" : "b" @ "{T}")]
+#[rr::requires(#iris "freeable_nz ptr (ly_size {ly_of T}) 1 HeapAlloc")]
+#[rr::ensures(#iris "alloc_dead ptr")]
+#[rr::returns("()")]
+unsafe fn dealloc_storage<T>(ptr: *mut T) {
+    const { assert!(!std::mem::needs_drop::<T>()) };
+    unsafe { std::alloc::dealloc(ptr.cast(), std::alloc::Layout::new::<T>()) };
 }
 
 
@@ -103,7 +118,6 @@ impl Node{
         1 HeapAlloc)
 ")]
 #[rr::inv("Hnodup_locs" : "NoDup locs")]
-// Needed to ensure we can turn ownership into a Box again for deallocation.
 #[rr::inv("Hnot_null" : "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 struct Heap {
     #[rr::field("#(<#> locs)")]
@@ -282,16 +296,17 @@ impl Heap {
 
     // この辺の苦労はまとめておく
     // 実行時オーバーヘッドがある場合も実行して比較できればベスト（case_study）
-    /* sweep annotation */
+    /* sweep annotation: Heap 不変条件を開いて個別資源を受け渡す。 */
+    #[rr::raw_mut_self]
     #[rr::params(
         "vals"  : "list Z",
         "locs"  : "list loc",
         "nexts" : "list loc",
         "marks" : "list bool",
-        "γ"
+        "heap" : "loc"
     )]
-    // &mut xのrefinementは (-[x], γ)
-    #[rr::args(#raw "((-[locs]), γ)")] 
+    #[rr::args("heap" @ "alias_ref_t")]
+    #[rr::requires(#type "heap" : "-[#(<#> locs)]" @ "(Heap_ty <INST!>)")]
 
     /* 開始時：Heap invariant 成立 */
     #[rr::requires("length locs = length vals")]
@@ -319,10 +334,8 @@ impl Heap {
     #[rr::requires("marks_closed locs nexts marks")]
 
     // 1. 実際の終了後の Vec を、開始時 marked のノードだけに更新する。
-    #[rr::observe("γ": "
-    let locs' := keep_marked locs marks in
-    (-[# (<#> locs')] : plistRT [_])
-    ")]
+    #[rr::ensures(#type "heap" :
+        "-[#(<#> (keep_marked locs marks))]" @ "(Heap_ty <INST!>)")]
 
     // 2. 結論
     /*  sweep_post :=
@@ -372,6 +385,8 @@ impl Heap {
     Forall (λ n, n = NULL_loc ∨ n ∈ locs') nexts'
     ")]
 
+    // 開始時に未マークだった各割り当ては解放済み。
+    #[rr::ensures(#iris "sweep_freed O locs marks")]
     #[rr::returns("()")]
     /* 
         ループ内で毎回 &mut self.all_nodes を借用すると、
@@ -387,7 +402,8 @@ impl Heap {
             let _ =
                 #[rr::params("γnodes" : "gname")] //可変参照nodesの管理用
                 #[rr::exists("ic" : "Z")]         //ic
-                #[rr::inv_var("i" : "#ic")]       //ローカル変数iのrefinementは#ic(# は PlaceIn, 「現在のrefinementが具体的にこの値だ」)
+                #[rr::inv_var("i" : "#ic")]       //ローカル変数iのrefinementは#ic
+                                                  //(# は PlaceIn, 「現在のrefinementが具体的にこの値だ」)
                 #[rr::inv_var("nodes" : "
                     # (
                         # (<#> <$#>
@@ -402,10 +418,7 @@ impl Heap {
                 #[rr::inv(#iris "
                     sweep_nodes_inv
                         (Z.to_nat ic)
-                        vals
-                        locs
-                        nexts
-                        marks
+                        vals locs nexts marks
                         (λ (v : Z)
                         (l n : loc)
                         (m : bool),
@@ -416,7 +429,8 @@ impl Heap {
                             freeable_nz l
                                 (ly_size
                                     (use_layout_alg' Node_sls))
-                                1 HeapAlloc)
+                                1 HeapAlloc) ∗
+                    sweep_freed (Z.to_nat ic) locs marks
                 ")]
                 #[rr::ignore] || {};
 
@@ -434,20 +448,67 @@ impl Heap {
             } else {
                 // removeの戻り値の仕様に依存せず、直前に読んだ同じポインタを使う。
                 let _ = nodes.remove(i);
-                let _ = Box::from_raw(node_ptr);
+                dealloc_storage(node_ptr);
             }
         }
     }
 
 
-    /* マークアンドスイープGC */
+    /* マークアンドスイープGC。
+     * root は開始時の all_nodes[0]。
+     * Hunmarked（開始時に全ノードが未マーク）を前提として、
+     * 開始時に reachable ⇔ 終了後に alive（実際の all_nodes に含まれる）。
+     * alive は下の observe で終了後の Heap に結び付ける。
+     * ここでの生存は Vec への所属であり、除去ノードの Free 実行を表さない。
+     * 生存ノードの mark は false に戻り、次回の collect に備える。
+     */
+    #[rr::params("h")]
+    #[rr::args("h")]
+    #[rr::requires("Hroot_exists": "
+        let '(vals, locs, nexts, marks) := h.cur in
+        0 < length locs
+    ")]
+    #[rr::requires("Hunmarked": "
+        let '(vals, locs, nexts, marks) := h.cur in
+        all_unmarked marks
+    ")]
+    #[rr::exists("marks_after" : "list bool")]
+    // 実行後の4つ組
+    #[rr::observe("h.ghost": "
+        let '(vals, locs, nexts, marks) := h.cur in
+        let alive := keep_marked locs marks_after in
+        (keep_marked vals marks_after, alive,
+         keep_marked nexts marks_after, replicate (length alive) false)
+    ")]
+    // 1. reachable ⇔ 生存。アドレスで比較するので、remove による添字変更に依存しない。
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        let alive := keep_marked locs marks_after in
+        forall l, reachable_loc locs nexts l <-> l ∈ alive
+    ")]
+    // 2. 終了後のグラフでも、到達可能なアドレスは開始時と同じ。
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        let alive := keep_marked locs marks_after in
+        let nexts' := keep_marked nexts marks_after in
+        forall l, reachable_loc alive nexts' l <-> reachable_loc locs nexts l
+    ")]
+    // 3. 終了後は全ノードが未マーク。
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        let alive := keep_marked locs marks_after in
+        all_unmarked (replicate (length alive) false)
+    ")]
+    #[rr::returns("()")]
     unsafe fn collect(&mut self) {
-        println!("------------------------\nGC msg : Collection started.");
-
         self.mark();
-
         self.sweep();
+    }
 
+    // 診断表示は、I/O を含まない検証済みの collect を包む。
+    unsafe fn collect_with_logging(&mut self) {
+        println!("------------------------\nGC msg : Collection started.");
+        self.collect();
         println!(
             "GC msg : Collection finished (alive: {}).\n------------------------",
             self.all_nodes.len()
